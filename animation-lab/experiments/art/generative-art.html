@@ -7,6 +7,7 @@
     <script src="https://cdn.jsdelivr.net/npm/vega@5"></script>
     <script src="https://cdn.jsdelivr.net/npm/vega-lite@5"></script>
     <script src="https://cdn.jsdelivr.net/npm/vega-embed@6"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.js"></script>
     <style>
         * {
             margin: 0;
@@ -570,6 +571,12 @@
         // 파티클 시스템
         let particles = [];
 
+        // GIF 생성 관련
+        let isRecording = false;
+        let gif = null;
+        let recordedFrames = 0;
+        let maxFrames = 60; // 2초 (30fps)
+
         // 예술 타입 선택
         function selectArtType(type, buttonElement = null) {
             currentArtType = type;
@@ -924,10 +931,88 @@
             console.log('프레임 저장됨');
         }
 
-        // GIF 내보내기 (더미 함수)
+        // GIF 내보내기 (실제 구현)
         function exportGIF() {
-            alert('GIF 내보내기 기능은 추후 구현 예정입니다.');
-            console.log('GIF 내보내기 요청됨');
+            if (isRecording) {
+                console.log('이미 녹화 중입니다.');
+                return;
+            }
+            
+            console.log('🎬 GIF 녹화 시작...');
+            isRecording = true;
+            recordedFrames = 0;
+            
+            // GIF.js 초기화
+            gif = new GIF({
+                workers: 2,
+                quality: 10,
+                width: canvas.width,
+                height: canvas.height,
+                workerScript: 'https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.worker.js'
+            });
+            
+            // GIF 완료 이벤트
+            gif.on('finished', function(blob) {
+                console.log('✅ GIF 생성 완료!');
+                downloadGif(blob);
+                isRecording = false;
+                
+                // 버튼 텍스트 복원
+                const gifBtn = document.querySelector('.gen-btn[onclick="exportGIF()"]');
+                if (gifBtn) {
+                    gifBtn.textContent = 'GIF 내보내기';
+                }
+            });
+            
+            // 버튼 상태 변경
+            const gifBtn = document.querySelector('.gen-btn[onclick="exportGIF()"]');
+            if (gifBtn) {
+                gifBtn.textContent = '🔴 녹화중...';
+            }
+            
+            // 프레임 캡처 시작
+            captureGifFrame();
+        }
+
+        // GIF 프레임 캡처
+        function captureGifFrame() {
+            if (!isRecording || recordedFrames >= maxFrames) {
+                if (isRecording) {
+                    console.log('🎞️ 프레임 캡처 완료, GIF 생성 중...');
+                    gif.render();
+                }
+                return;
+            }
+            
+            // 현재 프레임을 GIF에 추가
+            gif.addFrame(canvas, {delay: 1000/30}); // 30fps
+            recordedFrames++;
+            
+            // 진행률 표시
+            const progress = (recordedFrames / maxFrames * 100).toFixed(0);
+            const gifBtn = document.querySelector('.gen-btn[onclick="exportGIF()"]');
+            if (gifBtn) {
+                gifBtn.textContent = `🔴 녹화중... ${progress}%`;
+            }
+            
+            // 다음 프레임 예약
+            setTimeout(() => {
+                requestAnimationFrame(captureGifFrame);
+            }, 33); // ~30fps
+        }
+
+        // GIF 다운로드
+        function downloadGif(blob) {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `generative-art-${Date.now()}.gif`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            console.log('💾 GIF 파일 다운로드 완료!');
         }
 
         // 마우스 인터랙션
