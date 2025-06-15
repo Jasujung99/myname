@@ -8,6 +8,7 @@
     <script src="https://cdn.jsdelivr.net/npm/vega-lite@5"></script>
     <script src="https://cdn.jsdelivr.net/npm/vega-embed@6"></script>
     <script src="https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.js"></script>
     <style>
         * {
             margin: 0;
@@ -933,10 +934,7 @@
 
         // GIF 내보내기 (실제 구현)
         function exportGIF() {
-            if (isRecording) {
-                console.log('이미 녹화 중입니다.');
-                return;
-            }
+            if (isRecording) return;
             
             console.log('🎬 GIF 녹화 시작...');
             isRecording = true;
@@ -951,62 +949,78 @@
                 workerScript: 'https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.worker.js'
             });
             
+            // GIF 렌더링 진행 상태 추가
+            gif.on('progress', function(progress) {
+                const percent = Math.round(progress * 100);
+                const gifBtn = document.querySelector('.anim-btn:nth-child(4)');
+                if (gifBtn) {
+                    gifBtn.textContent = `⏳ 처리중... ${percent}%`;
+                }
+                console.log(`GIF 처리 진행률: ${percent}%`);
+            });
+            
             // GIF 완료 이벤트
             gif.on('finished', function(blob) {
                 console.log('✅ GIF 생성 완료!');
                 downloadGif(blob);
                 isRecording = false;
                 
-                // 버튼 텍스트 복원
-                const gifBtn = document.querySelector('.gen-btn[onclick="exportGIF()"]');
+                // 버튼 상태 복원
+                const gifBtn = document.querySelector('.anim-btn:nth-child(4)');
                 if (gifBtn) {
-                    gifBtn.textContent = 'GIF 내보내기';
+                    gifBtn.textContent = '📹 GIF 내보내기';
+                    gifBtn.disabled = false;
                 }
             });
             
             // 버튼 상태 변경
-            const gifBtn = document.querySelector('.gen-btn[onclick="exportGIF()"]');
+            const gifBtn = document.querySelector('.anim-btn:nth-child(4)');
             if (gifBtn) {
-                gifBtn.textContent = '🔴 녹화중...';
+                gifBtn.textContent = '🔴 녹화 준비중...';
+                gifBtn.disabled = true;
             }
             
             // 프레임 캡처 시작
-            captureGifFrame();
+            setTimeout(() => {
+                captureFrame();
+            }, 100);
         }
 
-        // GIF 프레임 캡처
-        function captureGifFrame() {
+        function captureFrame() {
             if (!isRecording || recordedFrames >= maxFrames) {
-                if (isRecording) {
-                    console.log('🎞️ 프레임 캡처 완료, GIF 생성 중...');
+                if (isRecording && recordedFrames >= maxFrames) {
+                    console.log('🎞️ 프레임 캡처 완료, GIF 렌더링 시작...');
+                    const gifBtn = document.querySelector('.anim-btn:nth-child(4)');
+                    if (gifBtn) {
+                        gifBtn.textContent = '⏳ 렌더링 시작...';
+                    }
                     gif.render();
                 }
                 return;
             }
             
             // 현재 프레임을 GIF에 추가
-            gif.addFrame(canvas, {delay: 1000/30}); // 30fps
+            gif.addFrame(canvas, {delay: 1000/15}); // 15fps로 용량 최적화
             recordedFrames++;
             
-            // 진행률 표시
+            // 녹화 진행률 표시
             const progress = (recordedFrames / maxFrames * 100).toFixed(0);
-            const gifBtn = document.querySelector('.gen-btn[onclick="exportGIF()"]');
+            const gifBtn = document.querySelector('.anim-btn:nth-child(4)');
             if (gifBtn) {
                 gifBtn.textContent = `🔴 녹화중... ${progress}%`;
             }
             
-            // 다음 프레임 예약
+            // 다음 프레임 예약 (더 짧은 간격)
             setTimeout(() => {
-                requestAnimationFrame(captureGifFrame);
-            }, 33); // ~30fps
+                requestAnimationFrame(captureFrame);
+            }, 1000/15); // 15fps
         }
 
-        // GIF 다운로드
         function downloadGif(blob) {
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `generative-art-${Date.now()}.gif`;
+            a.download = `generative-art-${new Date().toISOString().slice(0,19).replace(/:/g,'-')}.gif`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
