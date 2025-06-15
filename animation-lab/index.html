@@ -230,11 +230,11 @@
 
     <div class="stats">
         <div class="stat-card">
-            <div class="stat-number">23</div>
+            <div class="stat-number">38</div>
             <div class="stat-label">총 실험 수</div>
         </div>
         <div class="stat-card">
-            <div class="stat-number">3</div>
+            <div class="stat-number">6</div>
             <div class="stat-label">카테고리</div>
         </div>
         <div class="stat-card">
@@ -601,6 +601,134 @@
                 </div>
             </div>
         </div>
+
+        <!-- Gemini & GPT 추가 아이디어 -->
+        <div class="category">
+            <div class="category-header">
+                <div class="category-icon">🧬</div>
+                <div>
+                    <div class="category-title">생물·생태 시뮬레이션</div>
+                    <div class="category-description">생명 현상, 자기조직화, 집단 지성의 원리 탐구</div>
+                </div>
+            </div>
+            <div class="experiments-grid">
+                <div class="experiment-card" onclick="openExperiment('bio-1')">
+                    <div class="experiment-title">세포 자동자 (Cellular Automata)</div>
+                    <div class="experiment-description">'콘웨이의 생명 게임'처럼 단순 규칙으로 복잡한 패턴 창발 관찰</div>
+                    <div class="experiment-tags"><span class="tag">오토마타</span><span class="tag">창발</span><span class="tag">규칙</span></div>
+                    <div class="experiment-status"><span>난이도: ⭐⭐⭐</span><span class="status-badge status-planned">계획중</span></div>
+                </div>
+                <div class="experiment-card" onclick="openExperiment('bio-2')">
+                    <div class="experiment-title">포식자-피식자 모델</div>
+                    <div class="experiment-description">여우와 토끼의 개체 수가 서로 영향을 주며 변하는 생태계 시뮬레이션</div>
+                    <div class="experiment-tags"><span class="tag">생태계</span><span class="tag">롯카-볼테라</span><span class="tag">주기</span></div>
+                    <div class="experiment-status"><span>난이도: ⭐⭐⭐⭐</span><span class="status-badge status-planned">계획중</span></div>
+                </div>
+                <div class="experiment-card" onclick="openExperiment('bio-3')">
+                    <div class="experiment-title">전염병 전파 시뮬레이션 (SIR)</div>
+                    <div class="experiment-description">방역 정책에 따라 감염병 확산 양상이 어떻게 변하는지 실험</div>
+                    <div class="experiment-tags"><span class="tag">SIR 모델</span><span class="tag">방역</span><span class="tag">시뮬레이션</span></div>
+                    <div class="experiment-status"><span>난이도: ⭐⭐⭐⭐</span><span class="status-badge status-planned">계획중</span></div>
+                </div>
+                <div class="experiment-card" onclick="openExperiment('bio-4')">
+                    <div class="experiment-title">L-시스템 식물 성장</div>
+                    <div class="experiment-description">문자열 치환 규칙으로 아름다운 식물과 나무를 점진적으로 생성</div>
+                    <div class="experiment-tags"><span class="tag">L-시스템</span><span class="tag">프랙탈</span><span class="tag">성장</span></div>
+                    <div class="experiment-status"><span>난이도: ⭐⭐⭐⭐</span><span class="status-badge status-planned">계획중</span></div>
+                </div>
+                <div class="experiment-card" onclick="openExperiment('bio-5')">
+                    <div class="experiment-title">신경망 학습 과정</div>
+                    <div class="experiment-description">기초적인 인공 신경망이 데이터를 통해 '학습'하는 과정 시각화</div>
+                    <div class="experiment-tags"><span class="tag">인공지능</span><span class="tag">퍼셉트론</span><span class="tag">학습</span></div>
+                    <div class="experiment-status"><span>난이도: ⭐⭐⭐⭐⭐</span><span class="status-badge status-planned">계획중</span></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="category">
+            <div class="category-header">
+                <div class="category-icon">🕹️</div>
+                <div>
+                    <div class="category-title">알고리즘 및 인터랙션</div>
+                    <div class="category-description">컴퓨터 과학의 원리와 사용자의 상호작용 결합</div>
+                </div>
+            </div>
+            <div class="experiments-grid">
+                <div class="experiment-card" onclick="openExperiment('algo-1')">
+                    <div class="experiment-title">경로 탐색 알고리즘 (A*)</div>
+                    <div class="experiment-description">A* 알고리즘이 장애물을 피해 최단 경로를 찾아나가는 과정 시각화</div>
+                    <div class="experiment-tags"><span class="tag">A*</span><span class="tag">경로탐색</span><span class="tag">알고리즘</span></div>
+                    <div class="experiment-status"><span>난이도: ⭐⭐⭐⭐</span><span class="status-badge status-planned">계획중</span></div>
+                </div>
+                <div class="experiment-card" onclick="openExperiment('algo-2')">
+                    <div class="experiment-title">정렬 알고리즘 비교</div>
+                    <div class="experiment-description">버블 정렬, 퀵 정렬 등이 데이터를 정렬하는 모습을 나란히 비교</div>
+                    <div class="experiment-tags"><span class="tag">정렬</span><span class="tag">알고리즘</span><span class="tag">효율성</span></div>
+                    <div class="experiment-status"><span>난이도: ⭐⭐</span><span class="status-badge status-planned">계획중</span></div>
+                </div>
+                <div class="experiment-card" onclick="openExperiment('algo-3')">
+                    <div class="experiment-title">미로 생성 및 탐험</div>
+                    <div class="experiment-description">알고리즘이 실시간으로 미로를 '그리고', 사용자가 직접 탐험</div>
+                    <div class="experiment-tags"><span class="tag">미로</span><span class="tag">알고리즘</span><span class="tag">인터랙티브</span></div>
+                    <div class="experiment-status"><span>난이도: ⭐⭐⭐</span><span class="status-badge status-planned">계획중</span></div>
+                </div>
+                <div class="experiment-card" onclick="openExperiment('algo-4')">
+                    <div class="experiment-title">물리 기반 퍼즐</div>
+                    <div class="experiment-description">중력과 충돌이 적용된 블록을 조작하여 목표를 달성하는 미니 게임</div>
+                    <div class="experiment-tags"><span class="tag">물리엔진</span><span class="tag">퍼즐</span><span class="tag">게임</span></div>
+                    <div class="experiment-status"><span>난이도: ⭐⭐⭐⭐</span><span class="status-badge status-planned">계획중</span></div>
+                </div>
+                <div class="experiment-card" onclick="openExperiment('algo-5')">
+                    <div class="experiment-title">음성/터치 제어 아트</div>
+                    <div class="experiment-description">마이크 입력이나 터치 제스처로 실시간으로 반응하는 인터랙티브 아트</div>
+                    <div class="experiment-tags"><span class="tag">마이크</span><span class="tag">터치</span><span class="tag">인터랙션</span></div>
+                    <div class="experiment-status"><span>난이도: ⭐⭐⭐</span><span class="status-badge status-planned">계획중</span></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="category">
+            <div class="category-header">
+                <div class="category-icon">📊</div>
+                <div>
+                    <div class="category-title">데이터 및 확률 시각화</div>
+                    <div class="category-description">데이터와 확률 속에 숨겨진 패턴과 원리 발견</div>
+                </div>
+            </div>
+            <div class="experiments-grid">
+                <div class="experiment-card" onclick="openExperiment('data-1')">
+                    <div class="experiment-title">동적 네트워크 그래프</div>
+                    <div class="experiment-description">시간에 따라 변화하는 관계망(소셜 네트워크 등)을 동적으로 시각화</div>
+                    <div class="experiment-tags"><span class="tag">네트워크</span><span class="tag">그래프</span><span class="tag">관계</span></div>
+                    <div class="experiment-status"><span>난이도: ⭐⭐⭐⭐</span><span class="status-badge status-planned">계획중</span></div>
+                </div>
+                <div class="experiment-card" onclick="openExperiment('data-2')">
+                    <div class="experiment-title">몬테카를로 시뮬레이션</div>
+                    <div class="experiment-description">무작위 실험을 수없이 반복하여 특정 분포로 수렴하는 과정 관찰</div>
+                    <div class="experiment-tags"><span class="tag">몬테카를로</span><span class="tag">확률</span><span class="tag">수렴</span></div>
+                    <div class="experiment-status"><span>난이도: ⭐⭐⭐</span><span class="status-badge status-planned">계획중</span></div>
+                </div>
+                <div class="experiment-card" onclick="openExperiment('data-3')">
+                    <div class="experiment-title">랜덤 워크 애니메이션</div>
+                    <div class="experiment-description">무작위로 움직이는 입자의 경로가 쌓여 만드는 패턴(브라운 운동)</div>
+                    <div class="experiment-tags"><span class="tag">랜덤워크</span><span class="tag">브라운운동</span><span class="tag">확률</span></div>
+                    <div class="experiment-status"><span>난이도: ⭐⭐</span><span class="status-badge status-planned">계획중</span></div>
+                </div>
+                <div class="experiment-card" onclick="openExperiment('data-4')">
+                    <div class="experiment-title">회귀 분석 시각화</div>
+                    <div class="experiment-description">흩어진 데이터들 사이에서 가장 적절한 추세선을 찾아가는 과정</div>
+                    <div class="experiment-tags"><span class="tag">회귀분석</span><span class="tag">통계</span><span class="tag">데이터</span></div>
+                    <div class="experiment-status"><span>난이도: ⭐⭐⭐⭐</span><span class="status-badge status-planned">계획중</span></div>
+                </div>
+                 <div class="experiment-card" onclick="openExperiment('data-5')">
+                    <div class="experiment-title">부트스트랩 샘플링</div>
+                    <div class="experiment-description">표본 반복 추출을 통해 통계치의 불확실성과 신뢰구간의 의미 전달</div>
+                    <div class="experiment-tags"><span class="tag">부트스트랩</span><span class="tag">통계</span><span class="tag">샘플링</span></div>
+                    <div class="experiment-status"><span>난이도: ⭐⭐⭐⭐</span><span class="status-badge status-planned">계획중</span></div>
+                </div>
+            </div>
+        </div>
+
     </div>
 
     <script>
@@ -634,22 +762,45 @@
                 'art-7': 'experiments/art/texture-generation.html',
                 'art-8': 'experiments/art/interactive-painting.html',
                 'art-9': 'experiments/art/cinemagraph.html',
-                'art-10': 'experiments/art/light-painting.html'
+                'art-10': 'experiments/art/light-painting.html',
+
+                // --- 추가된 경로들 ---
+                // 생물·생태 시뮬레이션
+                'bio-1': 'experiments/biology/cellular-automata.html',
+                'bio-2': 'experiments/biology/predator-prey.html',
+                'bio-3': 'experiments/biology/sir-model.html',
+                'bio-4': 'experiments/biology/l-system-growth.html',
+                'bio-5': 'experiments/biology/neural-network.html',
+
+                // 알고리즘 및 인터랙션
+                'algo-1': 'experiments/algorithms/pathfinding-a-star.html',
+                'algo-2': 'experiments/algorithms/sorting-algorithms.html',
+                'algo-3': 'experiments/algorithms/maze-generator.html',
+                'algo-4': 'experiments/algorithms/physics-puzzle.html',
+                'algo-5': 'experiments/algorithms/voice-touch-art.html',
+
+                // 데이터 및 확률 시각화
+                'data-1': 'experiments/data/dynamic-network.html',
+                'data-2': 'experiments/data/monte-carlo.html',
+                'data-3': 'experiments/data/random-walk.html',
+                'data-4': 'experiments/data/regression-visualizer.html',
+                'data-5': 'experiments/data/bootstrap-sampling.html'
             };
 
             const url = experimentPages[experimentId];
-            if (url) {
-                // 실험이 준비되었는지 확인
-                const card = event.currentTarget;
-                const statusBadge = card.querySelector('.status-badge');
-                
-                if (statusBadge.classList.contains('status-ready')) {
+            const card = event.currentTarget;
+            const statusBadge = card.querySelector('.status-badge');
+            
+            if (statusBadge.classList.contains('status-ready')) {
+                if (url) {
                     window.location.href = url;
-                } else if (statusBadge.classList.contains('status-dev')) {
-                    alert('🚧 이 실험은 현재 개발 중입니다!\n곧 만나볼 수 있어요.');
                 } else {
-                    alert('📋 이 실험은 계획 단계입니다.\n구현을 기다려주세요!');
+                     alert('🚧 이 실험은 준비되었으나, 아직 페이지가 연결되지 않았습니다.');
                 }
+            } else if (statusBadge.classList.contains('status-dev')) {
+                alert('🚧 이 실험은 현재 개발 중입니다!\n곧 만나볼 수 있어요.');
+            } else {
+                alert('📋 이 실험은 계획 단계입니다.\n구현을 기다려주세요!');
             }
         }
 
@@ -675,11 +826,11 @@
                     card.style.transition = 'all 0.6s ease';
                     card.style.opacity = '1';
                     card.style.transform = 'translateY(0)';
-                }, index * 100);
+                }, index * 50); // 간격을 줄여서 더 빠르게 나타나도록
             });
         });
 
-        console.log('🧪 Animation Lab 대시보드가 로드되었습니다!');
+        console.log('🧪 Animation Lab 대시보드가 성공적으로 업데이트되었습니다!');
     </script>
 </body>
 </html>

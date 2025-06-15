@@ -329,9 +329,9 @@
             <div class="experiment-desc">파동의 합성과 간섭을 직관적으로 이해해보세요</div>
 
             <div class="wave-tabs">
-                <button class="wave-tab active" onclick="selectMode('single')">단일파</button>
-                <button class="wave-tab" onclick="selectMode('superposition')">중첩</button>
-                <button class="wave-tab" onclick="selectMode('interference')">간섭</button>
+                <button class="wave-tab active" onclick="selectMode('single', this)">단일파</button>
+                <button class="wave-tab" onclick="selectMode('superposition', this)">중첩</button>
+                <button class="wave-tab" onclick="selectMode('interference', this)">간섭</button>
             </div>
 
             <div class="wave-controls">
@@ -407,10 +407,10 @@
             <div class="control-group">
                 <h3>🎨 표시 옵션</h3>
                 <div class="mode-buttons">
-                    <button class="mode-btn active" id="showWave1" onclick="toggleDisplay('wave1')">파동1</button>
-                    <button class="mode-btn active" id="showWave2" onclick="toggleDisplay('wave2')">파동2</button>
-                    <button class="mode-btn active" id="showSum" onclick="toggleDisplay('sum')">합성파</button>
-                    <button class="mode-btn active" id="showPhasor" onclick="toggleDisplay('phasor')">페이저</button>
+                    <button class="mode-btn active" id="showWave1" onclick="toggleDisplay('wave1', this)">파동1</button>
+                    <button class="mode-btn active" id="showWave2" onclick="toggleDisplay('wave2', this)">파동2</button>
+                    <button class="mode-btn active" id="showSum" onclick="toggleDisplay('sum', this)">합성파</button>
+                    <button class="mode-btn active" id="showPhasor" onclick="toggleDisplay('phasor', this)">페이저</button>
                 </div>
                 <div class="animation-controls">
                     <button class="anim-btn active" id="playBtn" onclick="toggleAnimation()">정지</button>
@@ -429,7 +429,11 @@
                 • 진폭: 파동의 세기<br>
                 • 주파수: 진동의 빠르기<br>
                 • 위상: 파동의 시작점<br>
-                • 보강/상쇄 간섭 현상 관찰
+                • <strong>중첩 모드:</strong> 합성파를 기본 스타일로 표시<br>
+                • <strong>간섭 모드:</strong> 위상차에 따른 시각 효과<br>
+                &nbsp;&nbsp;→ 보강간섭: 밝은색, 굵은선<br>
+                &nbsp;&nbsp;→ 상쇄간섭: 회색 점선<br>
+                &nbsp;&nbsp;→ 위상차 및 간섭상태 표시
             </div>
         </div>
     </div>
@@ -469,13 +473,23 @@
         let waveData = [];
         let phasorData = [];
 
-        // 모드 선택
-        function selectMode(mode) {
+        // 모드 선택 (수정된 버전)
+        function selectMode(mode, buttonElement = null) {
             currentMode = mode;
             
             // 탭 상태 업데이트
             document.querySelectorAll('.wave-tab').forEach(tab => tab.classList.remove('active'));
-            event.target.classList.add('active');
+            
+            if (buttonElement) {
+                buttonElement.classList.add('active');
+            } else {
+                // 초기화시 mode에 맞는 버튼 찾기
+                const modeButtons = document.querySelectorAll('.wave-tab');
+                const modeIndex = mode === 'single' ? 0 : mode === 'superposition' ? 1 : 2;
+                if (modeButtons[modeIndex]) {
+                    modeButtons[modeIndex].classList.add('active');
+                }
+            }
             
             // 파동2 컨트롤 표시/숨김
             const wave2Control = document.querySelector('.wave2');
@@ -486,7 +500,7 @@
                 display.sum = false;
             } else {
                 wave2Control.style.opacity = '1';
-                wave2Control.style.pointerEvents = 'auto';
+                wave2Control.style.pointerEvents = 'auto';  
                 display.wave2 = true;
                 display.sum = true;
             }
@@ -494,9 +508,18 @@
             updateDisplayButtons();
         }
 
-        // 표시 옵션 토글
-        function toggleDisplay(type) {
+        // 표시 옵션 토글 (수정된 버전)
+        function toggleDisplay(type, buttonElement = null) {
             display[type] = !display[type];
+            
+            if (buttonElement) {
+                if (display[type]) {
+                    buttonElement.classList.add('active');
+                } else {
+                    buttonElement.classList.remove('active');
+                }
+            }
+            
             updateDisplayButtons();
         }
 
@@ -521,10 +544,12 @@
                 const slider = document.getElementById(id);
                 const valueDisplay = document.getElementById('value' + id.charAt(0).toUpperCase() + id.slice(1));
                 
-                slider.addEventListener('input', function() {
-                    params[id] = parseFloat(this.value);
-                    valueDisplay.textContent = parseFloat(this.value).toFixed(1);
-                });
+                if (slider && valueDisplay) {
+                    slider.addEventListener('input', function() {
+                        params[id] = parseFloat(this.value);
+                        valueDisplay.textContent = parseFloat(this.value).toFixed(1);
+                    });
+                }
             });
         }
 
@@ -555,7 +580,12 @@
 
         // 페이저 다이어그램 그리기
         function drawPhasor() {
-            if (!display.phasor) return;
+            if (!display.phasor) {
+                document.getElementById('phasorDisplay').style.display = 'none';
+                return;
+            }
+            
+            document.getElementById('phasorDisplay').style.display = 'block';
 
             const phasorCanvas = document.createElement('canvas');
             phasorCanvas.width = 180;
@@ -609,7 +639,7 @@
             }
             
             // 페이저 2
-            if (display.wave2) {
+            if (display.wave2 && currentMode !== 'single') {
                 const x2 = centerX + params.amp2 * radius/2 * Math.cos(angle2);
                 const y2 = centerY - params.amp2 * radius/2 * Math.sin(angle2);
                 
@@ -669,33 +699,21 @@
             // 파동 그리기
             ctx.lineWidth = 2;
             
-            // 현재 시간의 데이터 수집
-            const currentData = [];
-            
-            for (let x = 0; x < canvas.width; x += 2) {
-                const t = x / params.wavelengthScale;
-                
-                // 파동 1
-                const y1 = centerY + params.amp1 * waveHeight * Math.sin(2 * Math.PI * params.freq1 * (t - time) + params.phase1);
-                
-                // 파동 2
-                const y2 = centerY + params.amp2 * waveHeight * Math.sin(2 * Math.PI * params.freq2 * (t - time) + params.phase2);
-                
-                // 합성파
-                const ySum = currentMode === 'single' ? y1 : y1 + y2 - centerY;
-                
-                // 파동 1 그리기
-                if (display.wave1) {
+            // 파동 1 그리기
+            if (display.wave1) {
+                ctx.strokeStyle = '#FF6B6B';
+                ctx.beginPath();
+                for (let x = 0; x < canvas.width; x += 2) {
+                    const t = x / params.wavelengthScale;
+                    const y1 = centerY + params.amp1 * waveHeight * Math.sin(2 * Math.PI * params.freq1 * (t - time) + params.phase1);
                     if (x === 0) {
-                        ctx.strokeStyle = '#FF6B6B';
-                        ctx.beginPath();
                         ctx.moveTo(x, y1);
                     } else {
                         ctx.lineTo(x, y1);
                     }
                 }
+                ctx.stroke();
             }
-            if (display.wave1) ctx.stroke();
             
             // 파동 2 그리기
             if (display.wave2 && currentMode !== 'single') {
@@ -715,8 +733,33 @@
             
             // 합성파 그리기
             if (display.sum && currentMode !== 'single') {
-                ctx.strokeStyle = '#FFC107';
+                // 기본 합성파 스타일 설정
                 ctx.lineWidth = 3;
+                
+                if (currentMode === 'interference') {
+                    // 간섭 모드일 때 위상차에 따른 효과 계산
+                    const phaseDiff = (params.phase2 - params.phase1) % (2 * Math.PI);
+                    // 위상차에 따른 간섭 정도 계산 (-1 ~ 1)
+                    const interferenceEffect = Math.cos(phaseDiff);
+                    
+                    if (interferenceEffect > 0.5) {
+                        // 보강 간섭 - 더 밝고 굵게
+                        ctx.strokeStyle = '#FFEB3B'; // 밝은 노란색
+                        ctx.lineWidth = 4;
+                    } else if (interferenceEffect < -0.5) {
+                        // 상쇄 간섭 - 회색 점선
+                        ctx.strokeStyle = '#AAAAAA'; // 회색
+                        ctx.setLineDash([5, 3]);
+                        ctx.lineWidth = 2;
+                    } else {
+                        // 중간 정도의 간섭
+                        ctx.strokeStyle = '#FFC107'; // 기본 노란색
+                    }
+                } else {
+                    // 중첩 모드일 때는 기본 스타일
+                    ctx.strokeStyle = '#FFC107';
+                }
+                
                 ctx.beginPath();
                 for (let x = 0; x < canvas.width; x += 2) {
                     const t = x / params.wavelengthScale;
@@ -730,6 +773,9 @@
                     }
                 }
                 ctx.stroke();
+                
+                // 점선 설정 초기화
+                ctx.setLineDash([]);
             }
             
             // 중심선 그리기
@@ -745,8 +791,8 @@
             // 페이저 다이어그램 업데이트
             drawPhasor();
             
-            // Vega 데이터 업데이트 (매 10프레임마다)
-            if (Math.floor(time * 50) % 10 === 0) {
+            // Vega 데이터 업데이트 (매 30프레임마다)
+            if (Math.floor(time * 60) % 30 === 0) {
                 updateVegaCharts();
             }
 
@@ -756,131 +802,151 @@
 
         // Vega 차트 업데이트
         function updateVegaCharts() {
-            // 스펙트럼 분석 차트
-            const freqData = [
-                {frequency: params.freq1, amplitude: params.amp1, wave: 'Wave 1'},
-                {frequency: params.freq2, amplitude: params.amp2, wave: 'Wave 2'}
-            ];
+            try {
+                // 스펙트럼 분석 차트
+                const freqData = [
+                    {frequency: params.freq1, amplitude: params.amp1, wave: 'Wave 1'},
+                    {frequency: params.freq2, amplitude: params.amp2, wave: 'Wave 2'}
+                ];
 
-            const spectrumSpec = {
-                "$schema": "https://vega-lite.org/schema/vega-lite/v5.json",
-                "width": 250,
-                "height": 150,
-                "title": {
-                    "text": "주파수 스펙트럼",
-                    "color": "white",
-                    "fontSize": 12
-                },
-                "background": "transparent",
-                "data": {"values": freqData},
-                "mark": {
-                    "type": "bar",
-                    "width": 20
-                },
-                "encoding": {
-                    "x": {
-                        "field": "frequency",
-                        "type": "quantitative",
-                        "title": "주파수 (Hz)",
-                        "axis": {"labelColor": "white", "titleColor": "white", "gridColor": "rgba(255,255,255,0.2)"}
+                const spectrumSpec = {
+                    "$schema": "https://vega-lite.org/schema/vega-lite/v5.json",
+                    "width": 250,
+                    "height": 150,
+                    "title": {
+                        "text": "주파수 스펙트럼",
+                        "color": "white",
+                        "fontSize": 12
                     },
-                    "y": {
-                        "field": "amplitude",
-                        "type": "quantitative",
-                        "title": "진폭",
-                        "axis": {"labelColor": "white", "titleColor": "white", "gridColor": "rgba(255,255,255,0.2)"}
+                    "background": "transparent",
+                    "data": {"values": freqData},
+                    "mark": {
+                        "type": "bar",
+                        "width": 20
                     },
-                    "color": {
-                        "field": "wave",
-                        "type": "nominal",
-                        "scale": {"range": ["#FF6B6B", "#4ECDC4"]}
+                    "encoding": {
+                        "x": {
+                            "field": "frequency",
+                            "type": "quantitative",
+                            "title": "주파수 (Hz)",
+                            "axis": {"labelColor": "white", "titleColor": "white", "gridColor": "rgba(255,255,255,0.2)"}
+                        },
+                        "y": {
+                            "field": "amplitude",
+                            "type": "quantitative",
+                            "title": "진폭",
+                            "axis": {"labelColor": "white", "titleColor": "white", "gridColor": "rgba(255,255,255,0.2)"}
+                        },
+                        "color": {
+                            "field": "wave",
+                            "type": "nominal",
+                            "scale": {"range": ["#FF6B6B", "#4ECDC4"]}
+                        }
                     }
-                }
-            };
+                };
 
-            vegaEmbed('#vegaOverlay1', spectrumSpec, {
-                theme: 'dark',
-                actions: false
-            }).then(result => {
-                const vegaContainer = document.querySelector('#vegaOverlay1 > div');
-                if (vegaContainer) {
-                    vegaContainer.style.background = 'rgba(0,0,0,0.8)';
-                    vegaContainer.style.borderRadius = '8px';
-                    vegaContainer.style.padding = '10px';
-                    vegaContainer.style.backdropFilter = 'blur(10px)';
-                }
-            }).catch(console.error);
+                vegaEmbed('#vegaOverlay1', spectrumSpec, {
+                    theme: 'dark',
+                    actions: false
+                }).then(result => {
+                    const vegaContainer = document.querySelector('#vegaOverlay1 > div');
+                    if (vegaContainer) {
+                        vegaContainer.style.background = 'rgba(0,0,0,0.8)';
+                        vegaContainer.style.borderRadius = '8px';
+                        vegaContainer.style.padding = '10px';
+                        vegaContainer.style.backdropFilter = 'blur(10px)';
+                    }
+                }).catch(console.error);
 
-            // 위상 관계 차트
-            const phaseData = [
-                {
-                    time: time,
-                    phase1: (2 * Math.PI * params.freq1 * time + params.phase1) % (2 * Math.PI),
-                    phase2: (2 * Math.PI * params.freq2 * time + params.phase2) % (2 * Math.PI),
-                    phaseDiff: Math.abs((2 * Math.PI * params.freq1 * time + params.phase1) - (2 * Math.PI * params.freq2 * time + params.phase2)) % (2 * Math.PI)
-                }
-            ];
+                // 위상 관계 차트
+                const phaseData = [
+                    {
+                        time: time,
+                        phase1: (2 * Math.PI * params.freq1 * time + params.phase1) % (2 * Math.PI),
+                        phase2: (2 * Math.PI * params.freq2 * time + params.phase2) % (2 * Math.PI),
+                        phaseDiff: Math.abs((2 * Math.PI * params.freq1 * time + params.phase1) - (2 * Math.PI * params.freq2 * time + params.phase2)) % (2 * Math.PI)
+                    }
+                ];
 
-            const phaseSpec = {
-                "$schema": "https://vega-lite.org/schema/vega-lite/v5.json",
-                "width": 250,
-                "height": 120,
-                "title": {
-                    "text": "위상 관계",
-                    "color": "white",
-                    "fontSize": 12
-                },
-                "background": "transparent",
-                "data": {"values": phaseData},
-                "mark": {
-                    "type": "point",
-                    "size": 100
-                },
-                "encoding": {
-                    "x": {
-                        "field": "phase1",
-                        "type": "quantitative",
-                        "title": "파동1 위상 (rad)",
-                        "scale": {"domain": [0, 6.28]},
-                        "axis": {"labelColor": "white", "titleColor": "white", "gridColor": "rgba(255,255,255,0.2)"}
+                const phaseSpec = {
+                    "$schema": "https://vega-lite.org/schema/vega-lite/v5.json",
+                    "width": 250,
+                    "height": 120,
+                    "title": {
+                        "text": "위상 관계",
+                        "color": "white",
+                        "fontSize": 12
                     },
-                    "y": {
-                        "field": "phase2",
-                        "type": "quantitative",
-                        "title": "파동2 위상 (rad)",
-                        "scale": {"domain": [0, 6.28]},
-                        "axis": {"labelColor": "white", "titleColor": "white", "gridColor": "rgba(255,255,255,0.2)"}
+                    "background": "transparent",
+                    "data": {"values": phaseData},
+                    "mark": {
+                        "type": "point",
+                        "size": 100
                     },
-                    "color": {"value": "#FFC107"}
-                }
-            };
+                    "encoding": {
+                        "x": {
+                            "field": "phase1",
+                            "type": "quantitative",
+                            "title": "파동1 위상 (rad)",
+                            "scale": {"domain": [0, 6.28]},
+                            "axis": {"labelColor": "white", "titleColor": "white", "gridColor": "rgba(255,255,255,0.2)"}
+                        },
+                        "y": {
+                            "field": "phase2",
+                            "type": "quantitative",
+                            "title": "파동2 위상 (rad)",
+                            "scale": {"domain": [0, 6.28]},
+                            "axis": {"labelColor": "white", "titleColor": "white", "gridColor": "rgba(255,255,255,0.2)"}
+                        },
+                        "color": {"value": "#FFC107"}
+                    }
+                };
 
-            vegaEmbed('#vegaOverlay2', phaseSpec, {
-                theme: 'dark',
-                actions: false
-            }).then(result => {
-                const vegaContainer = document.querySelector('#vegaOverlay2 > div');
-                if (vegaContainer) {
-                    vegaContainer.style.background = 'rgba(0,0,0,0.8)';
-                    vegaContainer.style.borderRadius = '8px';
-                    vegaContainer.style.padding = '10px';
-                    vegaContainer.style.backdropFilter = 'blur(10px)';
-                }
-            }).catch(console.error);
+                vegaEmbed('#vegaOverlay2', phaseSpec, {
+                    theme: 'dark',
+                    actions: false
+                }).then(result => {
+                    const vegaContainer = document.querySelector('#vegaOverlay2 > div');
+                    if (vegaContainer) {
+                        vegaContainer.style.background = 'rgba(0,0,0,0.8)';
+                        vegaContainer.style.borderRadius = '8px';
+                        vegaContainer.style.padding = '10px';
+                        vegaContainer.style.backdropFilter = 'blur(10px)';
+                    }
+                }).catch(console.error);
+            } catch (error) {
+                console.log('Vega 차트 업데이트 중 오류:', error);
+            }
         }
 
         // 초기화
         function init() {
+            console.log('삼각함수 시각화 초기화 시작...');
+            
+            // 캔버스 크기 조정
+            canvas.width = canvas.offsetWidth;
+            canvas.height = canvas.offsetHeight;
+            
             initControls();
-            selectMode('single');
+            selectMode('single'); // 이제 에러 없이 실행됨
             animate();
-            updateVegaCharts();
+            
+            // 초기 Vega 차트 로드
+            setTimeout(updateVegaCharts, 1000);
+            
+            console.log('삼각함수 시각화 초기화 완료!');
         }
 
         // 페이지 로드 시 초기화
         window.addEventListener('load', init);
+        
+        // 브라우저 크기 변경 시 캔버스 크기 조정
+        window.addEventListener('resize', function() {
+            canvas.width = canvas.offsetWidth;
+            canvas.height = canvas.offsetHeight;
+        });
 
-        console.log('🌊 삼각함수 시각화 실험이 시작되었습니다!');
+        console.log('🌊 삼각함수 시각화 스크립트 로드 완료!');
     </script>
 </body>
 </html>
