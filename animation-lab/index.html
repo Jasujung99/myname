@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧪 Canvas + Vega Animation Lab</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 50px;
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        .nav-back {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 100;
+        }
+
+        .nav-back a {
+            color: white;
+            text-decoration: none;
+            background: rgba(0,0,0,0.3);
+            padding: 10px 20px;
+            border-radius: 25px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+            transition: all 0.3s ease;
+        }
+
+        .nav-back a:hover {
+            background: rgba(0,0,0,0.5);
+            transform: translateY(-2px);
+        }
+
+        .categories {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .category {
+            margin-bottom: 60px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 20px;
+            padding: 40px;
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .category-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid rgba(255,255,255,0.2);
+        }
+
+        .category-icon {
+            font-size: 3rem;
+            margin-right: 20px;
+        }
+
+        .category-title {
+            font-size: 2rem;
+            font-weight: bold;
+        }
+
+        .category-description {
+            font-size: 1rem;
+            opacity: 0.8;
+            margin-top: 5px;
+        }
+
+        .experiments-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 25px;
+        }
+
+        .experiment-card {
+            background: rgba(255,255,255,0.15);
+            border-radius: 15px;
+            padding: 25px;
+            border: 1px solid rgba(255,255,255,0.2);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .experiment-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+            background: rgba(255,255,255,0.2);
+        }
+
+        .experiment-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+            transition: left 0.5s;
+        }
+
+        .experiment-card:hover::before {
+            left: 100%;
+        }
+
+        .experiment-title {
+            font-size: 1.3rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #fff;
+        }
+
+        .experiment-description {
+            font-size: 0.95rem;
+            opacity: 0.8;
+            line-height: 1.5;
+            margin-bottom: 15px;
+        }
+
+        .experiment-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+
+        .tag {
+            background: rgba(255,255,255,0.2);
+            padding: 4px 12px;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            border: 1px solid rgba(255,255,255,0.3);
+        }
+
+        .experiment-status {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.9rem;
+        }
+
+        .status-badge {
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+
+        .status-ready { background: #4CAF50; }
+        .status-dev { background: #FF9800; }
+        .status-planned { background: #9E9E9E; }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-bottom: 50px;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .stat-card {
+            background: rgba(255,255,255,0.15);
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            opacity: 0.8;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 { font-size: 2rem; }
+            .category { padding: 20px; }
+            .experiments-grid { grid-template-columns: 1fr; }
+            .stats { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="nav-back">
+        <a href="../">← Hanok Builder로 돌아가기</a>
+    </div>
+
+    <div class="header">
+        <h1>🧪 Canvas + Vega Animation Lab</h1>
+        <p>2D Canvas와 Vega를 활용한 인터랙티브 애니메이션 실험실</p>
+    </div>
+
+    <div class="stats">
+        <div class="stat-card">
+            <div class="stat-number">23</div>
+            <div class="stat-label">총 실험 수</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">3</div>
+            <div class="stat-label">카테고리</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">∞</div>
+            <div class="stat-label">가능성</div>
+        </div>
+    </div>
+
+    <div class="categories">
+        <!-- 수학적 실험들 -->
+        <div class="category">
+            <div class="category-header">
+                <div class="category-icon">📐</div>
+                <div>
+                    <div class="category-title">수학적 실험들</div>
+                    <div class="category-description">함수, 기하학, 변환을 시각적으로 탐구</div>
+                </div>
+            </div>
+            <div class="experiments-grid">
+                <div class="experiment-card" onclick="openExperiment('math-1')">
+                    <div class="experiment-title">파라메트릭 곡선 애니메이션</div>
+                    <div class="experiment-description">베지어 곡선, 리사주 도형, 로즈 곡선을 실시간으로 조작하며 수학적 아름다움을 발견</div>
+                    <div class="experiment-tags">
+                        <span class="tag">베지어</span>
+                        <span class="tag">리사주</span>
+                        <span class="tag">실시간</span>
+                    </div>
+                    <div class="experiment-status">
+                        <span>난이도: ⭐⭐⭐</span>
+                        <span class="status-badge status-ready">준비완료</span>
+                    </div>
+                </div>
+
+                <div class="experiment-card" onclick="openExperiment('math-2')">
+                    <div class="experiment-title">삼각함수 시각화</div>
+                    <div class="experiment-description">사인, 코사인파 합성과 페이저 다이어그램으로 파동의 본질 이해</div>
+                    <div class="experiment-tags">
+                        <span class="tag">삼각함수</span>
+                        <span class="tag">페이저</span>
+                        <span class="tag">파동</span>
+                    </div>
+                    <div class="experiment-status">
+                        <span>난이도: ⭐⭐</span>
+                        <span class="status-badge status-ready">준비완료</span>
+                    </div>
+                </div>
+
+                <div class="experiment-card" onclick="openExperiment('math-3')">
+                    <div class="experiment-title">프랙탈 생성기</div>
+                    <div class="experiment-description">만델브로트, 줄리아 집합의 무한한 복잡성을 실시간 렌더링</div>
+                    <div class="experiment-tags">
+                        <span class="tag">프랙탈</span>
+                        <span class="tag">복소수</span>
+                        <span class="tag">줌</span>
+                    </div>
+                    <div class="experiment-status">
+                        <span>난이도: ⭐⭐⭐⭐</span>
+                        <span class="status-badge status-dev">개발중</span>
+                    </div>
+                </div>
+
+                <div class="experiment-card" onclick="openExperiment('math-4')">
+                    <div class="experiment-title">푸리에 변환 시각화</div>
+                    <div class="experiment-description">복잡한 파형을 기본 주파수 성분으로 분해하는 마법</div>
+                    <div class="experiment-tags">
+                        <span class="tag">FFT</span>
+                        <span class="tag">주파수</span>
+                        <span class="tag">스펙트럼</span>
+                    </div>
+                    <div class="experiment-status">
+                        <span>난이도: ⭐⭐⭐⭐⭐</span>
+                        <span class="status-badge status-planned">계획중</span>
+                    </div>
+                </div>
+
+                <div class="experiment-card" onclick="openExperiment('math-5')">
+                    <div class="experiment-title">벡터장 시각화</div>
+                    <div class="experiment-description">그래디언트, 발산, 회전 필드의 흐름을 직관적으로 시각화</div>
+                    <div class="experiment-tags">
+                        <span class="tag">벡터</span>
+                        <span class="tag">필드</span>
+                        <span class="tag">흐름</span>
+                    </div>
+                    <div class="experiment-status">
+                        <span>난이도: ⭐⭐⭐⭐</span>
+                        <span class="status-badge status-planned">계획중</span>
+                    </div>
+                </div>
+
+                <div class="experiment-card" onclick="openExperiment('math-6')">
+                    <div class="experiment-title">기하학적 변환</div>
+                    <div class="experiment-description">행렬 기반 회전, 스케일링, 전단 변환의 연속적 합성</div>
+                    <div class="experiment-tags">
+                        <span class="tag">행렬</span>
+                        <span class="tag">변환</span>
+                        <span class="tag">합성</span>
+                    </div>
+                    <div class="experiment-status">
+                        <span>난이도: ⭐⭐⭐</span>
+                        <span class="status-badge status-ready">준비완료</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 물리적 실험들 -->
+        <div class="category">
+            <div class="category-header">
+                <div class="category-icon">⚛️</div>
+                <div>
+                    <div class="category-title">물리적 실험들</div>
+                    <div class="category-description">자연 현상과 물리 법칙을 시뮬레이션</div>
+                </div>
+            </div>
+            <div class="experiments-grid">
+                <div class="experiment-card" onclick="openExperiment('physics-1')">
+                    <div class="experiment-title">입자 시스템 시뮬레이션</div>
+                    <div class="experiment-description">중력, 전기력, 자기력이 작용하는 입자들의 상호작용</div>
+                    <div class="experiment-tags">
+                        <span class="tag">입자</span>
+                        <span class="tag">중력</span>
+                        <span class="tag">전자기</span>
+                    </div>
+                    <div class="experiment-status">
+                        <span>난이도: ⭐⭐⭐</span>
+                        <span class="status-badge status-ready">준비완료</span>
+                    </div>
+                </div>
+
+                <div class="experiment-card" onclick="openExperiment('physics-2')">
+                    <div class="experiment-title">파동 역학</div>
+                    <div class="experiment-description">간섭, 회절, 반사 현상을 통한 파동의 성질 탐구</div>
+                    <div class="experiment-tags">
+                        <span class="tag">파동</span>
+                        <span class="tag">간섭</span>
+                        <span class="tag">회절</span>
+                    </div>
+                    <div class="experiment-status">
+                        <span>난이도: ⭐⭐⭐⭐</span>
+                        <span class="status-badge status-dev">개발중</span>
+                    </div>
+                </div>
+
+                <div class="experiment-card" onclick="openExperiment('physics-3')">
+                    <div class="experiment-title">유체 역학 시뮬레이션</div>
+                    <div class="experiment-description">난류와 와류가 만드는 아름다운 유체의 흐름</div>
+                    <div class="experiment-tags">
+                        <span class="tag">유체</span>
+                        <span class="tag">난류</span>
+                        <span class="tag">점성</span>
+                    </div>
+                    <div class="experiment-status">
+                        <span>난이도: ⭐⭐⭐⭐⭐</span>
+                        <span class="status-badge status-planned">계획중</span>
+                    </div>
+                </div>
+
+                <div class="experiment-card" onclick="openExperiment('physics-4')">
+                    <div class="experiment-title">진자/스프링 시스템</div>
+                    <div class="experiment-description">단순 진자부터 결합 진동자까지 진동의 세계</div>
+                    <div class="experiment-tags">
+                        <span class="tag">진자</span>
+                        <span class="tag">공명</span>
+                        <span class="tag">감쇠</span>
+                    </div>
+                    <div class="experiment-status">
+                        <span>난이도: ⭐⭐⭐</span>
+                        <span class="status-badge status-ready">준비완료</span>
+                    </div>
+                </div>
+
+                <div class="experiment-card" onclick="openExperiment('physics-5')">
+                    <div class="experiment-title">충돌 역학</div>
+                    <div class="experiment-description">운동량 보존과 에너지 전달의 역동적 시뮬레이션</div>
+                    <div class="experiment-tags">
+                        <span class="tag">충돌</span>
+                        <span class="tag">운동량</span>
+                        <span class="tag">에너지</span>
+                    </div>
+                    <div class="experiment-status">
+                        <span>난이도: ⭐⭐⭐</span>
+                        <span class="status-badge status-ready">준비완료</span>
+                    </div>
+                </div>
+
+                <div class="experiment-card" onclick="openExperiment('physics-6')">
+                    <div class="experiment-title">전자기장 시각화</div>
+                    <div class="experiment-description">보이지 않는 전기장과 자기장의 아름다운 패턴</div>
+                    <div class="experiment-tags">
+                        <span class="tag">전기장</span>
+                        <span class="tag">자기장</span>
+                        <span class="tag">로렌츠</span>
+                    </div>
+                    <div class="experiment-status">
+                        <span>난이도: ⭐⭐⭐⭐</span>
+                        <span class="status-badge status-dev">개발중</span>
+                    </div>
+                </div>
+
+                <div class="experiment-card" onclick="openExperiment('physics-7')">
+                    <div class="experiment-title">열역학 시뮬레이션</div>
+                    <div class="experiment-description">분자 운동과 확산 과정을 미시적으로 관찰</div>
+                    <div class="experiment-tags">
+                        <span class="tag">분자</span>
+                        <span class="tag">확산</span>
+                        <span class="tag">온도</span>
+                    </div>
+                    <div class="experiment-status">
+                        <span>난이도: ⭐⭐⭐⭐</span>
+                        <span class="status-badge status-planned">계획중</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 예술적 실험들 -->
+        <div class="category">
+            <div class="category-header">
+                <div class="category-icon">🎨</div>
+                <div>
+                    <div class="category-title">예술적 실험들</div>
+                    <div class="category-description">알고리즘과 창의성이 만나는 디지털 아트</div>
+                </div>
+            </div>
+            <div class="experiments-grid">
+                <div class="experiment-card" onclick="openExperiment('art-1')">
+                    <div class="experiment-title">생성 예술 (Generative Art)</div>
+                    <div class="experiment-description">알고리즘이 창조하는 예측 불가능한 아름다움</div>
+                    <div class="experiment-tags">
+                        <span class="tag">생성</span>
+                        <span class="tag">노이즈</span>
+                        <span class="tag">카오스</span>
+                    </div>
+                    <div class="experiment-status">
+                        <span>난이도: ⭐⭐⭐</span>
+                        <span class="status-badge status-ready">준비완료</span>
+                    </div>
+                </div>
+
+                <div class="experiment-card" onclick="openExperiment('art-2')">
+                    <div class="experiment-title">음악 시각화</div>
+                    <div class="experiment-description">소리를 색과 형태로 번역하는 시청각 경험</div>
+                    <div class="experiment-tags">
+                        <span class="tag">오디오</span>
+                        <span class="tag">FFT</span>
+                        <span class="tag">비트</span>
+                    </div>
+                    <div class="experiment-status">
+                        <span>난이도: ⭐⭐⭐⭐</span>
+                        <span class="status-badge status-dev">개발중</span>
+                    </div>
+                </div>
+
+                <div class="experiment-card" onclick="openExperiment('art-3')">
+                    <div class="experiment-title">칼레이도스코프</div>
+                    <div class="experiment-description">대칭과 반복이 만드는 무한한 패턴의 향연</div>
+                    <div class="experiment-tags">
+                        <span class="tag">대칭</span>
+                        <span class="tag">패턴</span>
+                        <span class="tag">색상</span>
+                    </div>
+                    <div class="experiment-status">
+                        <span>난이도: ⭐⭐</span>
+                        <span class="status-badge status-ready">준비완료</span>
+                    </div>
+                </div>
+
+                <div class="experiment-card" onclick="openExperiment('art-4')">
+                    <div class="experiment-title">파티클 아트</div>
+                    <div class="experiment-description">군집 지능이 만드는 유기적 움직임의 시</div>
+                    <div class="experiment-tags">
+                        <span class="tag">군집</span>
+                        <span class="tag">보이드</span>
+                        <span class="tag">창발</span>
+                    </div>
+                    <div class="experiment-status">
+                        <span>난이도: ⭐⭐⭐</span>
+                        <span class="status-badge status-ready">준비완료</span>
+                    </div>
+                </div>
+
+                <div class="experiment-card" onclick="openExperiment('art-5')">
+                    <div class="experiment-title">색채 역학</div>
+                    <div class="experiment-description">색공간을 여행하며 발견하는 색의 무한한 가능성</div>
+                    <div class="experiment-tags">
+                        <span class="tag">색공간</span>
+                        <span class="tag">HSL</span>
+                        <span class="tag">변환</span>
+                    </div>
+                    <div class="experiment-status">
+                        <span>난이도: ⭐⭐</span>
+                        <span class="status-badge status-ready">준비완료</span>
+                    </div>
+                </div>
+
+                <div class="experiment-card" onclick="openExperiment('art-6')">
+                    <div class="experiment-title">모핑 애니메이션</div>
+                    <div class="experiment-description">형태 간의 부드러운 변신, 변화의 시각적 시</div>
+                    <div class="experiment-tags">
+                        <span class="tag">모핑</span>
+                        <span class="tag">보간</span>
+                        <span class="tag">변환</span>
+                    </div>
+                    <div class="experiment-status">
+                        <span>난이도: ⭐⭐⭐⭐</span>
+                        <span class="status-badge status-dev">개발중</span>
+                    </div>
+                </div>
+
+                <div class="experiment-card" onclick="openExperiment('art-7')">
+                    <div class="experiment-title">텍스처 생성</div>
+                    <div class="experiment-description">노이즈와 셀룰러 오토마타로 만드는 자연스러운 질감</div>
+                    <div class="experiment-tags">
+                        <span class="tag">텍스처</span>
+                        <span class="tag">노이즈</span>
+                        <span class="tag">오토마타</span>
+                    </div>
+                    <div class="experiment-status">
+                        <span>난이도: ⭐⭐⭐</span>
+                        <span class="status-badge status-planned">계획중</span>
+                    </div>
+                </div>
+
+                <div class="experiment-card" onclick="openExperiment('art-8')">
+                    <div class="experiment-title">인터랙티브 페인팅</div>
+                    <div class="experiment-description">마우스 움직임이 예술이 되는 디지털 캔버스</div>
+                    <div class="experiment-tags">
+                        <span class="tag">인터랙티브</span>
+                        <span class="tag">브러시</span>
+                        <span class="tag">혼합</span>
+                    </div>
+                    <div class="experiment-status">
+                        <span>난이도: ⭐⭐</span>
+                        <span class="status-badge status-ready">준비완료</span>
+                    </div>
+                </div>
+
+                <div class="experiment-card" onclick="openExperiment('art-9')">
+                    <div class="experiment-title">시네마그래프</div>
+                    <div class="experiment-description">정적인 이미지 속 살아있는 부분적 움직임</div>
+                    <div class="experiment-tags">
+                        <span class="tag">시네마그래프</span>
+                        <span class="tag">루프</span>
+                        <span class="tag">혼합</span>
+                    </div>
+                    <div class="experiment-status">
+                        <span>난이도: ⭐⭐⭐</span>
+                        <span class="status-badge status-planned">계획중</span>
+                    </div>
+                </div>
+
+                <div class="experiment-card" onclick="openExperiment('art-10')">
+                    <div class="experiment-title">라이트 페인팅</div>
+                    <div class="experiment-description">빛의 궤적으로 그리는 환상적인 디지털 그림</div>
+                    <div class="experiment-tags">
+                        <span class="tag">빛</span>
+                        <span class="tag">글로우</span>
+                        <span class="tag">블룸</span>
+                    </div>
+                    <div class="experiment-status">
+                        <span>난이도: ⭐⭐⭐</span>
+                        <span class="status-badge status-ready">준비완료</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function openExperiment(experimentId) {
+            // 각 실험별 페이지로 이동
+            const experimentPages = {
+                // 수학적 실험들
+                'math-1': 'experiments/math/parametric-curves.html',
+                'math-2': 'experiments/math/trigonometric-waves.html',
+                'math-3': 'experiments/math/fractal-generator.html',
+                'math-4': 'experiments/math/fourier-transform.html',
+                'math-5': 'experiments/math/vector-fields.html',
+                'math-6': 'experiments/math/geometric-transforms.html',
+                
+                // 물리적 실험들
+                'physics-1': 'experiments/physics/particle-system.html',
+                'physics-2': 'experiments/physics/wave-mechanics.html',
+                'physics-3': 'experiments/physics/fluid-dynamics.html',
+                'physics-4': 'experiments/physics/pendulum-springs.html',
+                'physics-5': 'experiments/physics/collision-mechanics.html',
+                'physics-6': 'experiments/physics/electromagnetic-fields.html',
+                'physics-7': 'experiments/physics/thermodynamics.html',
+                
+                // 예술적 실험들
+                'art-1': 'experiments/art/generative-art.html',
+                'art-2': 'experiments/art/music-visualization.html',
+                'art-3': 'experiments/art/kaleidoscope.html',
+                'art-4': 'experiments/art/particle-art.html',
+                'art-5': 'experiments/art/color-dynamics.html',
+                'art-6': 'experiments/art/morphing-animation.html',
+                'art-7': 'experiments/art/texture-generation.html',
+                'art-8': 'experiments/art/interactive-painting.html',
+                'art-9': 'experiments/art/cinemagraph.html',
+                'art-10': 'experiments/art/light-painting.html'
+            };
+
+            const url = experimentPages[experimentId];
+            if (url) {
+                // 실험이 준비되었는지 확인
+                const card = event.currentTarget;
+                const statusBadge = card.querySelector('.status-badge');
+                
+                if (statusBadge.classList.contains('status-ready')) {
+                    window.location.href = url;
+                } else if (statusBadge.classList.contains('status-dev')) {
+                    alert('🚧 이 실험은 현재 개발 중입니다!\n곧 만나볼 수 있어요.');
+                } else {
+                    alert('📋 이 실험은 계획 단계입니다.\n구현을 기다려주세요!');
+                }
+            }
+        }
+
+        // 카드 호버 효과 강화
+        document.querySelectorAll('.experiment-card').forEach(card => {
+            card.addEventListener('mouseenter', function() {
+                this.style.transform = 'translateY(-5px) scale(1.02)';
+            });
+            
+            card.addEventListener('mouseleave', function() {
+                this.style.transform = 'translateY(0) scale(1)';
+            });
+        });
+
+        // 초기 로딩 애니메이션
+        window.addEventListener('load', function() {
+            const cards = document.querySelectorAll('.experiment-card');
+            cards.forEach((card, index) => {
+                card.style.opacity = '0';
+                card.style.transform = 'translateY(20px)';
+                
+                setTimeout(() => {
+                    card.style.transition = 'all 0.6s ease';
+                    card.style.opacity = '1';
+                    card.style.transform = 'translateY(0)';
+                }, index * 100);
+            });
+        });
+
+        console.log('🧪 Animation Lab 대시보드가 로드되었습니다!');
+    </script>
+</body>
+</html>
