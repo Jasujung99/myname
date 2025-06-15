@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>실험: 신경망 학습 (퍼셉트론)</title>
+    <!-- Vega 라이브러리 임포트 -->
+    <script src="https://cdn.jsdelivr.net/npm/vega@5"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vega-lite@5"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vega-embed@6"></script>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            width: 100%;
+            height: 100%;
+            background-color: #1a1a1a;
+            color: white;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+        }
+        .main-container {
+            display: flex;
+            width: 100%;
+            height: 100vh;
+        }
+        .canvas-container {
+            flex-grow: 1;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #000;
+        }
+        #main-canvas {
+            max-width: 100%;
+            max-height: 100%;
+            border: 1px solid #333;
+            background-color: #111;
+        }
+        .side-panel {
+            width: 320px;
+            flex-shrink: 0;
+            background-color: #2a2a2e;
+            padding: 20px;
+            overflow-y: auto;
+            border-left: 1px solid #444;
+            display: flex;
+            flex-direction: column;
+        }
+        .panel-header {
+            text-align: center;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #444;
+        }
+        .panel-header h1 {
+            font-size: 1.5rem;
+            margin: 0;
+        }
+        .info-box {
+            background-color: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 20px;
+        }
+        /* [개선점] 학습 포인트 아이콘 및 스타일 적용 */
+        .info-box h3 {
+            display: flex;
+            align-items: center;
+            font-size: 1.1rem;
+            margin-top: 0;
+            margin-bottom: 15px;
+            color: #4da6ff;
+        }
+        .info-box h3::before {
+            content: '💡';
+            margin-right: 8px;
+            font-size: 1.5rem;
+        }
+        .info-box p, .info-box li {
+            font-size: 0.9rem;
+            line-height: 1.5;
+            opacity: 0.9;
+        }
+         .info-box ul {
+            list-style: none;
+            padding-left: 5px;
+        }
+         .info-box strong {
+            color: #87CEFA; /* Light Sky Blue */
+        }
+        .nav-back {
+            margin-top: auto;
+            padding-top: 20px;
+            text-align: center;
+        }
+        .nav-back a {
+            color: white; text-decoration: none; background: rgba(255,255,255,0.1); padding: 10px 20px; border-radius: 25px; transition: all 0.3s ease; display: inline-block;
+        }
+        .nav-back a:hover { background: rgba(255,255,255,0.2); }
+        
+        #vega-container form label, .control-group {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            margin-bottom: 15px;
+        }
+        #vega-container form .vega-bind-name, .control-label {
+            font-weight: bold;
+            font-size: 1rem;
+            margin-bottom: 8px;
+        }
+        #vega-container form input[type="range"] { width: 100%; }
+        #vega-container .vega-bind-radio {
+            display: flex; flex-direction: row; gap: 15px;
+        }
+        
+        .button-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            width: 100%;
+            margin-top: 5px;
+        }
+        .control-button {
+            padding: 10px; font-size: 0.9rem; border-radius: 5px; border: 1px solid #666; background-color: #4a4a4f; color: white; cursor: pointer; transition: background-color 0.2s; text-align: center;
+        }
+        .control-button:hover:not(:disabled) { background-color: #5a5a5f; }
+        .control-button:disabled { background-color: #3a3a3e; color: #888; cursor: not-allowed; opacity: 0.6; }
+        .full-width-btn { grid-column: 1 / -1; }
+
+        .info-display {
+            background-color: rgba(0,0,0,0.2); border-radius: 8px; padding: 10px 15px; margin-top: 20px;
+        }
+        .info-item {
+            display: flex; justify-content: space-between; align-items: center; font-size: 1rem; margin-bottom: 8px;
+        }
+        .info-item:last-child { margin-bottom: 0; }
+        .info-label { font-weight: bold; color: #ccc; }
+        .info-value {
+            font-family: 'Courier New', Courier, monospace; font-size: 1.1rem; font-weight: bold;
+        }
+        #accuracy-value { color: #00ff00; }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <div class="canvas-container">
+            <canvas id="main-canvas"></canvas>
+        </div>
+        <div class="side-panel">
+            <div class="panel-header">
+                <h1>퍼셉트론 학습</h1>
+            </div>
+            
+            <div id="vega-container"></div>
+
+            <div class="control-group">
+                <div class="button-group">
+                    <button id="run-btn" class="control-button">학습 시작 ▶</button>
+                    <button id="step-btn" class="control-button">한 단계 ⏯</button>
+                </div>
+            </div>
+            <div class="control-group">
+                <div class="button-group">
+                    <button id="reset-btn" class="control-button full-width-btn">가중치 초기화 🔄</button>
+                </div>
+            </div>
+
+            <div class="info-display">
+                <div class="info-item">
+                    <span class="info-label">학습 횟수 (Epoch)</span>
+                    <span id="epoch-counter" class="info-value">0</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">정확도 (Accuracy)</span>
+                    <span id="accuracy-value" class="info-value">0.0%</span>
+                </div>
+            </div>
+
+            <div class="info-box">
+                <!-- [개선점] 학습 포인트 UI 및 내용 수정 -->
+                <h3>학습 포인트</h3>
+                <ul>
+                    <li><strong>학습 보폭 (Learning Rate):</strong> 인공지능이 한 번 틀렸을 때, 분류선을 얼마나 많이 수정할지 결정하는 값입니다. 보폭이 크면 학습이 빠르지만 불안정할 수 있습니다.</li>
+                    <li><strong>학습 원리:</strong> 잘못 분류된 점을 찾아, 분류선이 그 점을 올바르게 나눌 때까지 조금씩 움직여 정답을 찾아갑니다.</li>
+                    <li><strong>퍼셉트론의 한계:</strong> 퍼셉트론은 오직 <strong>직선 하나</strong>로만 데이터를 나눌 수 있습니다. '선형 분리 불가능' 데이터를 선택하면, 정답을 찾지 못하고 계속 헤매는 모습을 관찰할 수 있습니다.</li>
+                </ul>
+            </div>
+            <div class="nav-back">
+                <a href="../../index.html">← 실험실로 돌아가기</a>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        // --- Perceptron Class Definition ---
+        class Perceptron {
+            constructor(numInputs, learningRate) {
+                this.weights = new Array(numInputs).fill(0).map(() => Math.random() * 2 - 1);
+                this.lr = learningRate;
+            }
+            activate(sum) { return sum >= 0 ? 1 : -1; }
+            predict(inputs) {
+                let sum = 0;
+                for (let i = 0; i < this.weights.length; i++) { sum += inputs[i] * this.weights[i]; }
+                return this.activate(sum);
+            }
+            train(inputs, target) {
+                const error = target - this.predict(inputs);
+                for (let i = 0; i < this.weights.length; i++) { this.weights[i] += error * inputs[i] * this.lr; }
+            }
+            setLearningRate(newLr) { this.lr = newLr; }
+        }
+
+        // --- Global Variables & UI Elements ---
+        const canvas = document.getElementById('main-canvas'), ctx = canvas.getContext('2d');
+        const canvasContainer = document.querySelector('.canvas-container');
+        const runBtn = document.getElementById('run-btn'), stepBtn = document.getElementById('step-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        const epochEl = document.getElementById('epoch-counter'), accuracyEl = document.getElementById('accuracy-value');
+
+        let ptron, dataPoints = [];
+        let animationFrameId;
+        let params = {
+            learningRate: 0.01, isRunning: false, pointCount: 200, pointRadius: 5,
+            dataType: 'separable', noise: 0.1
+        };
+        let epoch = 0;
+        
+        // --- Core Functions ---
+        function setup() {
+            if (animationFrameId) cancelAnimationFrame(animationFrameId);
+            const size = Math.min(canvasContainer.clientWidth, canvasContainer.clientHeight) * 0.9;
+            canvas.width = size; canvas.height = size;
+            generateData();
+            resetTraining();
+            animate();
+        }
+
+        function resetTraining() {
+            epoch = 0;
+            ptron = new Perceptron(3, params.learningRate); // 3 inputs (x, y, bias)
+            updateInfoDisplay();
+        }
+
+        function generateData() {
+            dataPoints = [];
+            if (params.dataType === 'separable') {
+                const m = Math.random() * 4 - 2;
+                const b = Math.random() * 0.4 - 0.2;
+                const lineFunc = x => m * x + b;
+                for (let i = 0; i < params.pointCount; i++) {
+                    const x = Math.random() * 2 - 1;
+                    const y = Math.random() * 2 - 1;
+                    const lineY = lineFunc(x);
+                    let label = y > lineY ? 1 : -1;
+                    if (Math.random() < params.noise) { label *= -1; }
+                    dataPoints.push({ x, y, label });
+                }
+            } else {
+                const radius = 0.7;
+                for (let i = 0; i < params.pointCount; i++) {
+                    const r = Math.random() * 1.2;
+                    const angle = Math.random() * 2 * Math.PI;
+                    const x = r * Math.cos(angle);
+                    const y = r * Math.sin(angle);
+                    let label = (r < radius) ? 1 : -1;
+                    if (Math.random() < params.noise) { label *= -1; }
+                    dataPoints.push({ x, y, label });
+                }
+            }
+            resetTraining();
+        }
+
+        function trainEpoch() {
+            if (dataPoints.length === 0) return;
+            dataPoints.forEach(point => {
+                ptron.train([point.x, point.y, 1], point.label);
+            });
+            epoch++;
+            updateInfoDisplay();
+        }
+        
+        function updateInfoDisplay() {
+            let correct = 0;
+            if (dataPoints.length > 0) {
+                dataPoints.forEach(p => { if (ptron.predict([p.x, p.y, 1]) === p.label) correct++; });
+                const accuracy = (correct / dataPoints.length) * 100;
+                accuracyEl.textContent = `${accuracy.toFixed(1)}%`;
+                accuracyEl.style.color = `hsl(${accuracy}, 100%, 50%)`;
+            }
+            epochEl.textContent = epoch;
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            dataPoints.forEach(p => {
+                const screenX = (p.x + 1) / 2 * canvas.width;
+                const screenY = (-p.y + 1) / 2 * canvas.height;
+                ctx.beginPath();
+                ctx.arc(screenX, screenY, params.pointRadius, 0, Math.PI * 2);
+                ctx.fillStyle = p.label === 1 ? 'rgba(255, 165, 0, 0.7)' : 'rgba(0, 191, 255, 0.7)';
+                ctx.fill();
+                if (ptron.predict([p.x, p.y, 1]) !== p.label) {
+                    ctx.strokeStyle = 'rgba(255, 70, 70, 0.9)'; ctx.lineWidth = 2.5; ctx.stroke();
+                }
+            });
+
+            const [w0, w1, w2] = ptron.weights;
+            const p1 = { x: -1.2, y: (-w0 * -1.2 - w2) / w1 };
+            const p2 = { x: 1.2, y: (-w0 * 1.2 - w2) / w1 };
+            ctx.beginPath();
+            ctx.moveTo((p1.x + 1) / 2 * canvas.width, (-p1.y + 1) / 2 * canvas.height);
+            ctx.lineTo((p2.x + 1) / 2 * canvas.width, (-p2.y + 1) / 2 * canvas.height);
+            ctx.strokeStyle = 'white'; ctx.lineWidth = 2; ctx.stroke();
+        }
+        
+        function animate() {
+            if (params.isRunning) {
+                trainEpoch();
+            }
+            draw();
+            animationFrameId = requestAnimationFrame(animate);
+        }
+        
+        // --- UI Controls ---
+        const vegaSpec = {
+            "$schema": "https://vega.github.io/schema/vega/v5.json",
+            "width": "container", "padding": 5, "background": "transparent",
+            "signals": [
+                { "name": "dataType", "value": "separable", "bind": { "name": "데이터 유형", "input": "radio", "options": ["separable", "non-separable"], "labels": ["선형 분리 가능", "선형 분리 불가능"]} },
+                { "name": "noise", "value": 0.1, "bind": { "name": "데이터 노이즈", "input": "range", "min": 0, "max": 0.5, "step": 0.01 } },
+                // [개선점] 용어 변경: 학습률 -> 학습 보폭
+                { "name": "learningRate", "value": 0.01, "bind": { "name": "학습 보폭 (Learning Rate)", "input": "range", "min": 0.001, "max": 0.1, "step": 0.001 } }
+            ]
+        };
+        
+        vegaEmbed('#vega-container', vegaSpec, { "actions": false })
+            .then(result => {
+                const view = result.view;
+                view.addSignalListener('dataType', (n, v) => { params.dataType = v; setup(); });
+                view.addSignalListener('noise', (n, v) => { params.noise = v; setup(); });
+                view.addSignalListener('learningRate', (n, v) => { params.learningRate = v; ptron.setLearningRate(v); });
+            }).catch(console.error);
+
+        runBtn.addEventListener('click', () => {
+            params.isRunning = !params.isRunning;
+            runBtn.textContent = params.isRunning ? '학습 정지 ⏸' : '학습 시작 ▶';
+            runBtn.style.backgroundColor = params.isRunning ? '#ff4d4d' : '#4a4a4f';
+            stepBtn.disabled = params.isRunning;
+            resetBtn.disabled = params.isRunning;
+        });
+
+        stepBtn.addEventListener('click', () => { 
+            if (!params.isRunning) {
+                trainEpoch();
+                draw();
+            }
+        });
+        resetBtn.addEventListener('click', () => { if (!params.isRunning) resetTraining(); draw(); });
+        
+        window.addEventListener('resize', setup);
+        setup();
+    </script>
+</body>
+</html>
