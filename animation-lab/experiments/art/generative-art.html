@@ -7,6 +7,7 @@
     <script src="https://cdn.jsdelivr.net/npm/vega@5"></script>
     <script src="https://cdn.jsdelivr.net/npm/vega-lite@5"></script>
     <script src="https://cdn.jsdelivr.net/npm/vega-embed@6"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.js"></script>
     <style>
         * {
             margin: 0;
@@ -482,6 +483,7 @@
                 
                 <div class="generation-controls">
                     <button class="gen-btn" onclick="saveFrame()">프레임 저장</button>
+                    <button class="gen-btn" id="gifBtn" onclick="exportGIF()">GIF 내보내기</button>
                     <button class="gen-btn" id="recordBtn" onclick="exportVideo()">비디오 녹화</button>
                 </div>
             </div>
@@ -570,8 +572,14 @@
         // 파티클 시스템
         let particles = [];
 
-        // 비디오 녹화 관련
+        // GIF 생성 관련 (30fps, 2초)
         let isRecording = false;
+        let gif = null;
+        let recordedFrames = 0;
+        let maxFrames = 60; // 30fps × 2초 = 60프레임
+        
+        // 비디오 녹화 관련
+        let isVideoRecording = false;
         let mediaRecorder = null;
         let recordedChunks = [];
 
@@ -931,13 +939,13 @@
 
         // 비디오 녹화 (MediaRecorder API 사용)
         function exportVideo() {
-            if (isRecording) {
-                console.log('이미 녹화 중입니다.');
+            if (isVideoRecording) {
+                console.log('이미 비디오 녹화 중입니다.');
                 return;
             }
             
             console.log('🎬 비디오 녹화 시작...');
-            isRecording = true;
+            isVideoRecording = true;
             recordedChunks = [];
             
             const recordBtn = document.getElementById('recordBtn');
@@ -993,7 +1001,7 @@
                     downloadVideo(blob, mimeType);
                     
                     // 상태 리셋
-                    isRecording = false;
+                    isVideoRecording = false;
                     mediaRecorder = null;
                     recordedChunks = [];
                     
@@ -1006,7 +1014,7 @@
                 // 에러 처리
                 mediaRecorder.onerror = (event) => {
                     console.error('녹화 오류:', event.error);
-                    isRecording = false;
+                    isVideoRecording = false;
                     if (recordBtn) {
                         recordBtn.textContent = '❌ 오류 발생';
                         setTimeout(() => {
@@ -1030,7 +1038,7 @@
                 
             } catch (error) {
                 console.error('비디오 녹화 초기화 오류:', error);
-                isRecording = false;
+                isVideoRecording = false;
                 if (recordBtn) {
                     recordBtn.textContent = '❌ 지원되지 않음';
                     setTimeout(() => {
@@ -1068,6 +1076,124 @@
             }, 1000);
             
             console.log('💾 비디오 파일 다운로드 완료!');
+        }
+
+        // GIF 내보내기 (30fps, 2초)
+        function exportGIF() {
+            if (isRecording) {
+                console.log('이미 GIF 녹화 중입니다.');
+                return;
+            }
+            
+            console.log('🎬 GIF 녹화 시작... (30fps, 2초)');
+            isRecording = true;
+            recordedFrames = 0;
+            
+            const gifBtn = document.getElementById('gifBtn');
+            if (gifBtn) {
+                gifBtn.textContent = '🔴 녹화 준비중...';
+                gifBtn.disabled = true;
+            }
+            
+            // GIF.js 초기화 (로컬 Worker 사용)
+            gif = new GIF({
+                workers: 2,
+                quality: 10,
+                width: canvas.width,
+                height: canvas.height,
+                workerScript: './gif.worker.js' // 로컬 파일 사용
+            });
+            
+            // GIF 진행 상태
+            gif.on('progress', function(progress) {
+                const percent = Math.round(progress * 100);
+                if (gifBtn) {
+                    gifBtn.textContent = `⏳ GIF 생성중... ${percent}%`;
+                }
+                console.log(`GIF 처리 진행률: ${percent}%`);
+            });
+            
+            // GIF 완료 이벤트
+            gif.on('finished', function(blob) {
+                console.log('✅ GIF 생성 완료!');
+                downloadGif(blob);
+                isRecording = false;
+                
+                if (gifBtn) {
+                    gifBtn.textContent = '📹 GIF 내보내기';
+                    gifBtn.disabled = false;
+                }
+            });
+            
+            // 에러 처리
+            gif.on('error', function(error) {
+                console.error('GIF 생성 오류:', error);
+                if (gifBtn) {
+                    gifBtn.textContent = '❌ 오류 발생';
+                    setTimeout(() => {
+                        gifBtn.textContent = '📹 GIF 내보내기';
+                        gifBtn.disabled = false;
+                    }, 2000);
+                }
+                isRecording = false;
+            });
+            
+            // 프레임 캡처 시작
+            captureGifFrame();
+        }
+
+        // GIF 프레임 캡처 (30fps)
+        function captureGifFrame() {
+            if (!isRecording || recordedFrames >= maxFrames) {
+                if (isRecording && recordedFrames >= maxFrames) {
+                    console.log('🎞️ 프레임 캡처 완료, GIF 생성 중...');
+                    const gifBtn = document.getElementById('gifBtn');
+                    if (gifBtn) {
+                        gifBtn.textContent = '⏳ GIF 생성중...';
+                    }
+                    
+                    // UI 업데이트 시간 확보
+                    setTimeout(() => {
+                        gif.render();
+                    }, 100);
+                }
+                return;
+            }
+            
+            // 현재 프레임을 GIF에 추가 (30fps = 33.33ms)
+            gif.addFrame(canvas, {delay: 33}); // 1000/30 ≈ 33ms
+            recordedFrames++;
+            
+            // 진행률 표시
+            const progress = (recordedFrames / maxFrames * 100).toFixed(0);
+            const gifBtn = document.getElementById('gifBtn');
+            if (gifBtn) {
+                gifBtn.textContent = `🔴 녹화중... ${progress}%`;
+            }
+            
+            // 다음 프레임 예약 (30fps)
+            setTimeout(() => {
+                requestAnimationFrame(captureGifFrame);
+            }, 33); // 1000/30 ≈ 33ms
+        }
+
+        // GIF 다운로드
+        function downloadGif(blob) {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `generative-art-${Date.now()}.gif`;
+            a.style.display = 'none';
+            
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            
+            setTimeout(() => {
+                URL.revokeObjectURL(url);
+            }, 1000);
+            
+            console.log('💾 GIF 파일 다운로드 완료!');
         }
 
         // 마우스 인터랙션
