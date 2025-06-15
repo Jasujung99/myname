@@ -1,0 +1,886 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>삼각함수 시각화 - Animation Lab</title>
+    <script src="https://cdn.jsdelivr.net/npm/vega@5"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vega-lite@5"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vega-embed@6"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #2E1065 0%, #5B247A 50%, #1B1464 100%);
+            color: white;
+            overflow: hidden;
+        }
+
+        .container {
+            display: flex;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        .canvas-area {
+            flex: 1;
+            position: relative;
+            background: radial-gradient(circle at 30% 30%, rgba(139, 69, 19, 0.1) 0%, rgba(0,0,0,0.4) 100%);
+        }
+
+        #mainCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+
+        #vegaOverlay1 {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 2;
+            pointer-events: none;
+        }
+
+        #vegaOverlay2 {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            z-index: 2;
+            pointer-events: none;
+        }
+
+        .control-panel {
+            width: 380px;
+            background: rgba(0,0,0,0.85);
+            backdrop-filter: blur(20px);
+            border-left: 1px solid rgba(255,255,255,0.1);
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .nav-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .back-btn {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            text-decoration: none;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .back-btn:hover {
+            background: rgba(255,255,255,0.2);
+            transform: translateY(-1px);
+        }
+
+        .experiment-title {
+            font-size: 1.4rem;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 8px;
+            color: #8BC34A;
+        }
+
+        .experiment-desc {
+            font-size: 0.85rem;
+            opacity: 0.8;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .wave-tabs {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        .wave-tab {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .wave-tab.active {
+            background: rgba(139, 195, 74, 0.3);
+            border-color: #8BC34A;
+            color: #8BC34A;
+        }
+
+        .wave-tab:hover {
+            background: rgba(255,255,255,0.15);
+        }
+
+        .control-group {
+            margin-bottom: 20px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 8px;
+            padding: 12px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .control-group h3 {
+            margin-bottom: 12px;
+            color: #8BC34A;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .control-item {
+            margin-bottom: 12px;
+        }
+
+        .control-item label {
+            display: block;
+            margin-bottom: 4px;
+            font-size: 0.85rem;
+            opacity: 0.9;
+        }
+
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        input[type="range"] {
+            flex: 1;
+            height: 5px;
+            border-radius: 3px;
+            background: rgba(255,255,255,0.2);
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #8BC34A;
+            cursor: pointer;
+            border: 2px solid white;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        }
+
+        .value-display {
+            background: rgba(255,255,255,0.1);
+            padding: 3px 6px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            min-width: 45px;
+            text-align: center;
+        }
+
+        .wave-controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .wave-control {
+            background: rgba(255,255,255,0.08);
+            border-radius: 6px;
+            padding: 10px;
+            border: 1px solid rgba(255,255,255,0.15);
+        }
+
+        .wave-control h4 {
+            font-size: 0.9rem;
+            margin-bottom: 8px;
+            text-align: center;
+        }
+
+        .wave1 { border-left: 3px solid #FF6B6B; }
+        .wave2 { border-left: 3px solid #4ECDC4; }
+        .wave1 h4 { color: #FF6B6B; }
+        .wave2 h4 { color: #4ECDC4; }
+
+        .mode-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+
+        .mode-btn {
+            background: rgba(255,193,7,0.2);
+            border: 1px solid rgba(255,193,7,0.4);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        .mode-btn:hover {
+            background: rgba(255,193,7,0.3);
+        }
+
+        .mode-btn.active {
+            background: rgba(255,193,7,0.5);
+            color: #FFC107;
+            border-color: #FFC107;
+        }
+
+        .animation-controls {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .anim-btn {
+            flex: 1;
+            background: rgba(76, 175, 80, 0.3);
+            border: 1px solid rgba(76, 175, 80, 0.5);
+            color: white;
+            padding: 8px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.8rem;
+        }
+
+        .anim-btn:hover {
+            background: rgba(76, 175, 80, 0.5);
+        }
+
+        .anim-btn.active {
+            background: rgba(76, 175, 80, 0.7);
+        }
+
+        .formula-display {
+            background: rgba(0,0,0,0.6);
+            padding: 8px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.75rem;
+            margin-top: 8px;
+            border-left: 3px solid #8BC34A;
+            line-height: 1.4;
+        }
+
+        .info-panel {
+            background: rgba(255,255,255,0.05);
+            border-radius: 6px;
+            padding: 10px;
+            margin-top: 15px;
+            font-size: 0.75rem;
+            line-height: 1.4;
+        }
+
+        .phasor-display {
+            position: absolute;
+            top: 50%;
+            left: 20px;
+            transform: translateY(-50%);
+            width: 200px;
+            height: 200px;
+            background: rgba(0,0,0,0.7);
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.2);
+            backdrop-filter: blur(10px);
+            z-index: 3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="canvas-area">
+            <canvas id="mainCanvas" width="1200" height="800"></canvas>
+            <div id="vegaOverlay1"></div>
+            <div id="vegaOverlay2"></div>
+            <div class="phasor-display" id="phasorDisplay"></div>
+        </div>
+
+        <div class="control-panel">
+            <div class="nav-header">
+                <a href="../../index.html" class="back-btn">← 돌아가기</a>
+            </div>
+
+            <div class="experiment-title">삼각함수 시각화</div>
+            <div class="experiment-desc">파동의 합성과 간섭을 직관적으로 이해해보세요</div>
+
+            <div class="wave-tabs">
+                <button class="wave-tab active" onclick="selectMode('single')">단일파</button>
+                <button class="wave-tab" onclick="selectMode('superposition')">중첩</button>
+                <button class="wave-tab" onclick="selectMode('interference')">간섭</button>
+            </div>
+
+            <div class="wave-controls">
+                <div class="wave-control wave1">
+                    <h4>🌊 파동 1</h4>
+                    <div class="control-item">
+                        <label>진폭 A₁</label>
+                        <div class="slider-container">
+                            <input type="range" id="amp1" min="0.1" max="3" value="1" step="0.1">
+                            <span class="value-display" id="valueAmp1">1.0</span>
+                        </div>
+                    </div>
+                    <div class="control-item">
+                        <label>주파수 f₁</label>
+                        <div class="slider-container">
+                            <input type="range" id="freq1" min="0.5" max="5" value="1" step="0.1">
+                            <span class="value-display" id="valueFreq1">1.0</span>
+                        </div>
+                    </div>
+                    <div class="control-item">
+                        <label>위상 φ₁</label>
+                        <div class="slider-container">
+                            <input type="range" id="phase1" min="0" max="6.28" value="0" step="0.1">
+                            <span class="value-display" id="valuePhase1">0.0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="wave-control wave2">
+                    <h4>🌊 파동 2</h4>
+                    <div class="control-item">
+                        <label>진폭 A₂</label>
+                        <div class="slider-container">
+                            <input type="range" id="amp2" min="0.1" max="3" value="1" step="0.1">
+                            <span class="value-display" id="valueAmp2">1.0</span>
+                        </div>
+                    </div>
+                    <div class="control-item">
+                        <label>주파수 f₂</label>
+                        <div class="slider-container">
+                            <input type="range" id="freq2" min="0.5" max="5" value="1.5" step="0.1">
+                            <span class="value-display" id="valueFreq2">1.5</span>
+                        </div>
+                    </div>
+                    <div class="control-item">
+                        <label>위상 φ₂</label>
+                        <div class="slider-container">
+                            <input type="range" id="phase2" min="0" max="6.28" value="1.57" step="0.1">
+                            <span class="value-display" id="valuePhase2">1.6</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <h3>⚙️ 애니메이션 설정</h3>
+                <div class="control-item">
+                    <label>시간 속도</label>
+                    <div class="slider-container">
+                        <input type="range" id="timeSpeed" min="0.1" max="3" value="1" step="0.1">
+                        <span class="value-display" id="valueTimeSpeed">1.0</span>
+                    </div>
+                </div>
+                <div class="control-item">
+                    <label>파장 스케일</label>
+                    <div class="slider-container">
+                        <input type="range" id="wavelengthScale" min="50" max="200" value="100" step="10">
+                        <span class="value-display" id="valueWavelengthScale">100</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <h3>🎨 표시 옵션</h3>
+                <div class="mode-buttons">
+                    <button class="mode-btn active" id="showWave1" onclick="toggleDisplay('wave1')">파동1</button>
+                    <button class="mode-btn active" id="showWave2" onclick="toggleDisplay('wave2')">파동2</button>
+                    <button class="mode-btn active" id="showSum" onclick="toggleDisplay('sum')">합성파</button>
+                    <button class="mode-btn active" id="showPhasor" onclick="toggleDisplay('phasor')">페이저</button>
+                </div>
+                <div class="animation-controls">
+                    <button class="anim-btn active" id="playBtn" onclick="toggleAnimation()">정지</button>
+                    <button class="anim-btn" onclick="resetWaves()">초기화</button>
+                </div>
+            </div>
+
+            <div class="formula-display" id="formulaDisplay">
+                y₁ = A₁·sin(2πf₁t + φ₁)<br>
+                y₂ = A₂·sin(2πf₂t + φ₂)<br>
+                y = y₁ + y₂
+            </div>
+
+            <div class="info-panel">
+                <strong>💡 학습 포인트:</strong><br>
+                • 진폭: 파동의 세기<br>
+                • 주파수: 진동의 빠르기<br>
+                • 위상: 파동의 시작점<br>
+                • 보강/상쇄 간섭 현상 관찰
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 캔버스 설정
+        const canvas = document.getElementById('mainCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // 애니메이션 상태
+        let animationId;
+        let isPlaying = true;
+        let time = 0;
+        let currentMode = 'single';
+        
+        // 파라미터
+        let params = {
+            amp1: 1,
+            freq1: 1,
+            phase1: 0,
+            amp2: 1,
+            freq2: 1.5,
+            phase2: 1.57,
+            timeSpeed: 1,
+            wavelengthScale: 100
+        };
+
+        // 표시 옵션
+        let display = {
+            wave1: true,
+            wave2: true,
+            sum: true,
+            phasor: true
+        };
+
+        // Vega 데이터
+        let waveData = [];
+        let phasorData = [];
+
+        // 모드 선택
+        function selectMode(mode) {
+            currentMode = mode;
+            
+            // 탭 상태 업데이트
+            document.querySelectorAll('.wave-tab').forEach(tab => tab.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            // 파동2 컨트롤 표시/숨김
+            const wave2Control = document.querySelector('.wave2');
+            if (mode === 'single') {
+                wave2Control.style.opacity = '0.3';
+                wave2Control.style.pointerEvents = 'none';
+                display.wave2 = false;
+                display.sum = false;
+            } else {
+                wave2Control.style.opacity = '1';
+                wave2Control.style.pointerEvents = 'auto';
+                display.wave2 = true;
+                display.sum = true;
+            }
+            
+            updateDisplayButtons();
+        }
+
+        // 표시 옵션 토글
+        function toggleDisplay(type) {
+            display[type] = !display[type];
+            updateDisplayButtons();
+        }
+
+        function updateDisplayButtons() {
+            Object.keys(display).forEach(key => {
+                const btn = document.getElementById(`show${key.charAt(0).toUpperCase() + key.slice(1)}`);
+                if (btn) {
+                    if (display[key]) {
+                        btn.classList.add('active');
+                    } else {
+                        btn.classList.remove('active');
+                    }
+                }
+            });
+        }
+
+        // 컨트롤 초기화
+        function initControls() {
+            const controls = ['amp1', 'freq1', 'phase1', 'amp2', 'freq2', 'phase2', 'timeSpeed', 'wavelengthScale'];
+            
+            controls.forEach(id => {
+                const slider = document.getElementById(id);
+                const valueDisplay = document.getElementById('value' + id.charAt(0).toUpperCase() + id.slice(1));
+                
+                slider.addEventListener('input', function() {
+                    params[id] = parseFloat(this.value);
+                    valueDisplay.textContent = parseFloat(this.value).toFixed(1);
+                });
+            });
+        }
+
+        // 애니메이션 토글
+        function toggleAnimation() {
+            isPlaying = !isPlaying;
+            const btn = document.getElementById('playBtn');
+            
+            if (isPlaying) {
+                btn.textContent = '정지';
+                btn.classList.add('active');
+                animate();
+            } else {
+                btn.textContent = '재생';
+                btn.classList.remove('active');
+                if (animationId) {
+                    cancelAnimationFrame(animationId);
+                }
+            }
+        }
+
+        // 초기화
+        function resetWaves() {
+            time = 0;
+            waveData = [];
+            phasorData = [];
+        }
+
+        // 페이저 다이어그램 그리기
+        function drawPhasor() {
+            if (!display.phasor) return;
+
+            const phasorCanvas = document.createElement('canvas');
+            phasorCanvas.width = 180;
+            phasorCanvas.height = 180;
+            const pCtx = phasorCanvas.getContext('2d');
+            
+            const centerX = 90;
+            const centerY = 90;
+            const radius = 70;
+            
+            // 배경
+            pCtx.fillStyle = 'rgba(0,0,0,0.8)';
+            pCtx.fillRect(0, 0, 180, 180);
+            
+            // 원 그리기
+            pCtx.strokeStyle = 'rgba(255,255,255,0.3)';
+            pCtx.lineWidth = 1;
+            pCtx.beginPath();
+            pCtx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+            pCtx.stroke();
+            
+            // 축 그리기
+            pCtx.strokeStyle = 'rgba(255,255,255,0.5)';
+            pCtx.beginPath();
+            pCtx.moveTo(20, centerY);
+            pCtx.lineTo(160, centerY);
+            pCtx.moveTo(centerX, 20);
+            pCtx.lineTo(centerX, 160);
+            pCtx.stroke();
+            
+            // 페이저 벡터들
+            const angle1 = 2 * Math.PI * params.freq1 * time + params.phase1;
+            const angle2 = 2 * Math.PI * params.freq2 * time + params.phase2;
+            
+            // 페이저 1
+            if (display.wave1) {
+                const x1 = centerX + params.amp1 * radius/2 * Math.cos(angle1);
+                const y1 = centerY - params.amp1 * radius/2 * Math.sin(angle1);
+                
+                pCtx.strokeStyle = '#FF6B6B';
+                pCtx.lineWidth = 2;
+                pCtx.beginPath();
+                pCtx.moveTo(centerX, centerY);
+                pCtx.lineTo(x1, y1);
+                pCtx.stroke();
+                
+                pCtx.fillStyle = '#FF6B6B';
+                pCtx.beginPath();
+                pCtx.arc(x1, y1, 4, 0, Math.PI * 2);
+                pCtx.fill();
+            }
+            
+            // 페이저 2
+            if (display.wave2) {
+                const x2 = centerX + params.amp2 * radius/2 * Math.cos(angle2);
+                const y2 = centerY - params.amp2 * radius/2 * Math.sin(angle2);
+                
+                pCtx.strokeStyle = '#4ECDC4';
+                pCtx.lineWidth = 2;
+                pCtx.beginPath();
+                pCtx.moveTo(centerX, centerY);
+                pCtx.lineTo(x2, y2);
+                pCtx.stroke();
+                
+                pCtx.fillStyle = '#4ECDC4';
+                pCtx.beginPath();
+                pCtx.arc(x2, y2, 4, 0, Math.PI * 2);
+                pCtx.fill();
+            }
+            
+            // 합성 벡터
+            if (display.sum && currentMode !== 'single') {
+                const xSum = centerX + (params.amp1 * Math.cos(angle1) + params.amp2 * Math.cos(angle2)) * radius/2;
+                const ySum = centerY - (params.amp1 * Math.sin(angle1) + params.amp2 * Math.sin(angle2)) * radius/2;
+                
+                pCtx.strokeStyle = '#FFC107';
+                pCtx.lineWidth = 3;
+                pCtx.beginPath();
+                pCtx.moveTo(centerX, centerY);
+                pCtx.lineTo(xSum, ySum);
+                pCtx.stroke();
+                
+                pCtx.fillStyle = '#FFC107';
+                pCtx.beginPath();
+                pCtx.arc(xSum, ySum, 5, 0, Math.PI * 2);
+                pCtx.fill();
+            }
+            
+            // 라벨
+            pCtx.fillStyle = 'white';
+            pCtx.font = '12px Arial';
+            pCtx.fillText('페이저 다이어그램', 5, 15);
+            
+            // 페이저 디스플레이에 캔버스 추가
+            const phasorDiv = document.getElementById('phasorDisplay');
+            phasorDiv.innerHTML = '';
+            phasorDiv.appendChild(phasorCanvas);
+        }
+
+        // 메인 애니메이션 루프
+        function animate() {
+            if (!isPlaying) return;
+
+            // 캔버스 클리어
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            const centerY = canvas.height / 2;
+            const waveHeight = 150;
+            
+            // 파동 그리기
+            ctx.lineWidth = 2;
+            
+            // 현재 시간의 데이터 수집
+            const currentData = [];
+            
+            for (let x = 0; x < canvas.width; x += 2) {
+                const t = x / params.wavelengthScale;
+                
+                // 파동 1
+                const y1 = centerY + params.amp1 * waveHeight * Math.sin(2 * Math.PI * params.freq1 * (t - time) + params.phase1);
+                
+                // 파동 2
+                const y2 = centerY + params.amp2 * waveHeight * Math.sin(2 * Math.PI * params.freq2 * (t - time) + params.phase2);
+                
+                // 합성파
+                const ySum = currentMode === 'single' ? y1 : y1 + y2 - centerY;
+                
+                // 파동 1 그리기
+                if (display.wave1) {
+                    if (x === 0) {
+                        ctx.strokeStyle = '#FF6B6B';
+                        ctx.beginPath();
+                        ctx.moveTo(x, y1);
+                    } else {
+                        ctx.lineTo(x, y1);
+                    }
+                }
+            }
+            if (display.wave1) ctx.stroke();
+            
+            // 파동 2 그리기
+            if (display.wave2 && currentMode !== 'single') {
+                ctx.strokeStyle = '#4ECDC4';
+                ctx.beginPath();
+                for (let x = 0; x < canvas.width; x += 2) {
+                    const t = x / params.wavelengthScale;
+                    const y2 = centerY + params.amp2 * waveHeight * Math.sin(2 * Math.PI * params.freq2 * (t - time) + params.phase2);
+                    if (x === 0) {
+                        ctx.moveTo(x, y2);
+                    } else {
+                        ctx.lineTo(x, y2);
+                    }
+                }
+                ctx.stroke();
+            }
+            
+            // 합성파 그리기
+            if (display.sum && currentMode !== 'single') {
+                ctx.strokeStyle = '#FFC107';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                for (let x = 0; x < canvas.width; x += 2) {
+                    const t = x / params.wavelengthScale;
+                    const y1 = params.amp1 * waveHeight * Math.sin(2 * Math.PI * params.freq1 * (t - time) + params.phase1);
+                    const y2 = params.amp2 * waveHeight * Math.sin(2 * Math.PI * params.freq2 * (t - time) + params.phase2);
+                    const ySum = centerY + y1 + y2;
+                    if (x === 0) {
+                        ctx.moveTo(x, ySum);
+                    } else {
+                        ctx.lineTo(x, ySum);
+                    }
+                }
+                ctx.stroke();
+            }
+            
+            // 중심선 그리기
+            ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([5, 5]);
+            ctx.beginPath();
+            ctx.moveTo(0, centerY);
+            ctx.lineTo(canvas.width, centerY);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            
+            // 페이저 다이어그램 업데이트
+            drawPhasor();
+            
+            // Vega 데이터 업데이트 (매 10프레임마다)
+            if (Math.floor(time * 50) % 10 === 0) {
+                updateVegaCharts();
+            }
+
+            time += 0.02 * params.timeSpeed;
+            animationId = requestAnimationFrame(animate);
+        }
+
+        // Vega 차트 업데이트
+        function updateVegaCharts() {
+            // 스펙트럼 분석 차트
+            const freqData = [
+                {frequency: params.freq1, amplitude: params.amp1, wave: 'Wave 1'},
+                {frequency: params.freq2, amplitude: params.amp2, wave: 'Wave 2'}
+            ];
+
+            const spectrumSpec = {
+                "$schema": "https://vega-lite.org/schema/vega-lite/v5.json",
+                "width": 250,
+                "height": 150,
+                "title": {
+                    "text": "주파수 스펙트럼",
+                    "color": "white",
+                    "fontSize": 12
+                },
+                "background": "transparent",
+                "data": {"values": freqData},
+                "mark": {
+                    "type": "bar",
+                    "width": 20
+                },
+                "encoding": {
+                    "x": {
+                        "field": "frequency",
+                        "type": "quantitative",
+                        "title": "주파수 (Hz)",
+                        "axis": {"labelColor": "white", "titleColor": "white", "gridColor": "rgba(255,255,255,0.2)"}
+                    },
+                    "y": {
+                        "field": "amplitude",
+                        "type": "quantitative",
+                        "title": "진폭",
+                        "axis": {"labelColor": "white", "titleColor": "white", "gridColor": "rgba(255,255,255,0.2)"}
+                    },
+                    "color": {
+                        "field": "wave",
+                        "type": "nominal",
+                        "scale": {"range": ["#FF6B6B", "#4ECDC4"]}
+                    }
+                }
+            };
+
+            vegaEmbed('#vegaOverlay1', spectrumSpec, {
+                theme: 'dark',
+                actions: false
+            }).then(result => {
+                const vegaContainer = document.querySelector('#vegaOverlay1 > div');
+                if (vegaContainer) {
+                    vegaContainer.style.background = 'rgba(0,0,0,0.8)';
+                    vegaContainer.style.borderRadius = '8px';
+                    vegaContainer.style.padding = '10px';
+                    vegaContainer.style.backdropFilter = 'blur(10px)';
+                }
+            }).catch(console.error);
+
+            // 위상 관계 차트
+            const phaseData = [
+                {
+                    time: time,
+                    phase1: (2 * Math.PI * params.freq1 * time + params.phase1) % (2 * Math.PI),
+                    phase2: (2 * Math.PI * params.freq2 * time + params.phase2) % (2 * Math.PI),
+                    phaseDiff: Math.abs((2 * Math.PI * params.freq1 * time + params.phase1) - (2 * Math.PI * params.freq2 * time + params.phase2)) % (2 * Math.PI)
+                }
+            ];
+
+            const phaseSpec = {
+                "$schema": "https://vega-lite.org/schema/vega-lite/v5.json",
+                "width": 250,
+                "height": 120,
+                "title": {
+                    "text": "위상 관계",
+                    "color": "white",
+                    "fontSize": 12
+                },
+                "background": "transparent",
+                "data": {"values": phaseData},
+                "mark": {
+                    "type": "point",
+                    "size": 100
+                },
+                "encoding": {
+                    "x": {
+                        "field": "phase1",
+                        "type": "quantitative",
+                        "title": "파동1 위상 (rad)",
+                        "scale": {"domain": [0, 6.28]},
+                        "axis": {"labelColor": "white", "titleColor": "white", "gridColor": "rgba(255,255,255,0.2)"}
+                    },
+                    "y": {
+                        "field": "phase2",
+                        "type": "quantitative",
+                        "title": "파동2 위상 (rad)",
+                        "scale": {"domain": [0, 6.28]},
+                        "axis": {"labelColor": "white", "titleColor": "white", "gridColor": "rgba(255,255,255,0.2)"}
+                    },
+                    "color": {"value": "#FFC107"}
+                }
+            };
+
+            vegaEmbed('#vegaOverlay2', phaseSpec, {
+                theme: 'dark',
+                actions: false
+            }).then(result => {
+                const vegaContainer = document.querySelector('#vegaOverlay2 > div');
+                if (vegaContainer) {
+                    vegaContainer.style.background = 'rgba(0,0,0,0.8)';
+                    vegaContainer.style.borderRadius = '8px';
+                    vegaContainer.style.padding = '10px';
+                    vegaContainer.style.backdropFilter = 'blur(10px)';
+                }
+            }).catch(console.error);
+        }
+
+        // 초기화
+        function init() {
+            initControls();
+            selectMode('single');
+            animate();
+            updateVegaCharts();
+        }
+
+        // 페이지 로드 시 초기화
+        window.addEventListener('load', init);
+
+        console.log('🌊 삼각함수 시각화 실험이 시작되었습니다!');
+    </script>
+</body>
+</html>
