@@ -523,7 +523,8 @@
             speed: 1,
             saturation: 1,
             contrast: 1,
-            colorFlow: 1
+            colorFlow: 1,
+            seed: Math.random() * 1000
         };
         
         // 색상 팔레트 시스템
@@ -654,17 +655,29 @@
         // 팔레트에서 색상 가져오기
         function getColorFromPalette(value, timeOffset = 0) {
             const palette = colorPalettes[currentPalette];
+            if (!palette || palette.length === 0) {
+                return 'rgb(255, 255, 255)'; // 기본 흰색
+            }
+            
             const paletteSize = palette.length;
             
             // 값에 시간과 흐름 파라미터 적용
             const animatedValue = (value + timeOffset * genParams.colorFlow + time * 0.1) % 1;
-            const position = animatedValue * (paletteSize - 1);
+            const position = Math.abs(animatedValue) * (paletteSize - 1);
             const index = Math.floor(position);
             const fraction = position - index;
             
+            // 안전한 인덱스 보장
+            const safeIndex1 = Math.max(0, Math.min(paletteSize - 1, index));
+            const safeIndex2 = Math.max(0, Math.min(paletteSize - 1, (index + 1) % paletteSize));
+            
             // 팔레트 색상 간 보간
-            const color1 = palette[index];
-            const color2 = palette[(index + 1) % paletteSize];
+            const color1 = palette[safeIndex1];
+            const color2 = palette[safeIndex2];
+            
+            if (!color1 || !color2) {
+                return 'rgb(255, 255, 255)'; // 안전 장치
+            }
             
             let r = color1.r * (1 - fraction) + color2.r * fraction;
             let g = color1.g * (1 - fraction) + color2.g * fraction;
@@ -694,17 +707,38 @@
 
         // 간단한 노이즈 함수 (의사 퍼린 노이즈)
         function noise(x, y, z = 0) {
+            // 입력값 검증
+            if (typeof x !== 'number' || typeof y !== 'number' || typeof z !== 'number') {
+                return 0.5;
+            }
+            
+            // NaN 체크
+            if (isNaN(x) || isNaN(y) || isNaN(z)) {
+                return 0.5;
+            }
+            
             let n = Math.sin(x * genParams.complexity) * Math.cos(y * genParams.complexity) * Math.sin(z * genParams.complexity);
             n += Math.sin(x * genParams.complexity * 2) * Math.cos(y * genParams.complexity * 2) * 0.5;
             n += Math.sin(x * genParams.complexity * 4) * Math.cos(y * genParams.complexity * 4) * 0.25;
-            return (n + 1) / 2; // 0-1 범위로 정규화
+            
+            // 결과값 정규화 (0-1 범위)
+            const result = (n + 1) / 2;
+            return Math.max(0, Math.min(1, result));
         }
 
         // 색상 계산 (새로운 팔레트 시스템)
         function getColor(value, spatialX = 0, spatialY = 0) {
+            // 값이 유효한지 확인
+            if (typeof value !== 'number' || isNaN(value)) {
+                value = 0.5; // 기본값
+            }
+            
+            // 값을 0-1 범위로 정규화
+            value = Math.max(0, Math.min(1, value));
+            
             // 공간적 위치에 따른 색상 변화 추가
             const spatialInfluence = Math.sin(spatialX * 0.01) * Math.cos(spatialY * 0.01) * 0.1;
-            const adjustedValue = (value + spatialInfluence) % 1;
+            const adjustedValue = Math.abs((value + spatialInfluence) % 1);
             
             return getColorFromPalette(adjustedValue, spatialInfluence);
         }
