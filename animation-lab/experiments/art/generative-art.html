@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>생성 예술 - Animation Lab</title>
+    <script src="https://cdn.jsdelivr.net/npm/vega@5"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vega-lite@5"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vega-embed@6"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #2E1065 0%, #5B247A 50%, #1B1464 100%);
+            color: white;
+            overflow: hidden;
+        }
+
+        .container {
+            display: flex;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        .canvas-area {
+            flex: 1;
+            position: relative;
+            background: radial-gradient(circle at 30% 30%, rgba(139, 69, 19, 0.1) 0%, rgba(0,0,0,0.4) 100%);
+        }
+
+        #mainCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+            cursor: crosshair;
+        }
+
+        #vegaOverlay1 {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 2;
+            pointer-events: none;
+        }
+
+        #vegaOverlay2 {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            z-index: 2;
+            pointer-events: none;
+        }
+
+        .control-panel {
+            width: 380px;
+            background: rgba(0,0,0,0.85);
+            backdrop-filter: blur(20px);
+            border-left: 1px solid rgba(255,255,255,0.1);
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .nav-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .back-btn {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            text-decoration: none;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .back-btn:hover {
+            background: rgba(255,255,255,0.2);
+            transform: translateY(-1px);
+        }
+
+        .experiment-title {
+            font-size: 1.4rem;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 8px;
+            color: #8BC34A;
+        }
+
+        .experiment-desc {
+            font-size: 0.85rem;
+            opacity: 0.8;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .art-tabs {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        .art-tab {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .art-tab.active {
+            background: rgba(139, 195, 74, 0.3);
+            border-color: #8BC34A;
+            color: #8BC34A;
+        }
+
+        .art-tab:hover {
+            background: rgba(255,255,255,0.15);
+        }
+
+        .control-group {
+            margin-bottom: 20px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 8px;
+            padding: 12px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .control-group h3 {
+            margin-bottom: 12px;
+            color: #8BC34A;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .control-item {
+            margin-bottom: 12px;
+        }
+
+        .control-item label {
+            display: block;
+            margin-bottom: 4px;
+            font-size: 0.85rem;
+            opacity: 0.9;
+        }
+
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        input[type="range"] {
+            flex: 1;
+            height: 5px;
+            border-radius: 3px;
+            background: rgba(255,255,255,0.2);
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #8BC34A;
+            cursor: pointer;
+            border: 2px solid white;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        }
+
+        .value-display {
+            background: rgba(255,255,255,0.1);
+            padding: 3px 6px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            min-width: 45px;
+            text-align: center;
+        }
+
+        .color-picker-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 8px;
+        }
+
+        .color-picker {
+            width: 100%;
+            height: 30px;
+            border: 1px solid rgba(255,255,255,0.3);
+            border-radius: 4px;
+            cursor: pointer;
+            background: none;
+        }
+
+        .animation-controls {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .anim-btn {
+            flex: 1;
+            background: rgba(76, 175, 80, 0.3);
+            border: 1px solid rgba(76, 175, 80, 0.5);
+            color: white;
+            padding: 8px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.8rem;
+        }
+
+        .anim-btn:hover {
+            background: rgba(76, 175, 80, 0.5);
+        }
+
+        .anim-btn.active {
+            background: rgba(76, 175, 80, 0.7);
+        }
+
+        .info-panel {
+            background: rgba(255,255,255,0.05);
+            border-radius: 6px;
+            padding: 10px;
+            margin-top: 15px;
+            font-size: 0.75rem;
+            line-height: 1.4;
+        }
+
+        .status-info {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.7);
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .status-info div {
+            margin-bottom: 2px;
+        }
+
+        .generation-controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .gen-btn {
+            background: rgba(139, 195, 74, 0.3);
+            border: 1px solid rgba(139, 195, 74, 0.5);
+            color: white;
+            padding: 8px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.8rem;
+        }
+
+        .gen-btn:hover {
+            background: rgba(139, 195, 74, 0.5);
+        }
+
+        .gen-btn.active {
+            background: rgba(139, 195, 74, 0.7);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="canvas-area">
+            <canvas id="mainCanvas"></canvas>
+            <div id="vegaOverlay1"></div>
+            <div id="vegaOverlay2"></div>
+            <div class="status-info">
+                <div><strong>패턴:</strong> <span id="currentPattern">퍼린 노이즈</span></div>
+                <div><strong>입자:</strong> <span id="particleCount">500</span>개</div>
+                <div><strong>FPS:</strong> <span id="fpsCounter">60</span></div>
+            </div>
+        </div>
+
+        <div class="control-panel">
+            <div class="nav-header">
+                <a href="../../index.html" class="back-btn">← 돌아가기</a>
+            </div>
+
+            <div class="experiment-title">생성 예술</div>
+            <div class="experiment-desc">알고리즘 기반의 예술적 패턴을 실시간으로 생성해보세요</div>
+
+            <div class="art-tabs">
+                <button class="art-tab active" onclick="selectArtType('perlin', this)">퍼린 노이즈</button>
+                <button class="art-tab" onclick="selectArtType('cellular', this)">셀룰러</button>
+                <button class="art-tab" onclick="selectArtType('particle', this)">파티클</button>
+            </div>
+
+            <div class="control-group">
+                <h3>🎨 패턴 파라미터</h3>
+                
+                <div class="control-item">
+                    <label>복잡도</label>
+                    <div class="slider-container">
+                        <input type="range" id="complexity" min="0.1" max="10" value="2" step="0.1" oninput="updateParameter('complexity', this.value)">
+                        <div class="value-display" id="complexityValue">2.0</div>
+                    </div>
+                </div>
+
+                <div class="control-item">
+                    <label>스케일</label>
+                    <div class="slider-container">
+                        <input type="range" id="scale" min="0.001" max="0.1" value="0.01" step="0.001" oninput="updateParameter('scale', this.value)">
+                        <div class="value-display" id="scaleValue">0.01</div>
+                    </div>
+                </div>
+
+                <div class="control-item">
+                    <label>밀도</label>
+                    <div class="slider-container">
+                        <input type="range" id="density" min="100" max="2000" value="500" step="50" oninput="updateParameter('density', this.value)">
+                        <div class="value-display" id="densityValue">500</div>
+                    </div>
+                </div>
+
+                <div class="control-item">
+                    <label>속도</label>
+                    <div class="slider-container">
+                        <input type="range" id="speed" min="0.1" max="5" value="1" step="0.1" oninput="updateParameter('speed', this.value)">
+                        <div class="value-display" id="speedValue">1.0</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <h3>🌈 색상 설정</h3>
+                
+                <div class="control-item">
+                    <label>색상 강도</label>
+                    <div class="slider-container">
+                        <input type="range" id="colorIntensity" min="0.1" max="3" value="1" step="0.1" oninput="updateParameter('colorIntensity', this.value)">
+                        <div class="value-display" id="colorIntensityValue">1.0</div>
+                    </div>
+                </div>
+
+                <div class="control-item">
+                    <label>색상 변화</label>
+                    <div class="slider-container">
+                        <input type="range" id="colorShift" min="0" max="360" value="0" oninput="updateParameter('colorShift', this.value)">
+                        <div class="value-display" id="colorShiftValue">0°</div>
+                    </div>
+                </div>
+
+                <div class="color-picker-group">
+                    <input type="color" id="color1" class="color-picker" value="#ff6b6b" onchange="updateColors()">
+                    <input type="color" id="color2" class="color-picker" value="#4ecdc4" onchange="updateColors()">
+                </div>
+            </div>
+
+            <div class="control-group">
+                <h3>⚙️ 애니메이션 설정</h3>
+                <div class="animation-controls">
+                    <button class="anim-btn active" id="playBtn" onclick="toggleAnimation()">정지</button>
+                    <button class="anim-btn" onclick="resetGeneration()">새로 생성</button>
+                </div>
+                
+                <div class="generation-controls">
+                    <button class="gen-btn" onclick="saveFrame()">프레임 저장</button>
+                    <button class="gen-btn" onclick="exportGIF()">GIF 내보내기</button>
+                </div>
+            </div>
+
+            <div class="info-panel">
+                <strong>💡 학습 포인트:</strong><br>
+                • <strong>퍼린 노이즈:</strong> 자연스러운 패턴 생성을 위한 알고리즘<br>
+                • <strong>셀룰러 오토마타:</strong> 간단한 규칙으로 복잡한 패턴 창발<br>
+                • <strong>파티클 시스템:</strong> 개별 요소들의 집단 행동<br>
+                • <strong>생성 예술:</strong> 알고리즘과 예술의 융합<br><br>
+                
+                <strong>🖱️ 인터랙션:</strong><br>
+                • <strong>클릭:</strong> 새로운 시드로 재생성<br>
+                • <strong>드래그:</strong> 패턴 방향 조절<br>
+                • <strong>휠:</strong> 스케일 조절<br>
+                • <strong>슬라이더:</strong> 실시간 파라미터 조절
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 캔버스 설정
+        const canvas = document.getElementById('mainCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // 애니메이션 상태
+        let animationId;
+        let isPlaying = true;
+        let time = 0;
+        let currentArtType = 'perlin';
+        let frameCount = 0;
+        let fpsTime = Date.now();
+        
+        // 생성 파라미터
+        let genParams = {
+            complexity: 2,
+            scale: 0.01,
+            density: 500,
+            speed: 1,
+            colorIntensity: 1,
+            colorShift: 0,
+            seed: Math.random() * 1000
+        };
+        
+        // 색상 파라미터
+        let colorParams = {
+            color1: [255, 107, 107],
+            color2: [78, 205, 196]
+        };
+
+        // 파티클 시스템
+        let particles = [];
+
+        // 예술 타입 선택
+        function selectArtType(type, buttonElement = null) {
+            currentArtType = type;
+            
+            // 탭 상태 업데이트
+            document.querySelectorAll('.art-tab').forEach(tab => tab.classList.remove('active'));
+            if (buttonElement) {
+                buttonElement.classList.add('active');
+            }
+            
+            // 패턴 타입에 따른 초기화
+            resetGeneration();
+            document.getElementById('currentPattern').textContent = getPatternName(type);
+        }
+
+        function getPatternName(type) {
+            switch(type) {
+                case 'perlin': return '퍼린 노이즈';
+                case 'cellular': return '셀룰러 오토마타';
+                case 'particle': return '파티클 시스템';
+                default: return '알 수 없음';
+            }
+        }
+
+        // 파라미터 업데이트
+        function updateParameter(param, value) {
+            const numValue = parseFloat(value);
+            
+            switch(param) {
+                case 'complexity':
+                    genParams.complexity = numValue;
+                    document.getElementById('complexityValue').textContent = numValue.toFixed(1);
+                    break;
+                case 'scale':
+                    genParams.scale = numValue;
+                    document.getElementById('scaleValue').textContent = numValue.toFixed(3);
+                    break;
+                case 'density':
+                    genParams.density = parseInt(value);
+                    document.getElementById('densityValue').textContent = value;
+                    document.getElementById('particleCount').textContent = value;
+                    if (currentArtType === 'particle') {
+                        initParticles();
+                    }
+                    break;
+                case 'speed':
+                    genParams.speed = numValue;
+                    document.getElementById('speedValue').textContent = numValue.toFixed(1);
+                    break;
+                case 'colorIntensity':
+                    genParams.colorIntensity = numValue;
+                    document.getElementById('colorIntensityValue').textContent = numValue.toFixed(1);
+                    break;
+                case 'colorShift':
+                    genParams.colorShift = parseInt(value);
+                    document.getElementById('colorShiftValue').textContent = value + '°';
+                    break;
+            }
+        }
+
+        // 색상 업데이트
+        function updateColors() {
+            const color1 = document.getElementById('color1').value;
+            const color2 = document.getElementById('color2').value;
+            
+            colorParams.color1 = hexToRgb(color1);
+            colorParams.color2 = hexToRgb(color2);
+        }
+
+        // 16진수 색상을 RGB로 변환
+        function hexToRgb(hex) {
+            const r = parseInt(hex.slice(1, 3), 16);
+            const g = parseInt(hex.slice(3, 5), 16);
+            const b = parseInt(hex.slice(5, 7), 16);
+            return [r, g, b];
+        }
+
+        // 간단한 노이즈 함수 (의사 퍼린 노이즈)
+        function noise(x, y, z = 0) {
+            let n = Math.sin(x * genParams.complexity) * Math.cos(y * genParams.complexity) * Math.sin(z * genParams.complexity);
+            n += Math.sin(x * genParams.complexity * 2) * Math.cos(y * genParams.complexity * 2) * 0.5;
+            n += Math.sin(x * genParams.complexity * 4) * Math.cos(y * genParams.complexity * 4) * 0.25;
+            return (n + 1) / 2; // 0-1 범위로 정규화
+        }
+
+        // 색상 계산
+        function getColor(value) {
+            const t = (value + genParams.colorShift / 360 + time * 0.1) * genParams.colorIntensity;
+            const normalizedT = (t % 1);
+            
+            // 두 색상 간 보간
+            const r = Math.floor(colorParams.color1[0] * (1 - normalizedT) + colorParams.color2[0] * normalizedT);
+            const g = Math.floor(colorParams.color1[1] * (1 - normalizedT) + colorParams.color2[1] * normalizedT);
+            const b = Math.floor(colorParams.color1[2] * (1 - normalizedT) + colorParams.color2[2] * normalizedT);
+            
+            return `rgb(${r}, ${g}, ${b})`;
+        }
+
+        // 파티클 초기화
+        function initParticles() {
+            particles = [];
+            for (let i = 0; i < genParams.density; i++) {
+                particles.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    vx: (Math.random() - 0.5) * 2,
+                    vy: (Math.random() - 0.5) * 2,
+                    size: Math.random() * 5 + 1,
+                    hue: Math.random() * 360,
+                    life: 1
+                });
+            }
+        }
+
+        // 퍼린 노이즈 패턴 그리기
+        function drawPerlinNoise() {
+            const imageData = ctx.createImageData(canvas.width, canvas.height);
+            const data = imageData.data;
+            
+            for (let y = 0; y < canvas.height; y += 2) {
+                for (let x = 0; x < canvas.width; x += 2) {
+                    const noiseValue = noise(
+                        x * genParams.scale + time * genParams.speed * 0.1,
+                        y * genParams.scale + time * genParams.speed * 0.1,
+                        time * genParams.speed * 0.05
+                    );
+                    
+                    const color = hexToRgb(getColor(noiseValue));
+                    
+                    for (let dy = 0; dy < 2 && y + dy < canvas.height; dy++) {
+                        for (let dx = 0; dx < 2 && x + dx < canvas.width; dx++) {
+                            const pixelIndex = ((y + dy) * canvas.width + (x + dx)) * 4;
+                            data[pixelIndex] = color[0];     // R
+                            data[pixelIndex + 1] = color[1]; // G
+                            data[pixelIndex + 2] = color[2]; // B
+                            data[pixelIndex + 3] = 255;     // A
+                        }
+                    }
+                }
+            }
+            
+            ctx.putImageData(imageData, 0, 0);
+        }
+
+        // 셀룰러 오토마타 패턴 그리기
+        function drawCellularAutomata() {
+            const cellSize = Math.max(2, Math.floor(20 / genParams.complexity));
+            const cols = Math.floor(canvas.width / cellSize);
+            const rows = Math.floor(canvas.height / cellSize);
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            for (let y = 0; y < rows; y++) {
+                for (let x = 0; x < cols; x++) {
+                    const cellValue = noise(
+                        x * genParams.scale * 100 + time * genParams.speed * 0.1,
+                        y * genParams.scale * 100 + time * genParams.speed * 0.1
+                    );
+                    
+                    if (cellValue > 0.5) {
+                        ctx.fillStyle = getColor(cellValue);
+                        ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
+                    }
+                }
+            }
+        }
+
+        // 파티클 시스템 그리기
+        function drawParticleSystem() {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.05)'; // 트레일 효과
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            particles.forEach((particle, index) => {
+                // 파티클 움직임 (노이즈 기반)
+                const noiseX = noise(particle.x * 0.01, particle.y * 0.01, time * 0.1) - 0.5;
+                const noiseY = noise(particle.x * 0.01 + 100, particle.y * 0.01 + 100, time * 0.1) - 0.5;
+                
+                particle.vx += noiseX * 0.1 * genParams.speed;
+                particle.vy += noiseY * 0.1 * genParams.speed;
+                
+                // 속도 제한
+                particle.vx *= 0.99;
+                particle.vy *= 0.99;
+                
+                // 위치 업데이트
+                particle.x += particle.vx * genParams.speed;
+                particle.y += particle.vy * genParams.speed;
+                
+                // 경계 처리
+                if (particle.x < 0 || particle.x > canvas.width) particle.vx *= -1;
+                if (particle.y < 0 || particle.y > canvas.height) particle.vy *= -1;
+                
+                particle.x = Math.max(0, Math.min(canvas.width, particle.x));
+                particle.y = Math.max(0, Math.min(canvas.height, particle.y));
+                
+                // 색상 계산
+                const colorValue = noise(particle.x * 0.01, particle.y * 0.01, time * 0.1);
+                
+                // 파티클 그리기
+                ctx.beginPath();
+                ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+                ctx.fillStyle = getColor(colorValue);
+                ctx.fill();
+            });
+        }
+
+        // 메인 렌더링 함수
+        function render() {
+            switch (currentArtType) {
+                case 'perlin':
+                    drawPerlinNoise();
+                    break;
+                case 'cellular':
+                    drawCellularAutomata();
+                    break;
+                case 'particle':
+                    drawParticleSystem();
+                    break;
+            }
+        }
+
+        // 메인 애니메이션 루프
+        function animate() {
+            if (isPlaying) {
+                time += 0.02 * genParams.speed;
+                render();
+                updateVegaCharts();
+                
+                // FPS 계산
+                frameCount++;
+                if (frameCount % 60 === 0) {
+                    const now = Date.now();
+                    const fps = Math.round(60000 / (now - fpsTime));
+                    document.getElementById('fpsCounter').textContent = fps;
+                    fpsTime = now;
+                }
+            }
+            
+            if (isPlaying) {
+                animationId = requestAnimationFrame(animate);
+            }
+        }
+
+        // 애니메이션 토글
+        function toggleAnimation() {
+            isPlaying = !isPlaying;
+            const playBtn = document.getElementById('playBtn');
+            
+            if (isPlaying) {
+                playBtn.textContent = '정지';
+                playBtn.classList.add('active');
+                animate();
+                console.log('🎬 생성 예술 애니메이션 시작됨');
+            } else {
+                playBtn.textContent = '재생';
+                playBtn.classList.remove('active');
+                if (animationId) {
+                    cancelAnimationFrame(animationId);
+                }
+                console.log('⏸️ 생성 예술 애니메이션 일시정지됨');
+            }
+        }
+
+        // 새로 생성
+        function resetGeneration() {
+            genParams.seed = Math.random() * 1000;
+            time = 0;
+            frameCount = 0;
+            
+            if (currentArtType === 'particle') {
+                initParticles();
+            }
+            
+            render();
+        }
+
+        // 프레임 저장 (더미 함수)
+        function saveFrame() {
+            const link = document.createElement('a');
+            link.download = `generative-art-${Date.now()}.png`;
+            link.href = canvas.toDataURL();
+            link.click();
+            console.log('프레임 저장됨');
+        }
+
+        // GIF 내보내기 (더미 함수)
+        function exportGIF() {
+            alert('GIF 내보내기 기능은 추후 구현 예정입니다.');
+            console.log('GIF 내보내기 요청됨');
+        }
+
+        // 마우스 인터랙션
+        canvas.addEventListener('click', (e) => {
+            resetGeneration();
+        });
+
+        canvas.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const scaleFactor = e.deltaY > 0 ? 1.1 : 0.9;
+            genParams.scale *= scaleFactor;
+            
+            if (genParams.scale > 0.1) genParams.scale = 0.1;
+            if (genParams.scale < 0.001) genParams.scale = 0.001;
+            
+            document.getElementById('scale').value = genParams.scale;
+            document.getElementById('scaleValue').textContent = genParams.scale.toFixed(3);
+        });
+
+        // Vega 차트 업데이트
+        function updateVegaCharts() {
+            try {
+                // 색상 분포 시각화
+                const colorSpec = {
+                    "$schema": "https://vega-lite.org/schema/vega-lite/v5.json",
+                    "width": 200,
+                    "height": 150,
+                    "background": "transparent",
+                    "title": {
+                        "text": "색상 분포",
+                        "color": "white",
+                        "fontSize": 12
+                    },
+                    "data": {
+                        "values": [
+                            {"색상": "Primary", "값": genParams.colorIntensity},
+                            {"색상": "Secondary", "값": genParams.colorShift / 360},
+                            {"색상": "Shift", "값": (time * 0.1) % 1}
+                        ]
+                    },
+                    "mark": {
+                        "type": "arc",
+                        "innerRadius": 30,
+                        "outerRadius": 60,
+                        "stroke": "white",
+                        "strokeWidth": 1
+                    },
+                    "encoding": {
+                        "theta": {"field": "값", "type": "quantitative"},
+                        "color": {
+                            "field": "색상",
+                            "type": "nominal",
+                            "scale": {"range": ["#FF6B6B", "#4ECDC4", "#45B7D1"]}
+                        }
+                    }
+                };
+
+                // 파라미터 시각화
+                const paramSpec = {
+                    "$schema": "https://vega-lite.org/schema/vega-lite/v5.json",
+                    "width": 150,
+                    "height": 120,
+                    "background": "transparent",
+                    "title": {
+                        "text": "파라미터",
+                        "color": "white",
+                        "fontSize": 12
+                    },
+                    "data": {
+                        "values": [
+                            {"파라미터": "복잡도", "값": genParams.complexity / 10},
+                            {"파라미터": "밀도", "값": genParams.density / 2000},
+                            {"파라미터": "속도", "값": genParams.speed / 5}
+                        ]
+                    },
+                    "mark": {
+                        "type": "bar",
+                        "cornerRadius": 3,
+                        "stroke": "white",
+                        "strokeWidth": 1
+                    },
+                    "encoding": {
+                        "x": {
+                            "field": "파라미터",
+                            "type": "nominal",
+                            "axis": {"labelAngle": 0, "labelColor": "white", "titleColor": "white"}
+                        },
+                        "y": {
+                            "field": "값",
+                            "type": "quantitative",
+                            "axis": {"labelColor": "white", "titleColor": "white", "gridColor": "rgba(255,255,255,0.2)"}
+                        },
+                        "color": {
+                            "field": "파라미터",
+                            "type": "nominal",
+                            "scale": {"range": ["#FF6B6B", "#4ECDC4", "#45B7D1"]}
+                        }
+                    }
+                };
+                
+                vegaEmbed('#vegaOverlay1', colorSpec, {
+                    theme: 'dark',
+                    actions: false
+                }).then(result => {
+                    const vegaContainer = document.querySelector('#vegaOverlay1 > div');
+                    if (vegaContainer) {
+                        vegaContainer.style.background = 'rgba(0,0,0,0.8)';
+                        vegaContainer.style.borderRadius = '8px';
+                        vegaContainer.style.padding = '10px';
+                        vegaContainer.style.backdropFilter = 'blur(10px)';
+                        vegaContainer.style.border = '1px solid rgba(255,255,255,0.2)';
+                    }
+                }).catch(console.error);
+
+                vegaEmbed('#vegaOverlay2', paramSpec, {
+                    theme: 'dark',
+                    actions: false
+                }).then(result => {
+                    const vegaContainer = document.querySelector('#vegaOverlay2 > div');
+                    if (vegaContainer) {
+                        vegaContainer.style.background = 'rgba(0,0,0,0.8)';
+                        vegaContainer.style.borderRadius = '8px';
+                        vegaContainer.style.padding = '10px';
+                        vegaContainer.style.backdropFilter = 'blur(10px)';
+                        vegaContainer.style.border = '1px solid rgba(255,255,255,0.2)';
+                    }
+                }).catch(console.error);
+            } catch (error) {
+                console.log('Vega 차트 업데이트 중 오류:', error);
+            }
+        }
+
+        // 초기화
+        function init() {
+            console.log('🎨 생성 예술 초기화 시작...');
+            
+            const canvasArea = document.querySelector('.canvas-area');
+            canvas.width = canvasArea.offsetWidth;
+            canvas.height = canvasArea.offsetHeight;
+            
+            // 파티클 초기화
+            initParticles();
+            
+            // 초기 렌더링
+            render();
+            updateVegaCharts();
+            
+            // 애니메이션 시작
+            if (isPlaying) {
+                animate();
+            }
+            
+            console.log('🚀 생성 예술 준비 완료!');
+        }
+
+        // 페이지 로드 시 초기화
+        window.addEventListener('load', init);
+        
+        // 브라우저 크기 변경 시 캔버스 크기 조정
+        window.addEventListener('resize', function() {
+            const canvasArea = document.querySelector('.canvas-area');
+            canvas.width = canvasArea.offsetWidth;
+            canvas.height = canvasArea.offsetHeight;
+            
+            if (currentArtType === 'particle') {
+                initParticles();
+            }
+            
+            render();
+        });
+
+        console.log('🎨 생성 예술 스크립트 로드 완료!');
+    </script>
+</body>
+</html>
