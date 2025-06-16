@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>경로 탐색 알고리즘 시각화</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vega@5.21.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vega-embed@6"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #1a1a1a;
+            --primary-color: #2a2a2a;
+            --secondary-color: #3a3a3a;
+            --text-color: #e0e0e0;
+            --accent-color: #00aaff;
+            --start-color: #00ff88;
+            --end-color: #ff4488;
+            --path-color: #ffff00;
+            --open-set-color: rgba(0, 255, 136, 0.5);
+            --closed-set-color: rgba(255, 68, 136, 0.4);
+            --wall-color: #666;
+            --default-color: #2a2a2a;
+            --button-active-border: #00aaff;
+        }
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+        }
+        .control-panel, .learning-points {
+            background-color: var(--primary-color);
+            border: 1px solid var(--secondary-color);
+        }
+        #view {
+            border: 1px solid var(--secondary-color);
+            border-radius: 0.5rem;
+            overflow: hidden;
+            width: 100%;
+            height: 500px;
+            min-height: 500px;
+            background-color: var(--primary-color);
+        }
+        .vega-embed-wrapper {
+             width: 100%;
+             height: 100%;
+        }
+        button, .back-button {
+            background-color: var(--accent-color);
+            color: #fff;
+            transition: all 0.2s ease;
+            border: 2px solid transparent;
+        }
+        button:hover, .back-button:hover {
+            filter: brightness(1.2);
+        }
+        button:disabled {
+            background-color: #555;
+            cursor: not-allowed;
+            filter: none;
+        }
+        .mode-btn.active {
+            border-color: var(--button-active-border);
+            box-shadow: 0 0 8px var(--button-active-border);
+        }
+        input[type="range"] {
+            -webkit-appearance: none; appearance: none;
+            width: 100%; height: 8px; background: var(--secondary-color);
+            outline: none; opacity: 0.7; transition: opacity .2s; border-radius: 4px;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none; appearance: none;
+            width: 20px; height: 20px; background: var(--accent-color);
+            cursor: pointer; border-radius: 50%;
+        }
+        input[type="range"]::-moz-range-thumb {
+            width: 20px; height: 20px; background: var(--accent-color);
+            cursor: pointer; border-radius: 50%; border: none;
+        }
+        select {
+            background-color: var(--secondary-color);
+            border: 1px solid var(--accent-color);
+            color: var(--text-color);
+        }
+        .back-button {
+            text-decoration: none;
+            display: inline-block;
+        }
+        .error-message {
+            color: #ff4444;
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+        }
+        .loading {
+            color: var(--accent-color);
+            text-align: center;
+            padding: 2rem;
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center min-h-screen p-4">
+
+    <div class="w-full max-w-7xl">
+        <h1 class="text-3xl font-bold text-center mb-6 text-white">경로 탐색 알고리즘 시각화</h1>
+
+        <div class="flex flex-col lg:flex-row gap-6">
+
+            <!-- 제어판 -->
+            <div id="controls-container" class="w-full lg:w-1/4 space-y-6">
+                <div class="control-panel p-4 rounded-lg shadow-lg space-y-4">
+                    <div>
+                        <label for="algorithm" class="block text-sm font-medium mb-1">알고리즘</label>
+                        <select id="algorithm" class="w-full p-2 rounded-md">
+                            <option value="astar">A* (에이스타)</option>
+                            <option value="dijkstra">다익스트라 (Dijkstra)</option>
+                            <option value="bfs">너비 우선 탐색 (BFS)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="heuristic" class="block text-sm font-medium mb-1">휴리스틱 (A* 전용)</label>
+                        <select id="heuristic" class="w-full p-2 rounded-md">
+                            <option value="manhattan">맨해튼 거리</option>
+                            <option value="euclidean">유클리드 거리</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">격자 조작 모드</label>
+                        <div class="flex flex-wrap gap-2">
+                            <button id="set-start-btn" class="mode-btn flex-1 p-2 text-sm rounded-md" style="background-color: var(--start-color); color: #000;">시작점</button>
+                            <button id="set-end-btn" class="mode-btn flex-1 p-2 text-sm rounded-md" style="background-color: var(--end-color); color: #000;">도착점</button>
+                            <button id="set-wall-btn" class="mode-btn flex-1 p-2 text-sm rounded-md bg-gray-500 active">장애물</button>
+                        </div>
+                    </div>
+                    <div>
+                        <label for="speed" class="block text-sm font-medium mb-1">애니메이션 속도</label>
+                        <input type="range" id="speed" min="1" max="100" value="50" class="w-full">
+                        <div class="text-xs text-gray-400 mt-1">현재: <span id="speed-value">50</span></div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                         <button id="start-btn" class="p-2 w-full rounded-md">시작</button>
+                         <button id="reset-grid-btn" class="p-2 w-full rounded-md bg-red-500 hover:bg-red-600">격자 초기화</button>
+                    </div>
+                    <button id="clear-path-btn" class="p-2 w-full rounded-md bg-yellow-500 text-black hover:bg-yellow-600">경로 지우기</button>
+                    <div id="status-message" class="text-sm text-center py-2"></div>
+                </div>
+                <a href="../../index.html" class="back-button w-full text-center p-3 rounded-lg shadow-md">&lt;- 돌아가기</a>
+            </div>
+
+            <!-- Vega 뷰 컨테이너 -->
+            <div id="canvas-container" class="w-full lg:w-2/4 flex items-center justify-center">
+                <div id="view" class="w-full h-full">
+                    <div class="loading">시각화를 로딩 중...</div>
+                </div>
+            </div>
+
+            <!-- 학습 포인트 -->
+            <div id="info-container" class="w-full lg:w-1/4">
+                <div class="learning-points p-4 rounded-lg shadow-lg">
+                    <h3 class="text-xl font-bold mb-3 flex items-center"><span class="text-2xl mr-2">💡</span> 학습 포인트</h3>
+                    <ul id="learning-content" class="space-y-3 text-sm"></ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        // --- 안전한 초기화를 위한 체크 ---
+        if (typeof vega === 'undefined' || typeof vegaEmbed === 'undefined') {
+            document.getElementById('view').innerHTML = '<div class="error-message">Vega 라이브러리 로딩에 실패했습니다. 페이지를 새로고침해주세요.</div>';
+            throw new Error('Vega libraries not loaded');
+        }
+
+        // --- 전역 변수 및 상수 ---
+        const controls = {
+            algorithm: document.getElementById('algorithm'),
+            heuristic: document.getElementById('heuristic'),
+            speed: document.getElementById('speed'),
+            speedValue: document.getElementById('speed-value'),
+            startBtn: document.getElementById('start-btn'),
+            resetGridBtn: document.getElementById('reset-grid-btn'),
+            clearPathBtn: document.getElementById('clear-path-btn'),
+            setStartBtn: document.getElementById('set-start-btn'),
+            setEndBtn: document.getElementById('set-end-btn'),
+            setWallBtn: document.getElementById('set-wall-btn'),
+            modeBtns: document.querySelectorAll('.mode-btn'),
+            learningContent: document.getElementById('learning-content'),
+            viewContainer: document.getElementById('view'),
+            canvasContainer: document.getElementById('canvas-container'),
+            statusMessage: document.getElementById('status-message')
+        };
+
+        // 필수 요소 존재 확인
+        const requiredElements = Object.keys(controls);
+        for (const key of requiredElements) {
+            if (!controls[key]) {
+                console.error(`Required element not found: ${key}`);
+                throw new Error(`Required element not found: ${key}`);
+            }
+        }
+
+        const COLS = 25;
+        const ROWS = 25;
+        let grid = [];
+        let openSet = [];
+        let closedSet = [];
+        let startNode, endNode;
+        let path = [];
+
+        let isSearching = false;
+        let animationFrameId = null;
+        let interactionMode = 'wall'; // 'start', 'end', 'wall'
+        let vegaView = null;
+        let isInitialized = false;
+
+        const learningData = {
+            astar: `<li><strong>A* 알고리즘:</strong> 최적 경로를 효율적으로 찾는 휴리스틱 기반 탐색입니다.</li><li><strong>F = G + H:</strong><ul class="list-disc list-inside ml-4 mt-1"><li><strong>G값:</strong> 시작부터 현재까지의 실제 비용.</li><li><strong>H값 (휴리스틱):</strong> 현재부터 목표까지의 추정 비용.</li></ul></li><li><strong>원리:</strong> F값이 가장 낮은 노드를 우선 탐색합니다.</li>`,
+            dijkstra: `<li><strong>다익스트라 알고리즘:</strong> 특정 노드에서 다른 모든 노드까지의 최단 경로를 찾습니다.</li><li><strong>원리:</strong> 휴리스틱 없이 순수 비용(G값)이 가장 적은 노드를 우선 탐색하며, A*보다 탐색 범위가 넓어질 수 있습니다.</li>`,
+            bfs: `<li><strong>너비 우선 탐색 (BFS):</strong> 시작 노드에서 가까운 노드를 먼저, 넓게 탐색합니다.</li><li><strong>원리:</strong> 큐(Queue)를 사용하며, 간선 비용이 같을 때 최단 경로를 보장합니다.</li>`
+        };
+        
+        // --- 노드 클래스 ---
+        class Node {
+            constructor(i, j) {
+                this.i = i;
+                this.j = j;
+                this.f = 0;
+                this.g = 0;
+                this.h = 0;
+                this.neighbors = [];
+                this.previous = undefined;
+                this.isWall = false;
+            }
+            
+            addNeighbors(grid) {
+                if (!grid || !Array.isArray(grid)) return;
+                
+                this.neighbors = []; // 재계산을 위해 초기화
+                const i = this.i, j = this.j;
+                
+                try {
+                    if (i < COLS - 1 && grid[i + 1] && grid[i + 1][j]) this.neighbors.push(grid[i + 1][j]);
+                    if (i > 0 && grid[i - 1] && grid[i - 1][j]) this.neighbors.push(grid[i - 1][j]);
+                    if (j < ROWS - 1 && grid[i] && grid[i][j + 1]) this.neighbors.push(grid[i][j + 1]);
+                    if (j > 0 && grid[i] && grid[i][j - 1]) this.neighbors.push(grid[i][j - 1]);
+                } catch (error) {
+                    console.error('Error adding neighbors:', error);
+                }
+            }
+        }
+
+        // --- Vega Spec 생성 ---
+        const createVegaSpec = (width, height) => {
+            const safeWidth = Math.max(400, Math.min(width || 500, 600));
+            const safeHeight = Math.max(400, Math.min(height || 500, 600));
+            
+            // 초기 격자 데이터 생성
+            const initialData = [];
+            for (let i = 0; i < COLS; i++) {
+                for (let j = 0; j < ROWS; j++) {
+                    initialData.push({i: i, j: j, status: "default"});
+                }
+            }
+            
+            return {
+                "$schema": "https://vega.github.io/schema/vega/v5.json",
+                "width": safeWidth,
+                "height": safeHeight,
+                "padding": 5,
+                "data": [{"name": "grid_data", "values": initialData}],
+                "signals": [{"name": "gridClick", "on": [{"events": "mousedown", "update": "item()"}]}],
+                "scales": [
+                    { 
+                        "name": "xScale", 
+                        "type": "band", 
+                        "domain": {"data": "grid_data", "field": "i"}, 
+                        "range": "width",
+                        "padding": 0.05
+                    },
+                    { 
+                        "name": "yScale", 
+                        "type": "band", 
+                        "domain": {"data": "grid_data", "field": "j"}, 
+                        "range": "height",
+                        "padding": 0.05
+                    },
+                    {
+                        "name": "color", 
+                        "type": "ordinal",
+                        "domain": ["default", "wall", "open", "closed", "path", "start", "end"],
+                        "range": [
+                            '#2a2a2a',                // default
+                            '#666',                   // wall
+                            'rgba(0, 255, 136, 0.5)', // open
+                            'rgba(255, 68, 136, 0.4)',// closed
+                            '#ffff00',                // path
+                            '#00ff88',                // start
+                            '#ff4488'                 // end
+                        ]
+                    }
+                ],
+                "marks": [{
+                    "type": "rect", 
+                    "from": {"data": "grid_data"},
+                    "encode": {
+                        "enter": {
+                            "x": {"scale": "xScale", "field": "i"}, 
+                            "y": {"scale": "yScale", "field": "j"},
+                            "width": {"scale": "xScale", "band": 1}, 
+                            "height": {"scale": "yScale", "band": 1},
+                            "stroke": {"value": '#3a3a3a'},
+                            "strokeWidth": {"value": 0.5}
+                        },
+                        "update": { 
+                            "fill": {"scale": "color", "field": "status"}, 
+                            "opacity": {"value": 1} 
+                        },
+                        "hover": { 
+                            "opacity": {"value": 0.7} 
+                        }
+                    }
+                }]
+            };
+        };
+
+        // --- 유틸리티 함수들 ---
+        function safeSetStatus(message, isError = false) {
+            try {
+                if (controls.statusMessage) {
+                    controls.statusMessage.textContent = message;
+                    controls.statusMessage.className = isError ? 'text-sm text-center py-2 error-message' : 'text-sm text-center py-2';
+                }
+            } catch (error) {
+                console.error('Error setting status:', error);
+            }
+        }
+
+        function heuristic(a, b) {
+            if (!a || !b) return 0;
+            
+            try {
+                const type = controls.heuristic?.value || 'manhattan';
+                if (type === 'euclidean') {
+                    return Math.sqrt(Math.pow(a.i - b.i, 2) + Math.pow(a.j - b.j, 2));
+                }
+                return Math.abs(a.i - b.i) + Math.abs(a.j - b.j); // manhattan
+            } catch (error) {
+                console.error('Error calculating heuristic:', error);
+                return Math.abs(a.i - b.i) + Math.abs(a.j - b.j);
+            }
+        }
+        
+        function formatGridData() {
+            const data = [];
+            try {
+                for (let i = 0; i < COLS; i++) {
+                    for (let j = 0; j < ROWS; j++) {
+                        if (!grid[i] || !grid[i][j]) continue;
+                        
+                        const node = grid[i][j];
+                        let status = "default";
+                        
+                        if (node.isWall) status = "wall";
+                        else if (openSet.includes(node)) status = "open";
+                        else if (closedSet.includes(node)) status = "closed";
+                        
+                        if (path.includes(node)) status = "path";
+                        if (node === startNode) status = "start";
+                        if (node === endNode) status = "end";
+                        
+                        data.push({i: i, j: j, status: status});
+                    }
+                }
+            } catch (error) {
+                console.error('Error formatting grid data:', error);
+            }
+            return data;
+        }
+
+        async function render() {
+            if (!vegaView || !isInitialized) return;
+            
+            try {
+                const data = formatGridData();
+                const changeSet = vega.changeset().remove(() => true).insert(data);
+                await vegaView.data('grid_data', changeSet).runAsync();
+            } catch (error) {
+                console.error("Vega 렌더링 오류:", error);
+                safeSetStatus("렌더링 오류가 발생했습니다.", true);
+            }
+        }
+        
+        // --- 알고리즘 구현 ---
+        function stepAlgorithm() {
+            try {
+                const algo = controls.algorithm?.value || 'astar';
+                switch(algo) {
+                    case 'astar': return stepAStar();
+                    case 'dijkstra': return stepDijkstra();
+                    case 'bfs': return stepBFS();
+                    default: return 'not_found';
+                }
+            } catch (error) {
+                console.error('Algorithm step error:', error);
+                return 'not_found';
+            }
+        }
+
+        function stepAStar() {
+            if (!openSet || openSet.length === 0) return 'not_found';
+            
+            try {
+                let winner = 0;
+                for (let i = 1; i < openSet.length; i++) {
+                    if (openSet[i].f < openSet[winner].f) winner = i;
+                }
+                const current = openSet[winner];
+
+                if (current === endNode) { 
+                    reconstructPath(current); 
+                    return 'found'; 
+                }
+                
+                openSet.splice(winner, 1);
+                closedSet.push(current);
+
+                for (const neighbor of current.neighbors || []) {
+                    if (closedSet.includes(neighbor) || neighbor.isWall) continue;
+                    
+                    const tempG = current.g + 1;
+                    let newPath = false;
+                    
+                    if (openSet.includes(neighbor)) {
+                        if (tempG < neighbor.g) { 
+                            neighbor.g = tempG; 
+                            newPath = true; 
+                        }
+                    } else {
+                        neighbor.g = tempG;
+                        newPath = true;
+                        openSet.push(neighbor);
+                    }
+                    
+                    if (newPath) {
+                        neighbor.h = heuristic(neighbor, endNode);
+                        neighbor.f = neighbor.g + neighbor.h;
+                        neighbor.previous = current;
+                    }
+                }
+                return 'searching';
+            } catch (error) {
+                console.error('A* step error:', error);
+                return 'not_found';
+            }
+        }
+
+        function stepDijkstra() {
+            if (!openSet || openSet.length === 0) return 'not_found';
+            
+            try {
+                let winner = 0;
+                for (let i = 1; i < openSet.length; i++) {
+                    if (openSet[i].g < openSet[winner].g) winner = i;
+                }
+                const current = openSet[winner];
+                
+                if (current === endNode) { 
+                    reconstructPath(current); 
+                    return 'found'; 
+                }
+
+                openSet.splice(winner, 1);
+                closedSet.push(current);
+
+                for (const neighbor of current.neighbors || []) {
+                    if (closedSet.includes(neighbor) || neighbor.isWall) continue;
+                    
+                    const tempG = current.g + 1;
+                    if (!openSet.includes(neighbor) || tempG < neighbor.g) {
+                        neighbor.g = tempG;
+                        neighbor.f = neighbor.g;
+                        neighbor.previous = current;
+                        if (!openSet.includes(neighbor)) openSet.push(neighbor);
+                    }
+                }
+                return 'searching';
+            } catch (error) {
+                console.error('Dijkstra step error:', error);
+                return 'not_found';
+            }
+        }
+        
+        function stepBFS() {
+            if (!openSet || openSet.length === 0) return 'not_found';
+            
+            try {
+                const current = openSet.shift(); 
+
+                if (current === endNode) { 
+                    reconstructPath(current); 
+                    return 'found'; 
+                }
+                closedSet.push(current);
+
+                for (const neighbor of current.neighbors || []) {
+                    if (openSet.includes(neighbor) || closedSet.includes(neighbor) || neighbor.isWall) continue;
+                    
+                    neighbor.previous = current;
+                    openSet.push(neighbor);
+                }
+                return 'searching';
+            } catch (error) {
+                console.error('BFS step error:', error);
+                return 'not_found';
+            }
+        }
+
+        function reconstructPath(current) {
+            path = [];
+            let temp = current;
+            try {
+                while (temp) { 
+                    path.push(temp); 
+                    temp = temp.previous; 
+                }
+            } catch (error) {
+                console.error('Path reconstruction error:', error);
+            }
+        }
+
+        // --- 상태 관리 및 초기화 ---
+        function stopSearch() {
+            isSearching = false;
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+                animationFrameId = null;
+            }
+            
+            if (controls.startBtn) {
+                controls.startBtn.disabled = false;
+                controls.startBtn.textContent = '시작';
+            }
+        }
+
+        async function clearPath(shouldRender = true) {
+            stopSearch();
+            path = [];
+            openSet = [];
+            closedSet = [];
+
+            try {
+                if (grid && Array.isArray(grid)) {
+                    grid.forEach(col => {
+                        if (Array.isArray(col)) {
+                            col.forEach(node => {
+                                if (node) {
+                                    node.previous = undefined;
+                                    node.f = 0; 
+                                    node.g = 0; 
+                                    node.h = 0;
+                                }
+                            });
+                        }
+                    });
+                }
+                
+                if (startNode) {
+                    openSet.push(startNode);
+                    startNode.g = 0;
+                    if (controls.algorithm?.value === 'astar' && endNode) {
+                        startNode.f = heuristic(startNode, endNode);
+                    }
+                }
+
+                if (shouldRender) await render();
+                safeSetStatus("");
+            } catch (error) {
+                console.error('Clear path error:', error);
+                safeSetStatus("경로 초기화 중 오류가 발생했습니다.", true);
+            }
+        }
+
+        async function resetGrid(randomWalls = true) {
+            stopSearch();
+            safeSetStatus("격자를 초기화하는 중...");
+            
+            try {
+                grid = [];
+                for (let i = 0; i < COLS; i++) {
+                    grid[i] = [];
+                    for (let j = 0; j < ROWS; j++) {
+                        grid[i][j] = new Node(i, j);
+                        if (randomWalls && Math.random() < 0.25) {
+                            grid[i][j].isWall = true;
+                        }
+                    }
+                }
+
+                // 안전한 시작점과 끝점 설정
+                const startI = Math.max(0, Math.min(1, COLS - 1));
+                const startJ = Math.max(0, Math.min(Math.floor(ROWS / 2), ROWS - 1));
+                const endI = Math.max(0, Math.min(COLS - 2, COLS - 1));
+                const endJ = Math.max(0, Math.min(Math.floor(ROWS / 2), ROWS - 1));
+
+                startNode = grid[startI][startJ];
+                endNode = grid[endI][endJ];
+                
+                if (startNode) startNode.isWall = false;
+                if (endNode) endNode.isWall = false;
+
+                // 이웃 노드 추가
+                grid.forEach(col => {
+                    if (Array.isArray(col)) {
+                        col.forEach(node => {
+                            if (node && typeof node.addNeighbors === 'function') {
+                                node.addNeighbors(grid);
+                            }
+                        });
+                    }
+                });
+
+                await clearPath(true);
+                safeSetStatus("격자가 초기화되었습니다.");
+                
+                // 3초 후 상태 메시지 제거
+                setTimeout(() => safeSetStatus(""), 3000);
+            } catch (error) {
+                console.error('Grid reset error:', error);
+                safeSetStatus("격자 초기화 중 오류가 발생했습니다.", true);
+            }
+        }
+        
+        // --- 애니메이션 루프 ---
+        function animate() {
+            if (!isSearching) return;
+
+            try {
+                const speed = parseInt(controls.speed?.value || '50', 10);
+                let result = 'searching';
+                
+                const stepsPerFrame = Math.ceil(Math.max(1, speed) / 20);
+                for (let i = 0; i < stepsPerFrame && result === 'searching'; i++) {
+                     result = stepAlgorithm();
+                }
+
+                if (result === 'found') {
+                    stopSearch();
+                    safeSetStatus(`경로를 찾았습니다! 경로 길이: ${path.length}`);
+                } else if (result === 'not_found') {
+                    stopSearch();
+                    safeSetStatus("경로를 찾을 수 없습니다.", true);
+                }
+                
+                render();
+                
+                if (isSearching) {
+                    animationFrameId = requestAnimationFrame(animate);
+                }
+            } catch (error) {
+                console.error('Animation error:', error);
+                stopSearch();
+                safeSetStatus("애니메이션 중 오류가 발생했습니다.", true);
+            }
+        }
+        
+        // --- 이벤트 핸들러 및 리스너 ---
+        function handleGridInteraction(_, item) {
+            if (isSearching || !item || !item.datum) return;
+            
+            try {
+                const { i, j } = item.datum;
+                if (i < 0 || i >= COLS || j < 0 || j >= ROWS) return;
+                if (!grid[i] || !grid[i][j]) return;
+                
+                const node = grid[i][j];
+
+                if (interactionMode === 'wall') {
+                    if (node !== startNode && node !== endNode) {
+                        node.isWall = !node.isWall;
+                        // 이웃 관계 재계산
+                        grid.forEach(col => {
+                            if (Array.isArray(col)) {
+                                col.forEach(n => {
+                                    if (n && typeof n.addNeighbors === 'function') {
+                                        n.addNeighbors(grid);
+                                    }
+                                });
+                            }
+                        });
+                    }
+                } else if (interactionMode === 'start') {
+                    if (!node.isWall && node !== endNode) {
+                        startNode = node;
+                    }
+                } else if (interactionMode === 'end') {
+                    if (!node.isWall && node !== startNode) {
+                        endNode = node;
+                    }
+                }
+                clearPath(true);
+            } catch (error) {
+                console.error('Grid interaction error:', error);
+            }
+        }
+
+        function updateLearningContent() {
+            try {
+                const selectedAlgo = controls.algorithm?.value || 'astar';
+                if (controls.learningContent && learningData[selectedAlgo]) {
+                    controls.learningContent.innerHTML = learningData[selectedAlgo];
+                }
+                
+                if (controls.heuristic) {
+                    controls.heuristic.disabled = selectedAlgo !== 'astar';
+                }
+            } catch (error) {
+                console.error('Learning content update error:', error);
+            }
+        }
+
+        function setInteractionMode(mode) {
+            try {
+                interactionMode = mode;
+                controls.modeBtns.forEach(btn => btn.classList.remove('active'));
+                const targetBtn = document.getElementById(`set-${mode}-btn`);
+                if (targetBtn) targetBtn.classList.add('active');
+            } catch (error) {
+                console.error('Interaction mode error:', error);
+            }
+        }
+
+        async function handleResize() {
+            try {
+                stopSearch();
+                if (vegaView && controls.canvasContainer) {
+                    const containerWidth = controls.canvasContainer.clientWidth || 500;
+                    const containerHeight = Math.min(containerWidth, window.innerHeight * 0.6);
+                    await vegaView.width(containerWidth).height(containerHeight).runAsync();
+                    await render();
+                }
+            } catch (error) {
+                console.error('Resize error:', error);
+            }
+        }
+        
+        // --- 이벤트 리스너 등록 ---
+        function setupEventListeners() {
+            try {
+                if (controls.startBtn) {
+                    controls.startBtn.addEventListener('click', () => {
+                        if (isSearching) {
+                            stopSearch();
+                        } else {
+                            (async () => {
+                                try {
+                                    await clearPath(false);
+                                    isSearching = true;
+                                    controls.startBtn.textContent = '중지';
+                                    controls.startBtn.disabled = false;
+                                    safeSetStatus("탐색을 시작합니다...");
+                                    animate();
+                                } catch (error) {
+                                    console.error('Start search error:', error);
+                                    stopSearch();
+                                    safeSetStatus("탐색 시작 중 오류가 발생했습니다.", true);
+                                }
+                            })();
+                        }
+                    });
+                }
+
+                if (controls.resetGridBtn) {
+                    controls.resetGridBtn.addEventListener('click', () => resetGrid(true));
+                }
+                
+                if (controls.clearPathBtn) {
+                    controls.clearPathBtn.addEventListener('click', () => clearPath(true));
+                }
+                
+                if (controls.algorithm) {
+                    controls.algorithm.addEventListener('change', () => {
+                        updateLearningContent();
+                        clearPath(true);
+                    });
+                }
+                
+                if (controls.heuristic) {
+                    controls.heuristic.addEventListener('change', () => clearPath(true));
+                }
+                
+                if (controls.setStartBtn) {
+                    controls.setStartBtn.addEventListener('click', () => setInteractionMode('start'));
+                }
+                
+                if (controls.setEndBtn) {
+                    controls.setEndBtn.addEventListener('click', () => setInteractionMode('end'));
+                }
+                
+                if (controls.setWallBtn) {
+                    controls.setWallBtn.addEventListener('click', () => setInteractionMode('wall'));
+                }
+
+                if (controls.speed && controls.speedValue) {
+                    controls.speed.addEventListener('input', (e) => {
+                        controls.speedValue.textContent = e.target.value;
+                    });
+                }
+
+                window.addEventListener('resize', handleResize);
+                
+                // 페이지 언로드 시 정리
+                window.addEventListener('beforeunload', () => {
+                    stopSearch();
+                });
+            } catch (error) {
+                console.error('Event listener setup error:', error);
+            }
+        }
+        
+        // --- 초기화 ---
+        async function initialize() {
+            try {
+                safeSetStatus("초기화 중...");
+                updateLearningContent();
+                
+                // 격자 데이터 먼저 생성
+                grid = [];
+                for (let i = 0; i < COLS; i++) {
+                    grid[i] = [];
+                    for (let j = 0; j < ROWS; j++) {
+                        grid[i][j] = new Node(i, j);
+                    }
+                }
+                
+                // 컨테이너 크기 계산
+                const containerSize = Math.min(
+                    controls.canvasContainer?.clientWidth || 600, 
+                    600
+                );
+                
+                const spec = createVegaSpec(containerSize, containerSize);
+                const result = await vegaEmbed('#view', spec, {
+                    actions: false,
+                    renderer: 'canvas'
+                });
+                
+                vegaView = result.view;
+                vegaView.addSignalListener('gridClick', handleGridInteraction);
+                
+                // 격자 데이터 즉시 로딩
+                const gridData = formatGridData();
+                await vegaView.data('grid_data', gridData).runAsync();
+                
+                isInitialized = true;
+                await resetGrid(true);
+                setupEventListeners();
+                
+                safeSetStatus("초기화 완료!");
+                setTimeout(() => safeSetStatus(""), 2000);
+                
+            } catch (error) {
+                console.error("초기화 오류:", error);
+                controls.viewContainer.innerHTML = "<div class='error-message'>차트를 불러오는데 실패했습니다. 페이지를 새로고침 해주세요.</div>";
+                safeSetStatus("초기화에 실패했습니다.", true);
+            }
+        }
+
+        // DOM이 완전히 로드된 후 초기화 실행
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initialize);
+        } else {
+            initialize();
+        }
+    </script>
+</body>
+</html>

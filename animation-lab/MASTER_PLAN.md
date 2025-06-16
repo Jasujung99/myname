@@ -40,8 +40,8 @@ animation-lab/
 │   │   ├── sir-model.html
 │   │   ├── l-system-growth.html
 │   │   └── neural-network.html
-│   ├── algorithms/
-│   │   ├── pathfinding-a-star.html
+│   ├── algorithm/
+│   │   ├── pathfinding-algorithms.html
 │   │   ├── sorting-algorithms.html
 │   │   ├── maze-generator.html
 │   │   ├── physics-puzzle.html

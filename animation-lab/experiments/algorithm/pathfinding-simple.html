@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>경로 탐색 알고리즘 시각화</title>
+    <script src="https://cdn.jsdelivr.net/npm/vega@5.22.1"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vega-lite@5.6.1"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vega-embed@6.21.0"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #1a1a1a;
+            --primary-color: #2a2a2a;
+            --secondary-color: #3a3a3a;
+            --text-color: #e0e0e0;
+            --accent-color: #00aaff;
+            --start-color: #00ff88;
+            --end-color: #ff4488;
+            --path-color: #ffff00;
+            --open-set-color: rgba(0, 255, 136, 0.5);
+            --closed-set-color: rgba(255, 68, 136, 0.4);
+            --wall-color: #666;
+            --default-color: #2a2a2a;
+            --button-active-border: #00aaff;
+        }
+        
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 0;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        .main-content {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .canvas-container {
+            width: 100%;
+            height: 500px;
+            margin-bottom: 20px;
+            background-color: var(--primary-color);
+            border-radius: 8px;
+            position: relative;
+        }
+        
+        #view {
+            width: 100%;
+            height: 100%;
+            border: 1px solid var(--secondary-color);
+        }
+        
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .control-group {
+            background-color: var(--primary-color);
+            padding: 10px;
+            border-radius: 8px;
+            flex: 1;
+            min-width: 200px;
+        }
+        
+        button {
+            background-color: var(--secondary-color);
+            color: var(--text-color);
+            border: 1px solid transparent;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s, border-color 0.2s;
+        }
+        
+        button:hover {
+            background-color: var(--accent-color);
+        }
+        
+        .active {
+            border-color: var(--button-active-border);
+            background-color: var(--accent-color);
+        }
+        
+        select, input {
+            background-color: var(--secondary-color);
+            color: var(--text-color);
+            border: 1px solid var(--secondary-color);
+            padding: 8px;
+            border-radius: 4px;
+            width: 100%;
+            margin-bottom: 8px;
+        }
+        
+        .back-button {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background-color: rgba(0, 0, 0, 0.6);
+            border: none;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .back-button:hover {
+            background-color: rgba(0, 0, 0, 0.8);
+        }
+        
+        #status-message {
+            text-align: center;
+            margin: 10px 0;
+            min-height: 24px;
+        }
+        
+        .error {
+            color: #ff4444;
+        }
+    </style>
+</head>
+<body>
+    <a href="../../index.html" class="back-button">← 메인으로 돌아가기</a>
+
+    <div class="container">
+        <div class="header">
+            <h1>경로 탐색 알고리즘 시각화</h1>
+            <p>다양한 알고리즘이 최단 경로를 찾아가는 과정을 시각화합니다.</p>
+        </div>
+        
+        <div class="main-content">
+            <div id="status-message"></div>
+            
+            <div id="canvas-container" class="canvas-container">
+                <div id="view"></div>
+            </div>
+            
+            <div class="controls">
+                <div class="control-group">
+                    <h3>알고리즘 선택</h3>
+                    <select id="algorithm">
+                        <option value="astar">A* 알고리즘</option>
+                        <option value="dijkstra">다익스트라 알고리즘</option>
+                        <option value="bfs">너비 우선 탐색 (BFS)</option>
+                    </select>
+                    
+                    <h3>휴리스틱 선택 (A*)</h3>
+                    <select id="heuristic">
+                        <option value="manhattan">맨해튼 거리</option>
+                        <option value="euclidean">유클리드 거리</option>
+                    </select>
+                    
+                    <h3>시각화 속도</h3>
+                    <input type="range" id="speed" min="1" max="100" value="50">
+                    <span id="speed-value">50</span>
+                </div>
+                
+                <div class="control-group">
+                    <h3>상호작용 모드</h3>
+                    <div class="buttons">
+                        <button id="set-start-btn" class="mode-btn">시작점 설정</button>
+                        <button id="set-end-btn" class="mode-btn">도착점 설정</button>
+                        <button id="set-wall-btn" class="mode-btn active">벽 설정</button>
+                    </div>
+                    
+                    <h3>실행 제어</h3>
+                    <div class="buttons">
+                        <button id="start-btn">알고리즘 실행</button>
+                        <button id="clear-path-btn">경로 초기화</button>
+                        <button id="reset-grid-btn">격자 초기화</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <h3>알고리즘 설명</h3>
+                <div id="learning-content">
+                    <ul>
+                        <li><strong>A* 알고리즘:</strong> 최적 경로를 효율적으로 찾는 휴리스틱 기반 탐색입니다.</li>
+                        <li><strong>F = G + H:</strong>
+                            <ul>
+                                <li><strong>G값:</strong> 시작부터 현재까지의 실제 비용.</li>
+                                <li><strong>H값 (휴리스틱):</strong> 현재부터 목표까지의 추정 비용.</li>
+                            </ul>
+                        </li>
+                        <li><strong>원리:</strong> F값이 가장 낮은 노드를 우선 탐색합니다.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // 기본 설정
+        const COLS = 25;
+        const ROWS = 25;
+        let grid = [];
+        let startNode = null;
+        let endNode = null;
+        let vegaView = null;
+        
+        // 알고리즘 상태
+        let openSet = [];
+        let closedSet = [];
+        let path = [];
+        let isSearching = false;
+        
+        // 노드 클래스
+        class Node {
+            constructor(i, j) {
+                this.i = i;
+                this.j = j;
+                this.f = 0;
+                this.g = 0;
+                this.h = 0;
+                this.neighbors = [];
+                this.previous = null;
+                this.isWall = false;
+            }
+            
+            addNeighbors(grid) {
+                const i = this.i;
+                const j = this.j;
+                
+                // 상하좌우 이웃 추가
+                if (i < COLS - 1) this.neighbors.push(grid[i + 1][j]);
+                if (i > 0) this.neighbors.push(grid[i - 1][j]);
+                if (j < ROWS - 1) this.neighbors.push(grid[i][j + 1]);
+                if (j > 0) this.neighbors.push(grid[i][j - 1]);
+            }
+        }
+        
+        // Vega 스펙 생성
+        function createVegaSpec() {
+            const gridData = [];
+            for (let i = 0; i < COLS; i++) {
+                for (let j = 0; j < ROWS; j++) {
+                    gridData.push({
+                        i: i,
+                        j: j,
+                        status: "default"
+                    });
+                }
+            }
+            
+            return {
+                "$schema": "https://vega.github.io/schema/vega/v5.json",
+                "width": 400,
+                "height": 400,
+                "padding": 5,
+                "data": [{"name": "grid_data", "values": gridData}],
+                "signals": [{"name": "gridClick", "on": [{"events": "mousedown", "update": "item()"}]}],
+                "scales": [
+                    { 
+                        "name": "xScale", 
+                        "type": "band", 
+                        "domain": {"data": "grid_data", "field": "i"}, 
+                        "range": "width",
+                        "padding": 0.05
+                    },
+                    { 
+                        "name": "yScale", 
+                        "type": "band", 
+                        "domain": {"data": "grid_data", "field": "j"}, 
+                        "range": "height",
+                        "padding": 0.05
+                    },
+                    {
+                        "name": "color", 
+                        "type": "ordinal",
+                        "domain": ["default", "wall", "open", "closed", "path", "start", "end"],
+                        "range": [
+                            '#2a2a2a',                // default
+                            '#666',                   // wall
+                            'rgba(0, 255, 136, 0.5)', // open
+                            'rgba(255, 68, 136, 0.4)',// closed
+                            '#ffff00',                // path
+                            '#00ff88',                // start
+                            '#ff4488'                 // end
+                        ]
+                    }
+                ],
+                "marks": [{
+                    "type": "rect", 
+                    "from": {"data": "grid_data"},
+                    "encode": {
+                        "enter": {
+                            "x": {"scale": "xScale", "field": "i"}, 
+                            "y": {"scale": "yScale", "field": "j"},
+                            "width": {"scale": "xScale", "band": 1}, 
+                            "height": {"scale": "yScale", "band": 1},
+                            "stroke": {"value": '#3a3a3a'},
+                            "strokeWidth": {"value": 0.5}
+                        },
+                        "update": { 
+                            "fill": {"scale": "color", "field": "status"}
+                        }
+                    }
+                }]
+            };
+        }
+        
+        // 격자 초기화
+        function resetGrid() {
+            grid = [];
+            for (let i = 0; i < COLS; i++) {
+                grid[i] = [];
+                for (let j = 0; j < ROWS; j++) {
+                    grid[i][j] = new Node(i, j);
+                    if (Math.random() < 0.25) {
+                        grid[i][j].isWall = true;
+                    }
+                }
+            }
+            
+            // 시작점과 끝점 설정
+            startNode = grid[1][Math.floor(ROWS / 2)];
+            endNode = grid[COLS - 2][Math.floor(ROWS / 2)];
+            startNode.isWall = false;
+            endNode.isWall = false;
+            
+            // 이웃 노드 설정
+            for (let i = 0; i < COLS; i++) {
+                for (let j = 0; j < ROWS; j++) {
+                    grid[i][j].addNeighbors(grid);
+                }
+            }
+            
+            openSet = [];
+            closedSet = [];
+            path = [];
+            
+            updateVegaView();
+            setStatus("격자가 초기화되었습니다.");
+        }
+        
+        // Vega 뷰 업데이트
+        function updateVegaView() {
+            if (!vegaView) return;
+            
+            const data = formatGridData();
+            vegaView.data('grid_data', data).run();
+        }
+        
+        // 격자 데이터 포맷팅
+        function formatGridData() {
+            const data = [];
+            for (let i = 0; i < COLS; i++) {
+                for (let j = 0; j < ROWS; j++) {
+                    const node = grid[i][j];
+                    let status = "default";
+                    
+                    if (node.isWall) status = "wall";
+                    else if (openSet.includes(node)) status = "open";
+                    else if (closedSet.includes(node)) status = "closed";
+                    
+                    if (path.includes(node)) status = "path";
+                    if (node === startNode) status = "start";
+                    if (node === endNode) status = "end";
+                    
+                    data.push({i: i, j: j, status: status});
+                }
+            }
+            return data;
+        }
+        
+        // 그리드 클릭 처리
+        function handleGridClick(item) {
+            if (!item || !item.datum || isSearching) return;
+            
+            const i = item.datum.i;
+            const j = item.datum.j;
+            
+            if (i < 0 || i >= COLS || j < 0 || j >= ROWS) return;
+            
+            const node = grid[i][j];
+            const mode = getActiveMode();
+            
+            switch(mode) {
+                case 'start':
+                    if (node !== endNode) {
+                        startNode = node;
+                        node.isWall = false;
+                    }
+                    break;
+                case 'end':
+                    if (node !== startNode) {
+                        endNode = node;
+                        node.isWall = false;
+                    }
+                    break;
+                case 'wall':
+                    if (node !== startNode && node !== endNode) {
+                        node.isWall = !node.isWall;
+                    }
+                    break;
+            }
+            
+            updateVegaView();
+        }
+        
+        // 현재 활성화된 모드 가져오기
+        function getActiveMode() {
+            const startBtn = document.getElementById('set-start-btn');
+            const endBtn = document.getElementById('set-end-btn');
+            const wallBtn = document.getElementById('set-wall-btn');
+            
+            if (startBtn.classList.contains('active')) return 'start';
+            if (endBtn.classList.contains('active')) return 'end';
+            return 'wall';
+        }
+        
+        // 상태 메시지 설정
+        function setStatus(message, isError = false) {
+            const statusEl = document.getElementById('status-message');
+            statusEl.textContent = message;
+            statusEl.className = isError ? 'error' : '';
+            
+            if (!isError && message) {
+                setTimeout(() => {
+                    statusEl.textContent = '';
+                }, 3000);
+            }
+        }
+        
+        // 초기화 함수
+        async function initialize() {
+            try {
+                setStatus("초기화 중...");
+                
+                const spec = createVegaSpec();
+                const result = await vegaEmbed('#view', spec, {
+                    actions: false,
+                    renderer: 'canvas'
+                });
+                
+                vegaView = result.view;
+                vegaView.addEventListener('click', handleGridClick);
+                
+                resetGrid();
+                setupEventListeners();
+                
+                setStatus("준비 완료!");
+            } catch (error) {
+                console.error("초기화 오류:", error);
+                setStatus("초기화에 실패했습니다. 콘솔을 확인하세요.", true);
+            }
+        }
+        
+        // 이벤트 리스너 설정
+        function setupEventListeners() {
+            // 모드 버튼 이벤트
+            const modeBtns = document.querySelectorAll('.mode-btn');
+            modeBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    modeBtns.forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                });
+            });
+            
+            // 실행 제어 이벤트
+            document.getElementById('start-btn').addEventListener('click', startSearch);
+            document.getElementById('clear-path-btn').addEventListener('click', clearPath);
+            document.getElementById('reset-grid-btn').addEventListener('click', resetGrid);
+            
+            // 알고리즘 변경 이벤트
+            document.getElementById('algorithm').addEventListener('change', updateDescription);
+            
+            // 속도 슬라이더
+            const speedSlider = document.getElementById('speed');
+            const speedValue = document.getElementById('speed-value');
+            
+            speedSlider.addEventListener('input', () => {
+                speedValue.textContent = speedSlider.value;
+            });
+        }
+        
+        // 알고리즘 설명 업데이트
+        function updateDescription() {
+            const algorithm = document.getElementById('algorithm').value;
+            const content = document.getElementById('learning-content');
+            
+            switch(algorithm) {
+                case 'astar':
+                    content.innerHTML = `<ul>
+                        <li><strong>A* 알고리즘:</strong> 최적 경로를 효율적으로 찾는 휴리스틱 기반 탐색입니다.</li>
+                        <li><strong>F = G + H:</strong>
+                            <ul>
+                                <li><strong>G값:</strong> 시작부터 현재까지의 실제 비용.</li>
+                                <li><strong>H값 (휴리스틱):</strong> 현재부터 목표까지의 추정 비용.</li>
+                            </ul>
+                        </li>
+                        <li><strong>원리:</strong> F값이 가장 낮은 노드를 우선 탐색합니다.</li>
+                    </ul>`;
+                    break;
+                    
+                case 'dijkstra':
+                    content.innerHTML = `<ul>
+                        <li><strong>다익스트라 알고리즘:</strong> 특정 노드에서 다른 모든 노드까지의 최단 경로를 찾습니다.</li>
+                        <li><strong>원리:</strong> 휴리스틱 없이 순수 비용(G값)이 가장 적은 노드를 우선 탐색하며, A*보다 탐색 범위가 넓어질 수 있습니다.</li>
+                    </ul>`;
+                    break;
+                    
+                case 'bfs':
+                    content.innerHTML = `<ul>
+                        <li><strong>너비 우선 탐색 (BFS):</strong> 시작 노드에서 가까운 노드를 먼저, 넓게 탐색합니다.</li>
+                        <li><strong>원리:</strong> 큐(Queue)를 사용하며, 간선 비용이 같을 때 최단 경로를 보장합니다.</li>
+                    </ul>`;
+                    break;
+            }
+        }
+        
+        // 페이지 로드 시 초기화
+        document.addEventListener('DOMContentLoaded', initialize);
+    </script>
+</body>
+</html>

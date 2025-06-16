@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vega 테스트</title>
+  <script src="https://cdn.jsdelivr.net/npm/vega@5.22.1"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vega-lite@5.6.1"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vega-embed@6.21.0"></script>
+  <style>
+    #view {
+      width: 500px;
+      height: 500px;
+      border: 1px solid black;
+      margin: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Vega 테스트</h1>
+  <div id="view"></div>
+  
+  <script>
+    // 간단한 10x10 그리드 생성
+    const gridData = [];
+    for (let i = 0; i < 10; i++) {
+      for (let j = 0; j < 10; j++) {
+        gridData.push({
+          i: i,
+          j: j,
+          status: (i + j) % 2 === 0 ? 'default' : 'wall'
+        });
+      }
+    }
+
+    // 기본 Vega 스펙 생성
+    const spec = {
+      "$schema": "https://vega.github.io/schema/vega/v5.json",
+      "width": 400,
+      "height": 400,
+      "padding": 5,
+      "data": [{"name": "grid_data", "values": gridData}],
+      "scales": [
+        { 
+          "name": "xScale", 
+          "type": "band", 
+          "domain": {"data": "grid_data", "field": "i"}, 
+          "range": "width",
+          "padding": 0.05
+        },
+        { 
+          "name": "yScale", 
+          "type": "band", 
+          "domain": {"data": "grid_data", "field": "j"}, 
+          "range": "height",
+          "padding": 0.05
+        },
+        {
+          "name": "color", 
+          "type": "ordinal",
+          "domain": ["default", "wall"],
+          "range": ["white", "black"]
+        }
+      ],
+      "marks": [{
+        "type": "rect", 
+        "from": {"data": "grid_data"},
+        "encode": {
+          "enter": {
+            "x": {"scale": "xScale", "field": "i"}, 
+            "y": {"scale": "yScale", "field": "j"},
+            "width": {"scale": "xScale", "band": 1}, 
+            "height": {"scale": "yScale", "band": 1},
+            "stroke": {"value": "gray"},
+            "strokeWidth": {"value": 0.5}
+          },
+          "update": { 
+            "fill": {"scale": "color", "field": "status"} 
+          }
+        }
+      }]
+    };
+
+    // 렌더링
+    vegaEmbed('#view', spec, {renderer: 'canvas'})
+      .then(result => console.log('Vega 테스트 성공!'))
+      .catch(error => {
+        console.error('Vega 오류:', error);
+        document.getElementById('view').innerHTML = '<p style="color: red">Vega 로딩 실패</p>';
+      });
+  </script>
+</body>
+</html>
