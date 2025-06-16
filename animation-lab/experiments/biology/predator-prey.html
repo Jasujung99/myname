@@ -296,11 +296,18 @@
         let chartView;
         const chartSpec = {
             $schema: 'https://vega.github.io/schema/vega-lite/v5.json',
-            width: 250, 
-            height: 150,
+            width: 260, 
+            height: 160,
             background: 'transparent',
             config: {
-                axis: { domainColor: '#4b5563', gridColor: '#444', labelColor: '#9ca3af', titleColor: '#d1d5db' },
+                axis: { 
+                    domainColor: '#4b5563', 
+                    gridColor: '#444', 
+                    labelColor: '#9ca3af', 
+                    titleColor: '#d1d5db',
+                    tickColor: '#4b5563',
+                    labelFontSize: 10
+                },
                 legend: { labelColor: '#d1d5db', titleColor: '#d1d5db', orient: 'top', symbolSize: 150, labelFontSize: 12 },
                 view: { stroke: 'transparent' }
             },
@@ -312,7 +319,15 @@
                     field: 'count', 
                     type: 'quantitative', 
                     title: '개체 수', 
-                    axis: { grid: true, title: null, labelOverlap: "greedy" } 
+                    axis: { 
+                        grid: true, 
+                        title: null, 
+                        labelOverlap: "greedy",
+                        labels: true,
+                        labelColor: '#9ca3af',
+                        tickColor: '#4b5563',
+                        domainColor: '#4b5563'
+                    } 
                 },
                 color: {
                     field: 'type', type: 'nominal', title: null,
