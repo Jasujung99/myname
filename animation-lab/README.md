@@ -54,11 +54,43 @@ http://localhost:8000/animation-lab/
   - 실시간 줌 및 팬 기능
   - 색상 및 반복 횟수 조정
   - 고해상도 렌더링
+- **[매개변수 곡선](animation-lab/experiments/math/parametric-curves.html)** - 수학적 곡선 시각화
+  - 다양한 매개변수 방정식 (나선, 로즈 곡선, 리사주 도형 등)
+  - 실시간 매개변수 조정
+- **[삼각함수 파형](animation-lab/experiments/math/trigonometric-waves.html)** - 파동 합성 실험
+  - 여러 사인파의 중첩 효과
+  - 진폭, 주파수, 위상 조절
+- **[스피로그래프](animation-lab/experiments/math/spirograph.html)** - 기하학적 패턴 생성
+  - 다양한 반지름 비율로 복잡한 곡선 창조
+  - 컬러 팔레트와 멀티 세그먼트 그리기
+
+### ⚛️ 물리학 (Physics)
+- **[입자 시스템](animation-lab/experiments/physics/particle-system.html)** - 고급 물리 시뮬레이션
+  - 6가지 이미터 모드 (분수, 폭발, 비, 불꽃놀이, 은하, 연기)
+  - 중력, 바람, 인력장 효과
+  - 궤적 시각화 및 교육용 서랍 패널
+  - 뉴턴의 법칙과 에너지 보존 학습
 
 ### 🧬 생물학 (Biology)
 - **[세포 자동자](animation-lab/experiments/biology/cellular-automata.html)** - 콘웨이의 생명 게임
   - 사용자 정의 규칙 설정
   - 패턴 분석 및 관찰
+- **[신경망 학습](animation-lab/experiments/biology/neural-network.html)** - AI 학습 과정 시각화
+  - 실시간 가중치 업데이트 관찰
+  - 다양한 활성화 함수 비교
+- **[포식자-피식자 모델](animation-lab/experiments/biology/predator-prey.html)** - 생태계 시뮬레이션
+  - 토끼와 여우의 개체 수 동역학
+  - 실시간 Vega 차트로 개체 수 변화 추적
+  - 생태학적 매개변수 조절 (번식률, 포식률, 환경 수용력)
+
+### 🔬 알고리즘 (Algorithms)
+- **[경로 탐색](animation-lab/experiments/algorithm/pathfinding-algorithms.html)** - A*, 다익스트라, BFS 시각화
+  - 실시간 알고리즘 실행 과정 관찰
+  - 대화형 그리드로 벽과 시작/끝점 설정
+- **[음성/터치 제어 아트](animation-lab/experiments/algorithm/voice-touch-art.html)** - 오디오 신호 처리
+  - Web Audio API 기반 실시간 주파수 분석
+  - 인간 음성 범위(80-1100Hz) 색상 매핑
+  - 터치/마우스 상호작용으로 입자 위치 제어
 
 ## 🛠️ 기술 스택
 
@@ -84,16 +116,18 @@ animation-lab/
 │   │   └── gif.worker.js          # GIF 처리 워커
 │   ├── 📐 math/
 │   │   ├── fractal-generator.html ✅ 프랙탈 생성기
-│   │   ├── parametric-curves.html 🚧 매개변수 곡선
-│   │   └── trigonometric-waves.html 🚧 삼각함수 시각화
+│   │   ├── parametric-curves.html ✅ 매개변수 곡선
+│   │   ├── trigonometric-waves.html ✅ 삼각함수 시각화
+│   │   └── spirograph.html        ✅ 스피로그래프
 │   ├── ⚛️ physics/
-│   │   ├── particle-system.html   🚧 입자 시스템
-│   │   └── wave-mechanics.html    🚧 파동 역학
+│   │   └── particle-system.html   ✅ 입자 시스템
 │   ├── 🧬 biology/
 │   │   ├── cellular-automata.html ✅ 세포 자동자
-│   │   └── predator-prey.html     🚧 포식자-피식자 모델
-│   └── 🔬 algorithms/
-│       └── pathfinding-a-star.html 🚧 경로 탐색
+│   │   ├── neural-network.html    ✅ 신경망 학습
+│   │   └── predator-prey.html     ✅ 포식자-피식자 모델
+│   └── 🔬 algorithm/
+│       ├── pathfinding-algorithms.html ✅ 경로 탐색
+│       └── voice-touch-art.html   ✅ 음성/터치 제어 아트
 └── 📁 assets/
     ├── css/
     ├── js/
