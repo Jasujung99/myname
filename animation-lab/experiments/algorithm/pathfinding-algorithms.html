@@ -226,8 +226,8 @@
             
             return {
                 "$schema": "https://vega.github.io/schema/vega/v5.json",
-                "width": 500,
-                "height": 400,
+                "width": 600,
+                "height": 500,
                 "padding": 5,
                 "data": [{"name": "grid_data", "values": gridData}],
                 "signals": [{"name": "gridClick", "on": [{"events": "mousedown", "update": "item()"}]}],
@@ -237,14 +237,14 @@
                         "type": "band", 
                         "domain": {"data": "grid_data", "field": "i"}, 
                         "range": "width",
-                        "padding": 0.02
+                        "padding": 0.01
                     },
                     { 
                         "name": "yScale", 
                         "type": "band", 
                         "domain": {"data": "grid_data", "field": "j"}, 
                         "range": "height",
-                        "padding": 0.02
+                        "padding": 0.01
                     },
                     {
                         "name": "color", 
@@ -312,7 +312,6 @@
             path = [];
             
             updateVegaView();
-            setStatus("격자가 초기화되었습니다.");
         }
         
         // Vega 뷰 업데이트
@@ -346,16 +345,22 @@
         }
         
         // 그리드 클릭 처리
-        function handleGridClick(item) {
-            if (!item || !item.datum || isSearching) return;
+        function handleGridClick(name, value) {
+            console.log('Grid clicked:', name, value); // 디버깅용
             
-            const i = item.datum.i;
-            const j = item.datum.j;
+            if (!value || !value.datum || isSearching) return;
+            
+            const i = value.datum.i;
+            const j = value.datum.j;
+            
+            console.log('Clicked position:', i, j); // 디버깅용
             
             if (i < 0 || i >= COLS || j < 0 || j >= ROWS) return;
             
             const node = grid[i][j];
             const mode = getActiveMode();
+            
+            console.log('Current mode:', mode); // 디버깅용
             
             switch(mode) {
                 case 'start':
@@ -393,15 +398,8 @@
         
         // 상태 메시지 설정
         function setStatus(message, isError = false) {
-            const statusEl = document.getElementById('status-message');
-            statusEl.textContent = message;
-            statusEl.className = isError ? 'text-sm text-center py-2 error-message' : 'text-sm text-center py-2';
-            
-            if (!isError && message) {
-                setTimeout(() => {
-                    statusEl.textContent = '';
-                }, 3000);
-            }
+            // 상태 메시지 표시 비활성화
+            return;
         }
         
         // 휴리스틱 계산
@@ -423,8 +421,6 @@
         // 초기화 함수
         async function initialize() {
             try {
-                setStatus("초기화 중...");
-                
                 const spec = createVegaSpec();
                 const result = await vegaEmbed('#view', spec, {
                     actions: false,
@@ -438,10 +434,10 @@
                 setupEventListeners();
                 updateLearningContent();
                 
-                setStatus("준비 완료!");
+                console.log('Initialization complete'); // 디버깅용
             } catch (error) {
                 console.error("초기화 오류:", error);
-                setStatus("초기화에 실패했습니다. 콘솔을 확인하세요.", true);
+                document.getElementById('view').innerHTML = "<div class='error-message'>차트를 불러오는데 실패했습니다. 페이지를 새로고침 해주세요.</div>";
             }
         }
         
@@ -508,7 +504,6 @@
                     animationFrameId = null;
                 }
                 document.getElementById('start-btn').textContent = '시작';
-                setStatus("탐색이 중지되었습니다.");
                 return;
             }
             
@@ -520,7 +515,6 @@
             isSearching = true;
             
             const algorithm = document.getElementById('algorithm').value;
-            setStatus(`${getAlgorithmName(algorithm)} 실행 중...`);
             document.getElementById('start-btn').textContent = '중지';
             
             requestAnimationFrame(animate);
@@ -553,12 +547,10 @@
                     reconstructPath();
                     isSearching = false;
                     document.getElementById('start-btn').textContent = '시작';
-                    setStatus("경로를 찾았습니다!");
                     break;
                 case "not-found":
                     isSearching = false;
                     document.getElementById('start-btn').textContent = '시작';
-                    setStatus("경로를 찾을 수 없습니다.");
                     break;
                 case "searching":
                     animationFrameId = requestAnimationFrame(animate);
@@ -670,7 +662,6 @@
             }
             
             updateVegaView();
-            setStatus("경로가 초기화되었습니다.");
         }
         
         // 페이지 로드 시 초기화
