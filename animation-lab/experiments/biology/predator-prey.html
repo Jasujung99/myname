@@ -102,7 +102,7 @@
         .chart-container {
             background-color: rgba(0,0,0,0.2);
             border-radius: 8px;
-            padding: 15px;
+            padding: 20px;
             margin-top: 20px;
         }
         .chart-container h2 { margin-top: 0; text-align: center; font-size: 1.1rem; }
@@ -301,14 +301,21 @@
             background: 'transparent',
             config: {
                 axis: { 
-                    domainColor: '#4b5563', 
+                    domainColor: '#ffffff', 
                     gridColor: '#444', 
-                    labelColor: '#9ca3af', 
-                    titleColor: '#d1d5db',
-                    tickColor: '#4b5563',
-                    labelFontSize: 10
+                    labelColor: '#ffffff', 
+                    titleColor: '#ffffff',
+                    tickColor: '#ffffff',
+                    labelFontSize: 11,
+                    titleFontSize: 12
                 },
-                legend: { labelColor: '#d1d5db', titleColor: '#d1d5db', orient: 'top', symbolSize: 150, labelFontSize: 12 },
+                legend: { 
+                    labelColor: '#ffffff', 
+                    titleColor: '#ffffff', 
+                    orient: 'top', 
+                    symbolSize: 150, 
+                    labelFontSize: 12 
+                },
                 view: { stroke: 'transparent' }
             },
             data: { name: 'population' },
@@ -318,15 +325,25 @@
                 y: { 
                     field: 'count', 
                     type: 'quantitative', 
-                    title: '개체 수', 
+                    title: '개체 수',
+                    scale: { 
+                        domain: [0, 500],
+                        nice: true
+                    },
                     axis: { 
                         grid: true, 
-                        title: null, 
-                        labelOverlap: "greedy",
+                        title: '개체 수',
+                        titleColor: '#d1d5db',
+                        titleFontSize: 12,
                         labels: true,
-                        labelColor: '#9ca3af',
-                        tickColor: '#4b5563',
-                        domainColor: '#4b5563'
+                        labelColor: '#ffffff',
+                        labelFontSize: 11,
+                        labelAngle: 0,
+                        tickColor: '#ffffff',
+                        tickSize: 5,
+                        domainColor: '#ffffff',
+                        domainWidth: 1,
+                        format: 'd'
                     } 
                 },
                 color: {
