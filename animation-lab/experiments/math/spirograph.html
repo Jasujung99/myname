@@ -390,6 +390,7 @@
                 this.setupCanvas();
                 this.setupControls();
                 this.setupVegaOverlay();
+                this.drawBackground(); // 초기 배경 그리기
                 this.render();
             }
 
@@ -400,6 +401,7 @@
                     this.canvas.height = container.clientHeight;
                     this.centerX = this.canvas.width / 2;
                     this.centerY = this.canvas.height / 2;
+                    this.drawBackground(); // 리사이즈 시 배경 다시 그리기
                     this.render();
                 };
 
@@ -426,7 +428,10 @@
                         this.params[key] = parseFloat(e.target.value);
                         valueSpan.textContent = this.params[key];
                         if (key !== 'speed') {
-                            this.reset();
+                            // 애니메이션 중이 아닐 때만 가이드라인 업데이트
+                            if (!this.isAnimating) {
+                                this.drawBackground();
+                            }
                         }
                     });
                 });
@@ -503,6 +508,7 @@
                 if (this.isAnimating) return;
                 
                 this.isAnimating = true;
+                document.getElementById('playBtn').textContent = '⏸️ 정지';
                 document.getElementById('statusText').textContent = '스피로그래프 그리는 중...';
                 
                 const animate = () => {
@@ -535,10 +541,25 @@
                 if (this.animationId) {
                     cancelAnimationFrame(this.animationId);
                 }
+                document.getElementById('playBtn').textContent = '▶️ 시작';
                 document.getElementById('statusText').textContent = '일시정지';
+                
+                // 정지 시 가이드라인 다시 표시
+                this.drawGuideLines();
             }
 
             clear() {
+                // 애니메이션 정지
+                this.isAnimating = false;
+                if (this.animationId) {
+                    cancelAnimationFrame(this.animationId);
+                    this.animationId = null;
+                }
+                
+                // 캔버스 완전히 지우기
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                
+                // 데이터 초기화
                 this.pathSegments = [];
                 this.currentSegment = { 
                     points: [], 
@@ -547,13 +568,68 @@
                     opacity: this.params.opacity
                 };
                 this.t = 0;
-                this.render();
+                this.isComplete = false;
+                
+                // UI 상태 업데이트
                 document.getElementById('statusText').textContent = '캔버스 지워짐';
+                document.getElementById('playBtn').textContent = '▶️ 시작';
+                
+                // 배경 다시 그리기
+                this.drawBackground();
             }
 
             reset() {
                 this.pause();
                 this.clear();
+            }
+
+            drawBackground() {
+                // 깔끔한 검은색 배경으로 설정
+                this.ctx.fillStyle = 'rgb(0, 0, 0)';
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+                
+                // 중심점 표시 (선택사항)
+                const centerX = this.canvas.width / 2;
+                const centerY = this.canvas.height / 2;
+                this.ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+                this.ctx.beginPath();
+                this.ctx.arc(centerX, centerY, 3, 0, Math.PI * 2);
+                this.ctx.fill();
+                
+                // 가이드라인 그리기
+                this.drawGuideLines();
+            }
+
+            drawGuideLines() {
+                if (!this.isAnimating) {
+                    this.ctx.save();
+                    this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+                    this.ctx.lineWidth = 1;
+                    this.ctx.setLineDash([5, 5]);
+                    
+                    // 외원 가이드라인
+                    this.ctx.beginPath();
+                    this.ctx.arc(this.centerX, this.centerY, this.params.outerRadius, 0, 2 * Math.PI);
+                    this.ctx.stroke();
+                    
+                    // 내원 가이드라인 (외원보다 작을 때만)
+                    if (this.params.innerRadius < this.params.outerRadius) {
+                        this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+                        this.ctx.beginPath();
+                        this.ctx.arc(this.centerX, this.centerY, this.params.innerRadius, 0, 2 * Math.PI);
+                        this.ctx.stroke();
+                    }
+                    
+                    // 펜 거리 원 (내원 중심에서)
+                    if (this.params.penDistance > 0) {
+                        this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+                        this.ctx.beginPath();
+                        this.ctx.arc(this.centerX, this.centerY - this.params.innerRadius, this.params.penDistance, 0, 2 * Math.PI);
+                        this.ctx.stroke();
+                    }
+                    
+                    this.ctx.restore();
+                }
             }
 
             render() {
@@ -595,15 +671,6 @@
                 }
                 
                 this.ctx.globalAlpha = 1;
-                
-                // Draw guide circles if not animating
-                if (!this.isAnimating && this.currentSegment.points.length === 0 && this.pathSegments.length === 0) {
-                    this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
-                    this.ctx.lineWidth = 1;
-                    this.ctx.beginPath();
-                    this.ctx.arc(this.centerX, this.centerY, this.params.outerRadius, 0, 2 * Math.PI);
-                    this.ctx.stroke();
-                }
             }
 
             gcd(a, b) {
