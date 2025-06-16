@@ -325,16 +325,13 @@
                 y: { 
                     field: 'count', 
                     type: 'quantitative', 
-                    title: '개체 수',
                     scale: { 
-                        domain: [0, 500],
-                        nice: true
+                        nice: true,
+                        zero: true
                     },
                     axis: { 
                         grid: true, 
-                        title: '개체 수',
-                        titleColor: '#d1d5db',
-                        titleFontSize: 12,
+                        title: null,
                         labels: true,
                         labelColor: '#ffffff',
                         labelFontSize: 11,
