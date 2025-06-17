@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>색채 역학 - 색공간 탐험</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0a0a0a;
+            --primary-color: #1a1a1a;
+            --secondary-color: #2a2a2a;
+            --text-color: #e0e0e0;
+            --accent-color: #ff6b6b;
+            --button-bg: #333;
+            --button-hover: #555;
+            --grid-color: #333;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background: linear-gradient(135deg, var(--bg-color) 0%, #1a1a2e 50%, #16213e 100%);
+            color: var(--text-color);
+            overflow: hidden;
+            height: 100vh;
+        }
+        
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+        
+        .canvas-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            gap: 20px;
+            min-height: 0;
+        }
+        
+        .canvas-section {
+            flex: 1;
+            background: rgba(26, 26, 26, 0.9);
+            border-radius: 12px;
+            padding: 15px;
+            border: 1px solid #333;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .canvas-section h3 {
+            color: var(--accent-color);
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+            flex-shrink: 0;
+        }
+        
+        canvas {
+            width: 100%;
+            flex: 1;
+            min-height: 200px;
+            background: var(--primary-color);
+            border-radius: 8px;
+            border: 1px solid var(--grid-color);
+            cursor: crosshair;
+        }
+        
+        .controls {
+            width: 380px;
+            background: rgba(26, 26, 26, 0.95);
+            backdrop-filter: blur(10px);
+            border-left: 1px solid #333;
+            padding: 20px;
+            overflow-y: auto;
+        }
+        
+        .nav-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .back-button {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .back-button:hover {
+            background: rgba(255,255,255,0.2);
+            border-color: rgba(255,255,255,0.3);
+        }
+
+        .control-header h1 {
+            font-size: 1.5rem;
+            color: var(--accent-color);
+            margin-bottom: 5px;
+        }
+        
+        .control-header p {
+            color: #999;
+            font-size: 0.9rem;
+        }
+        
+        .control-group {
+            margin-bottom: 20px;
+        }
+        
+        .control-label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+        
+        .control-value {
+            color: var(--accent-color);
+            font-family: 'Courier New', monospace;
+        }
+        
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            background: var(--secondary-color);
+            border-radius: 3px;
+            outline: none;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            background: var(--accent-color);
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 10px var(--accent-color);
+        }
+        
+        .color-modes {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .mode-button {
+            padding: 8px 12px;
+            background: var(--button-bg);
+            color: var(--text-color);
+            border: 1px solid #555;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.85rem;
+        }
+        
+        .mode-button:hover {
+            background: var(--button-hover);
+            border-color: var(--accent-color);
+        }
+        
+        .mode-button.active {
+            background: var(--accent-color);
+            border-color: var(--accent-color);
+            color: #000;
+        }
+        
+        .harmony-types {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .harmony-types h4 {
+            color: var(--accent-color);
+            margin-bottom: 10px;
+            font-size: 1rem;
+        }
+        
+        .harmony-button {
+            display: block;
+            width: 100%;
+            padding: 8px 12px;
+            background: var(--button-bg);
+            color: var(--text-color);
+            border: 1px solid #555;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.85rem;
+            margin-bottom: 6px;
+        }
+        
+        .harmony-button:hover {
+            background: var(--button-hover);
+            border-color: var(--accent-color);
+        }
+        
+        .harmony-button.active {
+            background: var(--accent-color);
+            border-color: var(--accent-color);
+            color: #000;
+        }
+        
+        .color-display {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .color-display h4 {
+            color: var(--accent-color);
+            margin-bottom: 10px;
+            font-size: 1rem;
+        }
+        
+        .color-swatch {
+            width: 100%;
+            height: 80px;
+            border-radius: 8px;
+            border: 2px solid #444;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+        }
+        
+        .color-info {
+            font-size: 0.85rem;
+            color: #ccc;
+            line-height: 1.4;
+        }
+        
+        .info-section {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 20px;
+        }
+        
+        .info-section h4 {
+            color: var(--accent-color);
+            margin-bottom: 10px;
+            font-size: 1rem;
+        }
+        
+        .info-section p {
+            font-size: 0.85rem;
+            line-height: 1.5;
+            color: #ccc;
+            margin-bottom: 8px;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+            
+            .controls {
+                width: 100%;
+                height: auto;
+                max-height: 40vh;
+            }
+            
+            .canvas-area {
+                height: 60vh;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="canvas-area">
+            <div class="canvas-section">
+                <h3>🎨 색채 역학 탐험</h3>
+                <canvas id="colorCanvas"></canvas>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <div class="nav-header">
+                <a href="../../index.html" class="back-button">
+                    ← 돌아가기
+                </a>
+                <div class="control-header">
+                    <h1>색채 역학</h1>
+                    <p>색공간을 여행하며 발견하는 색의 무한한 가능성</p>
+                </div>
+            </div>
+            
+            <div class="color-modes">
+                <button class="mode-button active" data-mode="wheel">색상환</button>
+                <button class="mode-button" data-mode="palette">색채 팔레트</button>
+                <button class="mode-button" data-mode="gradient">그라디언트</button>
+                <button class="mode-button" data-mode="interactive">인터랙티브</button>
+            </div>
+            
+            <div class="control-group">
+                <div class="control-label">
+                    <span>색상 (H)</span>
+                    <span class="control-value" id="hueValue">180°</span>
+                </div>
+                <input type="range" id="hue" min="0" max="360" step="1" value="180">
+            </div>
+            
+            <div class="control-group">
+                <div class="control-label">
+                    <span>채도 (S)</span>
+                    <span class="control-value" id="saturationValue">80%</span>
+                </div>
+                <input type="range" id="saturation" min="0" max="100" step="1" value="80">
+            </div>
+            
+            <div class="control-group">
+                <div class="control-label">
+                    <span>명도 (L)</span>
+                    <span class="control-value" id="lightnessValue">50%</span>
+                </div>
+                <input type="range" id="lightness" min="0" max="100" step="1" value="50">
+            </div>
+            
+            <div class="harmony-types">
+                <h4>🎭 색채 조화</h4>
+                <button class="harmony-button active" data-harmony="complementary">보색 (180°)</button>
+                <button class="harmony-button" data-harmony="triadic">삼각색 (120°)</button>
+                <button class="harmony-button" data-harmony="tetradic">사각색 (90°)</button>
+                <button class="harmony-button" data-harmony="analogous">유사색 (30°)</button>
+                <button class="harmony-button" data-harmony="split">분할보색 (150°)</button>
+                <button class="harmony-button" data-harmony="monochromatic">단색 조화</button>
+            </div>
+            
+            <div class="color-display">
+                <h4>🎨 현재 색상</h4>
+                <div class="color-swatch" id="currentColor">HSL(180°, 80%, 50%)</div>
+                <div class="color-info" id="colorInfo">
+                    <strong>HSL:</strong> 180°, 80%, 50%<br>
+                    <strong>RGB:</strong> 26, 179, 179<br>
+                    <strong>HEX:</strong> #1AB3B3
+                </div>
+            </div>
+            
+            <div class="info-section">
+                <h4>📚 색채 이론</h4>
+                <p><strong>색상환(Hue):</strong> 0°-360°의 색상 스펙트럼으로 색의 종류를 나타냅니다.</p>
+                <p><strong>채도(Saturation):</strong> 색의 순수함과 선명도를 나타냅니다.</p>
+                <p><strong>명도(Lightness):</strong> 색의 밝기를 나타냅니다.</p>
+                <p><strong>보색:</strong> 색상환에서 180° 대칭인 색으로 가장 강한 대비를 만듭니다.</p>
+                <p><strong>삼각색:</strong> 120° 간격으로 배치된 3개의 색으로 균형잡힌 조화를 만듭니다.</p>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        class ColorTheoryArt {
+            constructor() {
+                this.canvas = document.getElementById('colorCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                
+                this.params = {
+                    mode: 'wheel',
+                    harmony: 'complementary',
+                    hue: 180,
+                    saturation: 80,
+                    lightness: 50,
+                    animationSpeed: 0.02,
+                    particleCount: 50
+                };
+                
+                this.time = 0;
+                this.animationId = null;
+                this.particles = [];
+                this.mouseX = 0;
+                this.mouseY = 0;
+                
+                this.initCanvas();
+                this.setupControls();
+                this.setupModes();
+                this.setupHarmony();
+                this.initParticles();
+                this.animate();
+            }
+            
+            initCanvas() {
+                const resizeCanvas = () => {
+                    const rect = this.canvas.getBoundingClientRect();
+                    const dpr = window.devicePixelRatio || 1;
+                    
+                    this.canvas.width = rect.width * dpr;
+                    this.canvas.height = rect.height * dpr;
+                    
+                    this.canvas.style.width = rect.width + 'px';
+                    this.canvas.style.height = rect.height + 'px';
+                    
+                    this.ctx.scale(dpr, dpr);
+                    
+                    this.width = rect.width;
+                    this.height = rect.height;
+                    this.centerX = this.width / 2;
+                    this.centerY = this.height / 2;
+                };
+                
+                setTimeout(resizeCanvas, 100);
+                window.addEventListener('resize', () => setTimeout(resizeCanvas, 100));
+                
+                // 마우스 이벤트
+                this.canvas.addEventListener('mousemove', (e) => {
+                    const rect = this.canvas.getBoundingClientRect();
+                    this.mouseX = e.clientX - rect.left;
+                    this.mouseY = e.clientY - rect.top;
+                });
+                
+                this.canvas.addEventListener('click', (e) => {
+                    this.handleCanvasClick(e);
+                });
+            }
+            
+            handleCanvasClick(e) {
+                const rect = this.canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                if (this.params.mode === 'wheel') {
+                    // 색상환에서 클릭한 위치의 색상 추출
+                    const dx = x - this.centerX;
+                    const dy = y - this.centerY;
+                    const angle = Math.atan2(dy, dx);
+                    const hue = ((angle * 180 / Math.PI) + 360) % 360;
+                    
+                    this.params.hue = hue;
+                    document.getElementById('hue').value = hue;
+                    document.getElementById('hueValue').textContent = Math.round(hue) + '°';
+                    this.updateColorDisplay();
+                }
+            }
+            
+            setupControls() {
+                const controls = {
+                    hue: { element: 'hue', display: 'hueValue', unit: '°' },
+                    saturation: { element: 'saturation', display: 'saturationValue', unit: '%' },
+                    lightness: { element: 'lightness', display: 'lightnessValue', unit: '%' }
+                };
+                
+                Object.entries(controls).forEach(([param, config]) => {
+                    const element = document.getElementById(config.element);
+                    const display = document.getElementById(config.display);
+                    
+                    element.addEventListener('input', (e) => {
+                        const value = parseFloat(e.target.value);
+                        this.params[param] = value;
+                        display.textContent = Math.round(value) + config.unit;
+                        this.updateColorDisplay();
+                    });
+                    
+                    display.textContent = Math.round(element.value) + config.unit;
+                });
+            }
+            
+            setupModes() {
+                const buttons = document.querySelectorAll('.mode-button');
+                
+                buttons.forEach(button => {
+                    button.addEventListener('click', () => {
+                        buttons.forEach(b => b.classList.remove('active'));
+                        button.classList.add('active');
+                        this.params.mode = button.dataset.mode;
+                    });
+                });
+            }
+            
+            setupHarmony() {
+                const buttons = document.querySelectorAll('.harmony-button');
+                
+                buttons.forEach(button => {
+                    button.addEventListener('click', () => {
+                        buttons.forEach(b => b.classList.remove('active'));
+                        button.classList.add('active');
+                        this.params.harmony = button.dataset.harmony;
+                    });
+                });
+            }
+            
+            initParticles() {
+                this.particles = [];
+                for (let i = 0; i < this.params.particleCount; i++) {
+                    this.particles.push({
+                        x: Math.random() * this.width,
+                        y: Math.random() * this.height,
+                        vx: (Math.random() - 0.5) * 2,
+                        vy: (Math.random() - 0.5) * 2,
+                        size: Math.random() * 3 + 1,
+                        hue: Math.random() * 360,
+                        life: Math.random()
+                    });
+                }
+            }
+            
+            getHarmonyColors() {
+                const baseHue = this.params.hue;
+                const colors = [];
+                
+                switch (this.params.harmony) {
+                    case 'complementary':
+                        colors.push(baseHue, (baseHue + 180) % 360);
+                        break;
+                    case 'triadic':
+                        colors.push(baseHue, (baseHue + 120) % 360, (baseHue + 240) % 360);
+                        break;
+                    case 'tetradic':
+                        colors.push(baseHue, (baseHue + 90) % 360, (baseHue + 180) % 360, (baseHue + 270) % 360);
+                        break;
+                    case 'analogous':
+                        colors.push(baseHue, (baseHue + 30) % 360, (baseHue - 30 + 360) % 360);
+                        break;
+                    case 'split':
+                        colors.push(baseHue, (baseHue + 150) % 360, (baseHue - 150 + 360) % 360);
+                        break;
+                    case 'monochromatic':
+                        colors.push(baseHue);
+                        break;
+                }
+                
+                return colors;
+            }
+            
+            hslToRgb(h, s, l) {
+                h = h / 360;
+                s = s / 100;
+                l = l / 100;
+                
+                const hue2rgb = (p, q, t) => {
+                    if (t < 0) t += 1;
+                    if (t > 1) t -= 1;
+                    if (t < 1/6) return p + (q - p) * 6 * t;
+                    if (t < 1/2) return q;
+                    if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+                    return p;
+                };
+                
+                let r, g, b;
+                
+                if (s === 0) {
+                    r = g = b = l;
+                } else {
+                    const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+                    const p = 2 * l - q;
+                    r = hue2rgb(p, q, h + 1/3);
+                    g = hue2rgb(p, q, h);
+                    b = hue2rgb(p, q, h - 1/3);
+                }
+                
+                return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+            }
+            
+            rgbToHex(r, g, b) {
+                return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+            }
+            
+            updateColorDisplay() {
+                const [r, g, b] = this.hslToRgb(this.params.hue, this.params.saturation, this.params.lightness);
+                const hex = this.rgbToHex(r, g, b);
+                const hsl = `hsl(${Math.round(this.params.hue)}, ${Math.round(this.params.saturation)}%, ${Math.round(this.params.lightness)}%)`;
+                
+                const colorSwatch = document.getElementById('currentColor');
+                const colorInfo = document.getElementById('colorInfo');
+                
+                colorSwatch.style.backgroundColor = hsl;
+                colorSwatch.textContent = `HSL(${Math.round(this.params.hue)}°, ${Math.round(this.params.saturation)}%, ${Math.round(this.params.lightness)}%)`;
+                
+                colorInfo.innerHTML = `
+                    <strong>HSL:</strong> ${Math.round(this.params.hue)}°, ${Math.round(this.params.saturation)}%, ${Math.round(this.params.lightness)}%<br>
+                    <strong>RGB:</strong> ${r}, ${g}, ${b}<br>
+                    <strong>HEX:</strong> ${hex}
+                `;
+            }
+            
+            drawColorWheel() {
+                const radius = Math.min(this.width, this.height) * 0.35;
+                const imageData = this.ctx.createImageData(this.width, this.height);
+                const data = imageData.data;
+                
+                for (let y = 0; y < this.height; y += 2) {
+                    for (let x = 0; x < this.width; x += 2) {
+                        const dx = x - this.centerX;
+                        const dy = y - this.centerY;
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+                        
+                        if (distance < radius) {
+                            const angle = Math.atan2(dy, dx);
+                            const hue = ((angle * 180 / Math.PI) + 360) % 360;
+                            const saturation = (distance / radius) * 100;
+                            const lightness = this.params.lightness;
+                            
+                            const [r, g, b] = this.hslToRgb(hue, saturation, lightness);
+                            
+                            const index = (y * this.width + x) * 4;
+                            data[index] = r;
+                            data[index + 1] = g;
+                            data[index + 2] = b;
+                            data[index + 3] = 255;
+                        }
+                    }
+                }
+                
+                this.ctx.putImageData(imageData, 0, 0);
+                
+                // 조화 색상 표시
+                const harmonyColors = this.getHarmonyColors();
+                harmonyColors.forEach((hue, index) => {
+                    const angle = hue * Math.PI / 180;
+                    const x = this.centerX + Math.cos(angle) * radius * 0.8;
+                    const y = this.centerY + Math.sin(angle) * radius * 0.8;
+                    
+                    this.ctx.fillStyle = `hsl(${hue}, ${this.params.saturation}%, ${this.params.lightness}%)`;
+                    this.ctx.beginPath();
+                    this.ctx.arc(x, y, 15, 0, Math.PI * 2);
+                    this.ctx.fill();
+                    
+                    this.ctx.strokeStyle = '#fff';
+                    this.ctx.lineWidth = 3;
+                    this.ctx.stroke();
+                });
+            }
+            
+            drawColorPalette() {
+                const harmonyColors = this.getHarmonyColors();
+                const paletteWidth = this.width * 0.8;
+                const paletteHeight = this.height * 0.6;
+                const startX = (this.width - paletteWidth) / 2;
+                const startY = (this.height - paletteHeight) / 2;
+                const colorWidth = paletteWidth / harmonyColors.length;
+                
+                harmonyColors.forEach((hue, index) => {
+                    const x = startX + index * colorWidth;
+                    
+                    // 명도 그라디언트
+                    for (let i = 0; i < paletteHeight; i++) {
+                        const lightness = 100 - (i / paletteHeight) * 100;
+                        const color = `hsl(${hue}, ${this.params.saturation}%, ${lightness}%)`;
+                        
+                        this.ctx.fillStyle = color;
+                        this.ctx.fillRect(x, startY + i, colorWidth, 1);
+                    }
+                    
+                    // 색상 정보 표시
+                    this.ctx.fillStyle = '#fff';
+                    this.ctx.font = '14px Arial';
+                    this.ctx.textAlign = 'center';
+                    this.ctx.fillText(`${Math.round(hue)}°`, x + colorWidth / 2, startY + paletteHeight + 20);
+                });
+            }
+            
+            drawGradient() {
+                const harmonyColors = this.getHarmonyColors();
+                const gradient = this.ctx.createLinearGradient(0, 0, this.width, this.height);
+                
+                harmonyColors.forEach((hue, index) => {
+                    const position = index / (harmonyColors.length - 1);
+                    const color = `hsl(${hue}, ${this.params.saturation}%, ${this.params.lightness}%)`;
+                    gradient.addColorStop(position, color);
+                });
+                
+                this.ctx.fillStyle = gradient;
+                this.ctx.fillRect(0, 0, this.width, this.height);
+                
+                // 파동 효과
+                const waveAmplitude = 30;
+                const waveFrequency = 0.01;
+                
+                for (let x = 0; x < this.width; x += 2) {
+                    const waveY = this.centerY + Math.sin(x * waveFrequency + this.time * 2) * waveAmplitude;
+                    const hue = (this.params.hue + x * 0.5) % 360;
+                    
+                    this.ctx.fillStyle = `hsl(${hue}, ${this.params.saturation}%, ${this.params.lightness}%)`;
+                    this.ctx.fillRect(x, waveY - 5, 2, 10);
+                }
+            }
+            
+            drawInteractive() {
+                // 배경 그라디언트
+                const bgGradient = this.ctx.createRadialGradient(
+                    this.mouseX, this.mouseY, 0,
+                    this.mouseX, this.mouseY, Math.min(this.width, this.height) * 0.5
+                );
+                
+                const baseColor = `hsl(${this.params.hue}, ${this.params.saturation}%, ${this.params.lightness}%)`;
+                const complementaryColor = `hsl(${(this.params.hue + 180) % 360}, ${this.params.saturation}%, ${this.params.lightness}%)`;
+                
+                bgGradient.addColorStop(0, baseColor);
+                bgGradient.addColorStop(1, complementaryColor);
+                
+                this.ctx.fillStyle = bgGradient;
+                this.ctx.fillRect(0, 0, this.width, this.height);
+                
+                // 인터랙티브 파티클
+                this.particles.forEach(particle => {
+                    const dx = this.mouseX - particle.x;
+                    const dy = this.mouseY - particle.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distance < 100) {
+                        particle.vx += dx * 0.001;
+                        particle.vy += dy * 0.001;
+                    }
+                    
+                    particle.x += particle.vx;
+                    particle.y += particle.vy;
+                    particle.vx *= 0.99;
+                    particle.vy *= 0.99;
+                    
+                    // 경계 처리
+                    if (particle.x < 0 || particle.x > this.width) particle.vx *= -1;
+                    if (particle.y < 0 || particle.y > this.height) particle.vy *= -1;
+                    
+                    particle.x = Math.max(0, Math.min(this.width, particle.x));
+                    particle.y = Math.max(0, Math.min(this.height, particle.y));
+                    
+                    // 파티클 그리기
+                    const hue = (particle.hue + this.time * 50) % 360;
+                    this.ctx.fillStyle = `hsl(${hue}, 80%, 60%)`;
+                    this.ctx.beginPath();
+                    this.ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+                    this.ctx.fill();
+                });
+            }
+            
+            draw() {
+                if (!this.width || !this.height) return;
+                
+                this.ctx.clearRect(0, 0, this.width, this.height);
+                
+                switch (this.params.mode) {
+                    case 'wheel':
+                        this.drawColorWheel();
+                        break;
+                    case 'palette':
+                        this.drawColorPalette();
+                        break;
+                    case 'gradient':
+                        this.drawGradient();
+                        break;
+                    case 'interactive':
+                        this.drawInteractive();
+                        break;
+                }
+            }
+            
+            animate() {
+                this.draw();
+                this.time += this.params.animationSpeed;
+                this.animationId = requestAnimationFrame(() => this.animate());
+            }
+        }
+        
+        // 초기화
+        let colorTheoryArt;
+        window.addEventListener('load', () => {
+            colorTheoryArt = new ColorTheoryArt();
+            colorTheoryArt.updateColorDisplay();
+        });
+    </script>
+</body>
+</html>
