@@ -457,6 +457,7 @@
                 this.animationId = null;
                 this.sources = [];
                 this.obstacles = [];
+                this.lastFrameTime = 0; // 프레임 제한용
                 
                 this.initCanvas();
                 this.setupControls();
@@ -638,6 +639,14 @@
                 return amplitude * dampingFactor * Math.sin(waveNumber * distance - angularFreq * time);
             }
             
+            // 최적화된 파동 계산 (미리 계산된 값들 사용)
+            calculateWaveValueOptimized(distance, amplitude, angularFreq, waveNumber) {
+                // 거리에 따른 감쇠
+                const dampingFactor = Math.pow(this.params.damping, distance / 10);
+                
+                return amplitude * dampingFactor * Math.sin(waveNumber * distance - angularFreq * this.time);
+            }
+            
             calculateShadowTransition(x, y, slitX, slitTopY, slitBottomY) {
                 // 슬릿 영역 내부면 완전히 밝음
                 if (y >= slitTopY && y <= slitBottomY) {
@@ -673,37 +682,42 @@
                 
                 this.ctx.clearRect(0, 0, this.width, this.height);
                 
-                // 파동 계산 및 그리기
+                // 파동 계산 및 그리기 (성능 최적화)
                 const imageData = this.ctx.createImageData(this.width, this.height);
                 const data = imageData.data;
                 
-                for (let x = 0; x < this.width; x += 2) {
-                    for (let y = 0; y < this.height; y += 2) {
+                // 캐싱된 값들
+                const waveNumber = 2 * Math.PI / this.params.wavelength;
+                const angularFreq1 = 2 * Math.PI * this.params.source1.frequency;
+                const angularFreq2 = 2 * Math.PI * this.params.source2.frequency;
+                
+                for (let x = 0; x < this.width; x += 3) { // 4에서 3으로 조정 (해상도 개선)
+                    for (let y = 0; y < this.height; y += 3) { // 4에서 3으로 조정 (해상도 개선)
                         let totalValue = 0;
                         
-                        // 소스 1
+                        // 소스 1 (조건부 계산)
                         if (this.params.source1.active) {
-                            totalValue += this.calculateWaveValue(
-                                x, y,
-                                this.params.source1.x, this.params.source1.y,
-                                this.params.source1.frequency,
-                                this.params.source1.amplitude,
-                                this.time
-                            );
+                            const dist1 = Math.sqrt((x - this.params.source1.x)**2 + (y - this.params.source1.y)**2);
+                            // 너무 멀면 계산 생략 (임계값 완화)
+                            if (dist1 < this.width * 2.5) {
+                                totalValue += this.calculateWaveValueOptimized(
+                                    dist1, this.params.source1.amplitude, angularFreq1, waveNumber
+                                );
+                            }
                         }
                         
-                        // 소스 2
+                        // 소스 2 (조건부 계산)
                         if (this.params.source2.active) {
-                            totalValue += this.calculateWaveValue(
-                                x, y,
-                                this.params.source2.x, this.params.source2.y,
-                                this.params.source2.frequency,
-                                this.params.source2.amplitude,
-                                this.time
-                            );
+                            const dist2 = Math.sqrt((x - this.params.source2.x)**2 + (y - this.params.source2.y)**2);
+                            // 너무 멀면 계산 생략 (임계값 완화)
+                            if (dist2 < this.width * 2.5) {
+                                totalValue += this.calculateWaveValueOptimized(
+                                    dist2, this.params.source2.amplitude, angularFreq2, waveNumber
+                                );
+                            }
                         }
                         
-                        // 회절 처리 (diffraction 모드)
+                        // 회절 처리 (diffraction 모드) - 최적화된 버전
                         if (this.params.mode === 'diffraction') {
                             // 슬릿 위치와 크기
                             const slitX = this.width * 0.5;
@@ -717,17 +731,14 @@
                                 const shadowTransition = this.calculateShadowTransition(x, y, slitX, slitTopY, slitBottomY);
                                 
                                 // 장애물에 의한 직접파 감쇠
-                                const directWave = this.calculateWaveValue(
-                                    x, y,
-                                    this.params.source1.x, this.params.source1.y,
-                                    this.params.source1.frequency,
-                                    this.params.source1.amplitude,
-                                    this.time
+                                const dist1 = Math.sqrt((x - this.params.source1.x)**2 + (y - this.params.source1.y)**2);
+                                const directWave = this.calculateWaveValueOptimized(
+                                    dist1, this.params.source1.amplitude, angularFreq1, waveNumber
                                 );
                                 totalValue -= directWave * (1 - shadowTransition); // 부드러운 차단
                                 
-                                // 다중 회절 소스 생성 (슬릿을 여러 점으로 분할)
-                                const numSources = 7; // 홀수로 설정하여 중심 포함
+                                // 다중 회절 소스 생성 (7개로 복원)
+                                const numSources = 7; // 5개에서 7개로 복원
                                 for (let i = 0; i < numSources; i++) {
                                     const sourceY = slitTopY + (slitHeight * i) / (numSources - 1);
                                     
@@ -739,12 +750,9 @@
                                     // 회절파 진폭 (원본의 일정 비율)
                                     const diffractionAmplitude = this.params.source1.amplitude * 0.4 * weight / numSources;
                                     
-                                    const diffractionWave = this.calculateWaveValue(
-                                        x, y,
-                                        slitX, sourceY, // 슬릿 내 각 점에서 나오는 파동
-                                        this.params.source1.frequency,
-                                        diffractionAmplitude,
-                                        this.time
+                                    const diffDist = Math.sqrt((x - slitX)**2 + (y - sourceY)**2);
+                                    const diffractionWave = this.calculateWaveValueOptimized(
+                                        diffDist, diffractionAmplitude, angularFreq1, waveNumber
                                     );
                                     totalValue += diffractionWave;
                                 }
@@ -766,20 +774,20 @@
                             }
                         }
                         
-                        // 색상 계산
-                        const intensity = Math.max(0, Math.min(255, 128 + totalValue));
+                        // 색상 계산 (대비 개선)
+                        const intensity = Math.max(0, Math.min(255, 128 + totalValue * 1.5)); // 대비 증가
                         const pixelIndex = (y * this.width + x) * 4;
                         
                         if (pixelIndex < data.length) {
-                            // 파동 강도에 따른 색상
+                            // 파동 강도에 따른 색상 (더 선명하게)
                             if (totalValue > 0) {
-                                data[pixelIndex] = intensity;     // R
-                                data[pixelIndex + 1] = intensity * 0.3; // G
-                                data[pixelIndex + 2] = intensity * 0.3; // B
+                                data[pixelIndex] = Math.min(255, intensity * 1.2);     // R (빨강 강화)
+                                data[pixelIndex + 1] = intensity * 0.2; // G
+                                data[pixelIndex + 2] = intensity * 0.2; // B
                             } else {
-                                data[pixelIndex] = intensity * 0.3;     // R
-                                data[pixelIndex + 1] = intensity * 0.3; // G
-                                data[pixelIndex + 2] = intensity;       // B
+                                data[pixelIndex] = intensity * 0.2;     // R
+                                data[pixelIndex + 1] = intensity * 0.2; // G
+                                data[pixelIndex + 2] = Math.min(255, intensity * 1.2); // B (파랑 강화)
                             }
                             data[pixelIndex + 3] = 255; // A
                         }
@@ -822,12 +830,12 @@
             drawModeSpecificElements() {
                 switch(this.params.mode) {
                     case 'diffraction':
-                        // 슬릿이 있는 장애물 그리기
+                        // 좁은 틈이 있는 장애물 그리기
                         this.ctx.fillStyle = '#444';
                         this.ctx.fillRect(this.width * 0.5 - 8, 0, 16, this.height * 0.4);
                         this.ctx.fillRect(this.width * 0.5 - 8, this.height * 0.6, 16, this.height * 0.4);
                         
-                        // 슬릿 경계 강조
+                        // 틈 경계 강조
                         this.ctx.strokeStyle = '#888';
                         this.ctx.lineWidth = 2;
                         this.ctx.beginPath();
@@ -836,12 +844,6 @@
                         this.ctx.moveTo(this.width * 0.5 - 8, this.height * 0.6);
                         this.ctx.lineTo(this.width * 0.5 + 8, this.height * 0.6);
                         this.ctx.stroke();
-                        
-                        // 슬릿 레이블
-                        this.ctx.fillStyle = '#aaa';
-                        this.ctx.font = '12px sans-serif';
-                        this.ctx.textAlign = 'center';
-                        this.ctx.fillText('슬릿', this.width * 0.5, this.height * 0.5);
                         break;
                     case 'reflection':
                         // 반사 벽 그리기
@@ -868,8 +870,16 @@
             }
             
             animate() {
-                this.drawWave();
-                this.time += 0.1 * this.params.speed;
+                // 30fps로 제한 (60fps에서 30fps로)
+                const currentTime = performance.now();
+                const deltaTime = currentTime - this.lastFrameTime;
+                
+                if (deltaTime >= 33.33) { // 30fps = 33.33ms 간격
+                    this.drawWave();
+                    this.time += 0.1 * this.params.speed;
+                    this.lastFrameTime = currentTime;
+                }
+                
                 this.animationId = requestAnimationFrame(() => this.animate());
             }
         }
