@@ -641,6 +641,12 @@
                     } else if (this.params.preset === 'custom') {
                         // 사용자 정의 파형 생성
                         value = this.generateCustomWave(t % duration);
+                        
+                        // 사용자 정의 파형에도 노이즈 추가 가능
+                        if (this.params.noise > 0) {
+                            const noiseAmp = this.params.noise / 100;
+                            value += (Math.random() - 0.5) * 2 * noiseAmp;
+                        }
                     } else {
                         // 활성화된 하모닉들을 합성
                         this.harmonics.forEach(harmonic => {
@@ -866,7 +872,7 @@
                     ctx.textAlign = 'center';
                     ctx.fillText('클릭하여 파형을 그려보세요!', width / 2, height / 2);
                     ctx.font = '12px sans-serif';
-                    ctx.fillText('우클릭으로 마지막 포인트 제거', width / 2, height / 2 + 25);
+                    ctx.fillText('우클릭으로 맨 우측 포인트 제거', width / 2, height / 2 + 25);
                     return;
                 }
                 
