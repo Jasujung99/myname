@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>색채 동역학 - 색공간 탐험</title>
+    <title>색채 역학 - 색공간 탐험</title>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -11,7 +11,7 @@
             --primary-color: #1a1a1a;
             --secondary-color: #2a2a2a;
             --text-color: #e0e0e0;
-            --accent-color: #4ecdc4;
+            --accent-color: #ff6b6b;
             --button-bg: #333;
             --button-hover: #555;
             --grid-color: #333;
@@ -285,31 +285,6 @@
             margin-bottom: 8px;
         }
         
-        .export-button {
-            background: var(--accent-color);
-            color: #000;
-            border: none;
-            padding: 12px 20px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 500;
-            transition: all 0.2s ease;
-            width: 100%;
-            margin-top: 10px;
-        }
-        
-        .export-button:hover {
-            background: #3db8b4;
-            transform: translateY(-1px);
-        }
-        
-        .export-button:disabled {
-            background: #666;
-            color: #999;
-            cursor: not-allowed;
-            transform: none;
-        }
-        
         @media (max-width: 768px) {
             .container {
                 flex-direction: column;
@@ -331,7 +306,7 @@
     <div class="container">
         <div class="canvas-area">
             <div class="canvas-section">
-                <h3>🎨 색채 동역학 탐험</h3>
+                <h3>🎨 색채 역학 탐험</h3>
                 <canvas id="colorCanvas"></canvas>
             </div>
         </div>
@@ -342,7 +317,7 @@
                     ← 돌아가기
                 </a>
                 <div class="control-header">
-                    <h1>색채 동역학</h1>
+                    <h1>색채 역학</h1>
                     <p>색공간을 여행하며 발견하는 색의 무한한 가능성</p>
                 </div>
             </div>
@@ -354,32 +329,28 @@
                 <button class="mode-button" data-mode="interactive">인터랙티브</button>
             </div>
             
-            <div class="mode-info" style="background: rgba(0,0,0,0.3); padding: 10px; border-radius: 6px; margin-bottom: 15px; font-size: 0.8rem; color: #ccc;">
-                <span id="modeDescription">색상환: 원형 HSL 색공간에서 조화색을 탐험해보세요</span>
-            </div>
-            
             <div class="control-group">
                 <div class="control-label">
                     <span>색상 (H)</span>
-                    <span class="control-value" id="hueValue">200°</span>
+                    <span class="control-value" id="hueValue">180°</span>
                 </div>
-                <input type="range" id="hue" min="0" max="360" step="1" value="200">
+                <input type="range" id="hue" min="0" max="360" step="1" value="180">
             </div>
             
             <div class="control-group">
                 <div class="control-label">
                     <span>채도 (S)</span>
-                    <span class="control-value" id="saturationValue">70%</span>
+                    <span class="control-value" id="saturationValue">80%</span>
                 </div>
-                <input type="range" id="saturation" min="0" max="100" step="1" value="70">
+                <input type="range" id="saturation" min="0" max="100" step="1" value="80">
             </div>
             
             <div class="control-group">
                 <div class="control-label">
                     <span>명도 (L)</span>
-                    <span class="control-value" id="lightnessValue">60%</span>
+                    <span class="control-value" id="lightnessValue">50%</span>
                 </div>
-                <input type="range" id="lightness" min="0" max="100" step="1" value="60">
+                <input type="range" id="lightness" min="0" max="100" step="1" value="50">
             </div>
             
             <div class="harmony-types">
@@ -394,16 +365,13 @@
             
             <div class="color-display">
                 <h4>🎨 현재 색상</h4>
-                <div class="color-swatch" id="currentColor">HSL(200°, 70%, 60%)</div>
+                <div class="color-swatch" id="currentColor">HSL(180°, 80%, 50%)</div>
                 <div class="color-info" id="colorInfo">
-                    <strong>HSL:</strong> 200°, 70%, 60%<br>
-                    <strong>RGB:</strong> 77, 166, 204<br>
-                    <strong>HEX:</strong> #4DA6CC
+                    <strong>HSL:</strong> 180°, 80%, 50%<br>
+                    <strong>RGB:</strong> 26, 179, 179<br>
+                    <strong>HEX:</strong> #1AB3B3
                 </div>
-                <button id="exportBtn" class="export-button" style="display: none;">PNG로 저장</button>
             </div>
-            
-
             
             <div class="info-section">
                 <h4>📚 색채 이론</h4>
@@ -425,9 +393,9 @@
                 this.params = {
                     mode: 'wheel',
                     harmony: 'complementary',
-                    hue: 200,
-                    saturation: 70,
-                    lightness: 60,
+                    hue: 180,
+                    saturation: 80,
+                    lightness: 50,
                     animationSpeed: 0.02,
                     particleCount: 50
                 };
@@ -435,7 +403,6 @@
                 this.time = 0;
                 this.animationId = null;
                 this.particles = [];
-                this.permanentCircles = []; // 클릭으로 찍힌 보색 원들
                 this.mouseX = 0;
                 this.mouseY = 0;
                 
@@ -443,9 +410,7 @@
                 this.setupControls();
                 this.setupModes();
                 this.setupHarmony();
-                this.setupExport(); // PNG 저장 기능 추가
                 this.initParticles();
-                this.updateControlsState(); // 초기 컨트롤 상태 설정
                 this.animate();
             }
             
@@ -499,9 +464,6 @@
                     document.getElementById('hue').value = hue;
                     document.getElementById('hueValue').textContent = Math.round(hue) + '°';
                     this.updateColorDisplay();
-                } else if (this.params.mode === 'interactive') {
-                    // 인터랙티브 모드에서 보색 원 도장 찍기
-                    this.addPermanentCircle(x, y);
                 }
             }
             
@@ -535,51 +497,8 @@
                         buttons.forEach(b => b.classList.remove('active'));
                         button.classList.add('active');
                         this.params.mode = button.dataset.mode;
-                        this.updateControlsState(); // 컨트롤 상태 업데이트
                     });
                 });
-            }
-            
-            // 모드에 따른 컨트롤 활성화/비활성화
-            updateControlsState() {
-                const lightnessGroup = document.querySelector('#lightness').parentElement;
-                const harmonyButtons = document.querySelectorAll('.harmony-button');
-                
-                // 팔레트 모드에서 명도 슬라이더 비활성화
-                if (this.params.mode === 'palette') {
-                    lightnessGroup.style.opacity = '0.5';
-                    lightnessGroup.style.pointerEvents = 'none';
-                    lightnessGroup.querySelector('.control-label span').textContent = '명도 (비활성화)';
-                } else {
-                    lightnessGroup.style.opacity = '1';
-                    lightnessGroup.style.pointerEvents = 'auto';
-                    lightnessGroup.querySelector('.control-label span').textContent = '명도 (L)';
-                }
-                
-                // 인터랙티브 모드에서 조화 타입 제한 (보색만)
-                if (this.params.mode === 'interactive') {
-                    harmonyButtons.forEach(button => {
-                        if (button.dataset.harmony === 'complementary') {
-                            button.style.opacity = '1';
-                            button.style.pointerEvents = 'auto';
-                            button.classList.add('active');
-                            this.params.harmony = 'complementary';
-                        } else {
-                            button.style.opacity = '0.5';
-                            button.style.pointerEvents = 'none';
-                            button.classList.remove('active');
-                        }
-                    });
-                } else {
-                    // 다른 모드에서는 모든 조화 타입 활성화
-                    harmonyButtons.forEach(button => {
-                        button.style.opacity = '1';
-                        button.style.pointerEvents = 'auto';
-                    });
-                }
-                
-                // 저장 버튼 상태 업데이트
-                this.updateExportButton();
             }
             
             setupHarmony() {
@@ -592,75 +511,6 @@
                         this.params.harmony = button.dataset.harmony;
                     });
                 });
-            }
-            
-            setupExport() {
-                const exportBtn = document.getElementById('exportBtn');
-                exportBtn.addEventListener('click', () => {
-                    this.exportPNG();
-                });
-                
-                // 특정 모드에서만 저장 버튼 활성화
-                this.updateExportButton();
-            }
-            
-            updateExportButton() {
-                const exportBtn = document.getElementById('exportBtn');
-                const canExport = this.params.mode === 'gradient' || this.params.mode === 'interactive';
-                
-                if (canExport) {
-                    exportBtn.style.display = 'block';
-                    exportBtn.disabled = false;
-                    exportBtn.textContent = 'PNG로 저장';
-                } else {
-                    exportBtn.style.display = 'none';
-                }
-            }
-            
-            exportPNG() {
-                // 현재 캔버스 상태를 이미지로 저장
-                const link = document.createElement('a');
-                const filename = `색채동역학_${this.params.mode}_${Date.now()}.png`;
-                
-                link.download = filename;
-                link.href = this.canvas.toDataURL('image/png');
-                link.click();
-            }
-            
-            // 보색 그라디언트 영구 저장 (진짜 도장 찍기)
-            addPermanentCircle(x, y) {
-                const baseColor = `hsl(${this.params.hue}, ${this.params.saturation}%, ${this.params.lightness}%)`;
-                const complementaryColor = `hsl(${(this.params.hue + 180) % 360}, ${this.params.saturation}%, ${this.params.lightness}%)`;
-                
-                // 중첩 횟수 계산 (전체 캔버스 영역에서 기존 클릭들)
-                const canvasDiagonal = Math.sqrt(this.width ** 2 + this.height ** 2);
-                const overlapCount = this.calculateOverlap(x, y, canvasDiagonal);
-                
-                this.permanentCircles.push({
-                    x: x,
-                    y: y,
-                    baseColor: baseColor,
-                    complementaryColor: complementaryColor,
-                    radius: Math.min(this.width, this.height) * 0.4,
-                    overlapCount: overlapCount // 중첩 횟수 저장
-                });
-                
-                // 최대 20개 그라디언트 유지
-                if (this.permanentCircles.length > 20) {
-                    this.permanentCircles.shift();
-                }
-            }
-            
-            // 중첩 횟수 계산 함수
-            calculateOverlap(x, y, radius) {
-                let overlapCount = 0;
-                this.permanentCircles.forEach(circle => {
-                    const distance = Math.sqrt((x - circle.x) ** 2 + (y - circle.y) ** 2);
-                    if (distance < radius) {
-                        overlapCount++;
-                    }
-                });
-                return overlapCount;
             }
             
             initParticles() {
@@ -699,8 +549,7 @@
                         colors.push(baseHue, (baseHue + 150) % 360, (baseHue - 150 + 360) % 360);
                         break;
                     case 'monochromatic':
-                        // 단색조화: 같은 색상에서 채도 변화를 보여줌
-                        colors.push(baseHue, baseHue, baseHue, baseHue, baseHue);
+                        colors.push(baseHue);
                         break;
                 }
                 
@@ -792,31 +641,16 @@
                 const harmonyColors = this.getHarmonyColors();
                 harmonyColors.forEach((hue, index) => {
                     const angle = hue * Math.PI / 180;
+                    const x = this.centerX + Math.cos(angle) * radius * 0.8;
+                    const y = this.centerY + Math.sin(angle) * radius * 0.8;
                     
-                    let saturation, lightness;
-                    
-                    // 단색조화일 때는 채도/명도 변화로 표현
-                    if (this.params.harmony === 'monochromatic') {
-                        saturation = Math.max(20, this.params.saturation - index * 15); // 채도 변화
-                        lightness = this.params.lightness + (index - 2) * 10; // 명도 변화
-                        lightness = Math.max(20, Math.min(80, lightness));
-                    } else {
-                        saturation = this.params.saturation;
-                        lightness = this.params.lightness;
-                    }
-                    
-                    // 채도에 따라 반지름 조정 (0% = 중심, 100% = 가장자리)
-                    const adjustedRadius = radius * (saturation / 100);
-                    const x = this.centerX + Math.cos(angle) * adjustedRadius;
-                    const y = this.centerY + Math.sin(angle) * adjustedRadius;
-                    
-                    this.ctx.fillStyle = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+                    this.ctx.fillStyle = `hsl(${hue}, ${this.params.saturation}%, ${this.params.lightness}%)`;
                     this.ctx.beginPath();
-                    this.ctx.arc(x, y, 12, 0, Math.PI * 2);
+                    this.ctx.arc(x, y, 15, 0, Math.PI * 2);
                     this.ctx.fill();
                     
                     this.ctx.strokeStyle = '#fff';
-                    this.ctx.lineWidth = 2;
+                    this.ctx.lineWidth = 3;
                     this.ctx.stroke();
                 });
             }
@@ -854,58 +688,73 @@
                 const gradient = this.ctx.createLinearGradient(0, 0, this.width, this.height);
                 
                 harmonyColors.forEach((hue, index) => {
-                    const position = index / Math.max(1, harmonyColors.length - 1);
+                    const position = index / (harmonyColors.length - 1);
                     const color = `hsl(${hue}, ${this.params.saturation}%, ${this.params.lightness}%)`;
                     gradient.addColorStop(position, color);
                 });
                 
                 this.ctx.fillStyle = gradient;
                 this.ctx.fillRect(0, 0, this.width, this.height);
+                
+                // 파동 효과
+                const waveAmplitude = 30;
+                const waveFrequency = 0.01;
+                
+                for (let x = 0; x < this.width; x += 2) {
+                    const waveY = this.centerY + Math.sin(x * waveFrequency + this.time * 2) * waveAmplitude;
+                    const hue = (this.params.hue + x * 0.5) % 360;
+                    
+                    this.ctx.fillStyle = `hsl(${hue}, ${this.params.saturation}%, ${this.params.lightness}%)`;
+                    this.ctx.fillRect(x, waveY - 5, 2, 10);
+                }
             }
             
             drawInteractive() {
-                // 기본 배경
-                this.ctx.fillStyle = '#1a1a1a';
-                this.ctx.fillRect(0, 0, this.width, this.height);
-                
-                // 영구 저장된 그라디언트들 그리기 (중첩 횟수 기반 강도)
-                this.permanentCircles.forEach(circle => {
-                    const gradient = this.ctx.createRadialGradient(
-                        circle.x, circle.y, 0,
-                        circle.x, circle.y, circle.radius
-                    );
-                    
-                    gradient.addColorStop(0, circle.baseColor);
-                    gradient.addColorStop(1, circle.complementaryColor);
-                    
-                    // 중첩 횟수에 따라 투명도 증가 (0.2 기본 + 중첩당 0.1씩 증가)
-                    const baseAlpha = 0.2;
-                    const overlapBonus = circle.overlapCount * 0.1;
-                    const finalAlpha = Math.min(baseAlpha + overlapBonus, 1.0);
-                    
-                    this.ctx.globalAlpha = finalAlpha;
-                    this.ctx.fillStyle = gradient;
-                    this.ctx.fillRect(0, 0, this.width, this.height);
-                    this.ctx.globalAlpha = 1; // 원래대로 복원
-                });
-                
-                // 현재 마우스 위치의 실시간 그라디언트 (오버레이)
-                const currentGradient = this.ctx.createRadialGradient(
+                // 배경 그라디언트
+                const bgGradient = this.ctx.createRadialGradient(
                     this.mouseX, this.mouseY, 0,
-                    this.mouseX, this.mouseY, Math.min(this.width, this.height) * 0.4
+                    this.mouseX, this.mouseY, Math.min(this.width, this.height) * 0.5
                 );
                 
                 const baseColor = `hsl(${this.params.hue}, ${this.params.saturation}%, ${this.params.lightness}%)`;
                 const complementaryColor = `hsl(${(this.params.hue + 180) % 360}, ${this.params.saturation}%, ${this.params.lightness}%)`;
                 
-                currentGradient.addColorStop(0, baseColor);
-                currentGradient.addColorStop(1, complementaryColor);
+                bgGradient.addColorStop(0, baseColor);
+                bgGradient.addColorStop(1, complementaryColor);
                 
-                // 반투명으로 오버레이
-                this.ctx.globalAlpha = 0.2;
-                this.ctx.fillStyle = currentGradient;
+                this.ctx.fillStyle = bgGradient;
                 this.ctx.fillRect(0, 0, this.width, this.height);
-                this.ctx.globalAlpha = 1;
+                
+                // 인터랙티브 파티클
+                this.particles.forEach(particle => {
+                    const dx = this.mouseX - particle.x;
+                    const dy = this.mouseY - particle.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distance < 100) {
+                        particle.vx += dx * 0.001;
+                        particle.vy += dy * 0.001;
+                    }
+                    
+                    particle.x += particle.vx;
+                    particle.y += particle.vy;
+                    particle.vx *= 0.99;
+                    particle.vy *= 0.99;
+                    
+                    // 경계 처리
+                    if (particle.x < 0 || particle.x > this.width) particle.vx *= -1;
+                    if (particle.y < 0 || particle.y > this.height) particle.vy *= -1;
+                    
+                    particle.x = Math.max(0, Math.min(this.width, particle.x));
+                    particle.y = Math.max(0, Math.min(this.height, particle.y));
+                    
+                    // 파티클 그리기
+                    const hue = (particle.hue + this.time * 50) % 360;
+                    this.ctx.fillStyle = `hsl(${hue}, 80%, 60%)`;
+                    this.ctx.beginPath();
+                    this.ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+                    this.ctx.fill();
+                });
             }
             
             draw() {
