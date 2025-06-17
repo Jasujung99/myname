@@ -345,6 +345,7 @@
                 <p><strong>주파수 영역:</strong> 신호를 구성하는 각 주파수 성분의 강도를 나타냅니다.</p>
                 <p><strong>푸리에 변환:</strong> 복잡한 신호를 단순한 사인파들의 합으로 분해하는 수학적 도구입니다.</p>
                 <p><strong>하모닉:</strong> 기본 주파수의 정수배 주파수들로, 음색을 결정합니다.</p>
+                <p><strong>노이즈 레벨:</strong> 원본 신호에 추가되는 랜덤 잡음의 강도입니다. 실제 신호는 항상 노이즈를 포함하며, 주파수 영역에서 전체적인 바닥 레벨을 높입니다.</p>
             </div>
         </div>
     </div>
@@ -380,11 +381,13 @@
                 
                 this.animationId = null;
                 this.time = 0;
+                this.timeOffset = 0; // 파형 애니메이션을 위한 시간 오프셋
                 
                 this.initCanvas();
                 this.setupControls();
                 this.setupHarmonics();
                 this.setupPresets();
+                this.updateNoiseSliderState('sine'); // 초기 상태 설정
                 this.animate();
             }
             
@@ -475,6 +478,7 @@
                         const preset = button.dataset.preset;
                         this.params.preset = preset;
                         this.applyPreset(preset);
+                        this.updateNoiseSliderState(preset); // 노이즈 슬라이더 상태 업데이트
                     });
                 });
             }
@@ -526,6 +530,23 @@
                 });
             }
             
+            updateNoiseSliderState(preset) {
+                const noiseSlider = document.getElementById('noise');
+                const noiseGroup = noiseSlider.closest('.control-group');
+                
+                if (preset === 'noise') {
+                    // 화이트 노이즈일 때 슬라이더 비활성화
+                    noiseSlider.disabled = true;
+                    noiseGroup.style.opacity = '0.5';
+                    noiseGroup.style.pointerEvents = 'none';
+                } else {
+                    // 다른 파형일 때 슬라이더 활성화
+                    noiseSlider.disabled = false;
+                    noiseGroup.style.opacity = '1';
+                    noiseGroup.style.pointerEvents = 'auto';
+                }
+            }
+            
             generateSignal() {
                 const duration = this.params.timeWindow;
                 const sampleRate = this.params.sampleRate;
@@ -534,7 +555,7 @@
                 const timeStep = duration / samples;
                 
                 for (let i = 0; i < samples; i++) {
-                    const t = i * timeStep;
+                    const t = i * timeStep + this.timeOffset; // 시간 오프셋 추가로 파형 애니메이션
                     let value = 0;
                     
                     if (this.params.preset === 'noise') {
@@ -549,12 +570,12 @@
                                 value += amplitude * Math.sin(2 * Math.PI * freq * t + phase);
                             }
                         });
-                    }
-                    
-                    // 노이즈 추가
-                    if (this.params.noise > 0) {
-                        const noiseAmp = this.params.noise / 100;
-                        value += (Math.random() - 0.5) * 2 * noiseAmp;
+                        
+                        // 노이즈 추가 (화이트 노이즈가 아닐 때만)
+                        if (this.params.noise > 0) {
+                            const noiseAmp = this.params.noise / 100;
+                            value += (Math.random() - 0.5) * 2 * noiseAmp;
+                        }
                     }
                     
                     signal[i] = value;
@@ -727,6 +748,7 @@
                 this.drawFrequencyData(fftResult);
                 
                 this.time += 0.016; // ~60fps
+                this.timeOffset += 0.05; // 파형이 흘러가는 속도
                 this.animationId = requestAnimationFrame(() => this.animate());
             }
         }
