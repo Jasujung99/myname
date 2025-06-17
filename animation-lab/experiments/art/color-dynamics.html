@@ -549,7 +549,8 @@
                         colors.push(baseHue, (baseHue + 150) % 360, (baseHue - 150 + 360) % 360);
                         break;
                     case 'monochromatic':
-                        colors.push(baseHue);
+                        // 단색조화: 같은 색상에서 채도 변화를 보여줌
+                        colors.push(baseHue, baseHue, baseHue, baseHue, baseHue);
                         break;
                 }
                 
@@ -641,16 +642,31 @@
                 const harmonyColors = this.getHarmonyColors();
                 harmonyColors.forEach((hue, index) => {
                     const angle = hue * Math.PI / 180;
-                    const x = this.centerX + Math.cos(angle) * radius * 0.8;
-                    const y = this.centerY + Math.sin(angle) * radius * 0.8;
                     
-                    this.ctx.fillStyle = `hsl(${hue}, ${this.params.saturation}%, ${this.params.lightness}%)`;
+                    let saturation, lightness;
+                    
+                    // 단색조화일 때는 채도/명도 변화로 표현
+                    if (this.params.harmony === 'monochromatic') {
+                        saturation = Math.max(20, this.params.saturation - index * 15); // 채도 변화
+                        lightness = this.params.lightness + (index - 2) * 10; // 명도 변화
+                        lightness = Math.max(20, Math.min(80, lightness));
+                    } else {
+                        saturation = this.params.saturation;
+                        lightness = this.params.lightness;
+                    }
+                    
+                    // 채도에 따라 반지름 조정 (0% = 중심, 100% = 가장자리)
+                    const adjustedRadius = radius * (saturation / 100);
+                    const x = this.centerX + Math.cos(angle) * adjustedRadius;
+                    const y = this.centerY + Math.sin(angle) * adjustedRadius;
+                    
+                    this.ctx.fillStyle = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
                     this.ctx.beginPath();
-                    this.ctx.arc(x, y, 15, 0, Math.PI * 2);
+                    this.ctx.arc(x, y, 12, 0, Math.PI * 2);
                     this.ctx.fill();
                     
                     this.ctx.strokeStyle = '#fff';
-                    this.ctx.lineWidth = 3;
+                    this.ctx.lineWidth = 2;
                     this.ctx.stroke();
                 });
             }
