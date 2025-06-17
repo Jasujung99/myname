@@ -536,15 +536,10 @@
                 const waveSpeed = this.params.wavelength * this.params.source1.frequency;
                 const resonantFreqs = [];
                 
-                // 정상파 공명 조건: L = n * λ/2 => f = n * v / (2L)
-                // 여기서 v = λ * f이므로, v를 일정하게 가정하고 계산
-                const baseWaveSpeed = this.params.wavelength * 1.0; // 기준 속도
-                
-                for (let n = 1; n <= 8; n++) {
-                    const frequency = (n * baseWaveSpeed) / (2 * length);
-                    if (frequency <= 3.0) { // 슬라이더 최대값 내에서만
-                        resonantFreqs.push(frequency);
-                    }
+                // 정상파 공명 조건: L = n * λ/2
+                for (let n = 1; n <= 5; n++) {
+                    const frequency = (n * waveSpeed) / (2 * length);
+                    resonantFreqs.push(frequency);
                 }
                 
                 return resonantFreqs;
@@ -556,7 +551,7 @@
                 
                 const resonantFreqs = this.calculateResonantFrequencies();
                 const currentFreq = this.params.source1.frequency;
-                const tolerance = 0.15; // 허용 오차 증가 (더 민감하게)
+                const tolerance = 0.1; // 허용 오차
                 
                 return resonantFreqs.some(freq => Math.abs(currentFreq - freq) < tolerance);
             }
@@ -638,29 +633,11 @@
                 
                 switch(this.params.mode) {
                     case 'interference':
-                        // 간섭: 두 파동원 필요
-                        source2Item.style.display = 'block';
-                        this.params.source1.active = true;
-                        this.params.source2.active = true;
-                        break;
                     case 'standing':
-                        // 정상파: 두 파동원 필요, 공명을 위한 최적 설정
+                        // 간섭, 정상파: 두 파동원 필요
                         source2Item.style.display = 'block';
                         this.params.source1.active = true;
                         this.params.source2.active = true;
-                        
-                        // 공명을 위한 기본값 설정
-                        this.params.source1.frequency = 1.2;
-                        this.params.source2.frequency = 1.2; // 같은 주파수로 설정
-                        this.params.wavelength = 80;
-                        
-                        // UI 업데이트
-                        document.getElementById('freq1').value = 1.2;
-                        document.getElementById('freq2').value = 1.2;
-                        document.getElementById('wavelength').value = 80;
-                        document.getElementById('freq1Value').textContent = '1.2 Hz';
-                        document.getElementById('freq2Value').textContent = '1.2 Hz';
-                        document.getElementById('wavelengthValue').textContent = '80 px';
                         break;
                     case 'diffraction':
                     case 'reflection':
@@ -910,35 +887,17 @@
                         this.ctx.fillText('반사벽', 0, 0);
                         this.ctx.restore();
                         break;
-                    case 'standing':
-                        // 정상파 모드에서 공명 상태 표시
-                        if (this.isNearResonance()) {
-                            // 공명 상태 하이라이트
-                            this.ctx.strokeStyle = '#FFD700'; // 금색
-                            this.ctx.lineWidth = 4;
-                            this.ctx.setLineDash([10, 5]);
-                            this.ctx.strokeRect(5, 5, this.width - 10, this.height - 10);
-                            this.ctx.setLineDash([]); // 점선 리셋
-                            
-                            // 공명 알림 텍스트
-                            this.ctx.fillStyle = '#FFD700';
-                            this.ctx.font = 'bold 16px sans-serif';
-                            this.ctx.textAlign = 'center';
-                            this.ctx.fillText('🔊 공명 상태', this.width / 2, 30);
-                            
-                            // 공명 주파수 표시
-                            const resonantFreqs = this.calculateResonantFrequencies();
-                            this.ctx.font = '12px sans-serif';
-                            this.ctx.fillStyle = '#FFA500';
-                            this.ctx.fillText(`공명 주파수: ${resonantFreqs.map(f => f.toFixed(2)).join(', ')} Hz`, 
-                                            this.width / 2, this.height - 20);
-                        }
-                        break;
                 }
             }
             
             animate() {
-                // 30fps로 제한
+                // 3번만 실행하도록 조정
+                if (this.executionCount >= 3) {
+                    console.log('Wave mechanics simulation completed after 3 executions');
+                    return;
+                }
+                
+                // 30fps로 제한 (60fps에서 30fps로)
                 const currentTime = performance.now();
                 const deltaTime = currentTime - this.lastFrameTime;
                 
@@ -946,6 +905,11 @@
                     this.drawWave();
                     this.time += 0.1 * this.params.speed;
                     this.lastFrameTime = currentTime;
+                    
+                    // 실행 횟수 증가 (프레임 기준이 아닌 시간 기준으로)
+                    if (this.time % 10 < 0.1) { // 10시간 단위마다 증가
+                        this.executionCount++;
+                    }
                 }
                 
                 this.animationId = requestAnimationFrame(() => this.animate());
