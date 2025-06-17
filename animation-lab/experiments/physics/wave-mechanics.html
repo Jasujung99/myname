@@ -673,16 +673,52 @@
                             );
                         }
                         
+                        // 회절 처리 (diffraction 모드)
+                        if (this.params.mode === 'diffraction') {
+                            // 슬릿 위치와 크기
+                            const slitX = this.width * 0.5;
+                            const slitTopY = this.height * 0.4;
+                            const slitBottomY = this.height * 0.6;
+                            const slitCenterY = (slitTopY + slitBottomY) / 2;
+                            
+                            // 소스가 슬릿 왼쪽에 있고, 현재 점이 슬릿 오른쪽에 있을 때
+                            if (this.params.source1.active && this.params.source1.x < slitX && x > slitX) {
+                                // 장애물에 의한 직접파 차단
+                                if (y < slitTopY || y > slitBottomY) {
+                                    // 그림자 영역 - 직접파 제거
+                                    const directWave = this.calculateWaveValue(
+                                        x, y,
+                                        this.params.source1.x, this.params.source1.y,
+                                        this.params.source1.frequency,
+                                        this.params.source1.amplitude,
+                                        this.time
+                                    );
+                                    totalValue -= directWave; // 직접파 제거
+                                }
+                                
+                                // 슬릿에서 나오는 회절파 추가 (휘겐스 원리)
+                                const diffractionAmplitude = this.params.source1.amplitude * 0.6;
+                                const diffractionWave = this.calculateWaveValue(
+                                    x, y,
+                                    slitX, slitCenterY, // 슬릿 중심에서 나오는 파동
+                                    this.params.source1.frequency,
+                                    diffractionAmplitude,
+                                    this.time
+                                );
+                                totalValue += diffractionWave;
+                            }
+                        }
+                        
                         // 반사 처리 (reflection 모드)
                         if (this.params.mode === 'reflection') {
                             // 오른쪽 벽에서 반사
-                            const reflectionX = this.width - (x - this.width);
-                            if (reflectionX >= 0) {
+                            const reflectionX = 2 * (this.width - 15) - x; // 벽 위치 고려
+                            if (reflectionX >= 0 && this.params.source1.active) {
                                 totalValue += this.calculateWaveValue(
-                                    reflectionX, y,
-                                    this.params.source1.x, this.params.source1.y,
+                                    x, y,
+                                    reflectionX, this.params.source1.y,
                                     this.params.source1.frequency,
-                                    -this.params.source1.amplitude * 0.8, // 반사 손실
+                                    -this.params.source1.amplitude * 0.8, // 반사 손실과 위상 반전
                                     this.time
                                 );
                             }
@@ -744,19 +780,47 @@
             drawModeSpecificElements() {
                 switch(this.params.mode) {
                     case 'diffraction':
-                        // 슬릿 그리기
-                        this.ctx.fillStyle = '#666';
-                        this.ctx.fillRect(this.width * 0.5 - 5, 0, 10, this.height * 0.4);
-                        this.ctx.fillRect(this.width * 0.5 - 5, this.height * 0.6, 10, this.height * 0.4);
+                        // 슬릿이 있는 장애물 그리기
+                        this.ctx.fillStyle = '#444';
+                        this.ctx.fillRect(this.width * 0.5 - 8, 0, 16, this.height * 0.4);
+                        this.ctx.fillRect(this.width * 0.5 - 8, this.height * 0.6, 16, this.height * 0.4);
+                        
+                        // 슬릿 경계 강조
+                        this.ctx.strokeStyle = '#888';
+                        this.ctx.lineWidth = 2;
+                        this.ctx.beginPath();
+                        this.ctx.moveTo(this.width * 0.5 - 8, this.height * 0.4);
+                        this.ctx.lineTo(this.width * 0.5 + 8, this.height * 0.4);
+                        this.ctx.moveTo(this.width * 0.5 - 8, this.height * 0.6);
+                        this.ctx.lineTo(this.width * 0.5 + 8, this.height * 0.6);
+                        this.ctx.stroke();
+                        
+                        // 슬릿 레이블
+                        this.ctx.fillStyle = '#aaa';
+                        this.ctx.font = '12px sans-serif';
+                        this.ctx.textAlign = 'center';
+                        this.ctx.fillText('슬릿', this.width * 0.5, this.height * 0.5);
                         break;
                     case 'reflection':
                         // 반사 벽 그리기
-                        this.ctx.strokeStyle = '#888';
-                        this.ctx.lineWidth = 3;
+                        this.ctx.fillStyle = '#666';
+                        this.ctx.fillRect(this.width - 15, 0, 15, this.height);
+                        this.ctx.strokeStyle = '#aaa';
+                        this.ctx.lineWidth = 2;
                         this.ctx.beginPath();
-                        this.ctx.moveTo(this.width - 10, 0);
-                        this.ctx.lineTo(this.width - 10, this.height);
+                        this.ctx.moveTo(this.width - 15, 0);
+                        this.ctx.lineTo(this.width - 15, this.height);
                         this.ctx.stroke();
+                        
+                        // 반사 벽 레이블
+                        this.ctx.fillStyle = '#aaa';
+                        this.ctx.font = '12px sans-serif';
+                        this.ctx.textAlign = 'center';
+                        this.ctx.save();
+                        this.ctx.translate(this.width - 8, this.height / 2);
+                        this.ctx.rotate(-Math.PI / 2);
+                        this.ctx.fillText('반사벽', 0, 0);
+                        this.ctx.restore();
                         break;
                 }
             }
