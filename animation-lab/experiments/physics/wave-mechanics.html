@@ -2,7 +2,17 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-        .control-group {
+            margin-bottom: 8px;
+        }
+        
+        .control-label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 4px;
+            font-size: 0.75rem;
+        }
     <title>파동 역학 시뮬레이터</title>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
@@ -240,21 +250,21 @@
         .source-controls {
             background: rgba(0, 0, 0, 0.3);
             border-radius: 8px;
-            padding: 15px;
-            margin-bottom: 20px;
+            padding: 12px;
+            margin-bottom: 15px;
         }
         
         .source-controls h4 {
             color: var(--accent-color);
-            margin-bottom: 10px;
-            font-size: 1rem;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
         }
         
         .source-item {
             background: rgba(255, 255, 255, 0.05);
             border-radius: 6px;
-            padding: 10px;
-            margin-bottom: 8px;
+            padding: 8px;
+            margin-bottom: 6px;
             border: 1px solid rgba(255, 255, 255, 0.1);
         }
         
@@ -262,12 +272,12 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
         }
         
         .source-title {
             font-weight: 500;
-            font-size: 0.9rem;
+            font-size: 0.8rem;
         }
         
         .source-toggle {
@@ -555,10 +565,19 @@
                 if (this.params.mode !== 'standing') return false;
                 
                 const resonantFreqs = this.calculateResonantFrequencies();
-                const currentFreq = this.params.source1.frequency;
-                const tolerance = 0.15; // 허용 오차 증가 (더 민감하게)
+                const freq1 = this.params.source1.frequency;
+                const freq2 = this.params.source2.frequency;
+                const tolerance = 0.15; // 허용 오차
                 
-                return resonantFreqs.some(freq => Math.abs(currentFreq - freq) < tolerance);
+                // 1. 두 파동의 주파수가 거의 같아야 함 (정상파 조건)
+                const frequenciesMatch = Math.abs(freq1 - freq2) < 0.1;
+                
+                // 2. 공명 주파수와 일치해야 함
+                const isAtResonantFreq = resonantFreqs.some(freq => 
+                    Math.abs(freq1 - freq) < tolerance
+                );
+                
+                return frequenciesMatch && isAtResonantFreq;
             }
             
             handleCanvasClick(event) {
@@ -926,12 +945,30 @@
                             this.ctx.textAlign = 'center';
                             this.ctx.fillText('🔊 공명 상태', this.width / 2, 30);
                             
-                            // 공명 주파수 표시
-                            const resonantFreqs = this.calculateResonantFrequencies();
+                            // 공명 조건 표시
                             this.ctx.font = '12px sans-serif';
                             this.ctx.fillStyle = '#FFA500';
+                            const freq1 = this.params.source1.frequency.toFixed(2);
+                            const freq2 = this.params.source2.frequency.toFixed(2);
+                            this.ctx.fillText(`두 파동 주파수: ${freq1} Hz ≈ ${freq2} Hz`, 
+                                            this.width / 2, this.height - 35);
+                            
+                            // 공명 주파수 표시
+                            const resonantFreqs = this.calculateResonantFrequencies();
                             this.ctx.fillText(`공명 주파수: ${resonantFreqs.map(f => f.toFixed(2)).join(', ')} Hz`, 
                                             this.width / 2, this.height - 20);
+                        } else {
+                            // 비공명 상태 안내
+                            const freq1 = this.params.source1.frequency;
+                            const freq2 = this.params.source2.frequency;
+                            const freqDiff = Math.abs(freq1 - freq2);
+                            
+                            if (freqDiff > 0.1) {
+                                this.ctx.fillStyle = '#888';
+                                this.ctx.font = '11px sans-serif';
+                                this.ctx.textAlign = 'center';
+                                this.ctx.fillText('두 파동의 주파수를 맞춰주세요', this.width / 2, this.height - 10);
+                            }
                         }
                         break;
                 }
