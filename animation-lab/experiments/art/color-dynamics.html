@@ -329,6 +329,10 @@
                 <button class="mode-button" data-mode="interactive">인터랙티브</button>
             </div>
             
+            <div class="mode-info" style="background: rgba(0,0,0,0.3); padding: 10px; border-radius: 6px; margin-bottom: 15px; font-size: 0.8rem; color: #ccc;">
+                <span id="modeDescription">색상환: 원형 HSL 색공간에서 조화색을 탐험해보세요</span>
+            </div>
+            
             <div class="control-group">
                 <div class="control-label">
                     <span>색상 (H)</span>
@@ -411,6 +415,7 @@
                 this.setupModes();
                 this.setupHarmony();
                 this.initParticles();
+                this.updateControlsState(); // 초기 컨트롤 상태 설정
                 this.animate();
             }
             
@@ -497,8 +502,36 @@
                         buttons.forEach(b => b.classList.remove('active'));
                         button.classList.add('active');
                         this.params.mode = button.dataset.mode;
+                        this.updateControlsState(); // 컨트롤 상태 업데이트
                     });
                 });
+            }
+            
+            // 모드에 따른 컨트롤 활성화/비활성화
+            updateControlsState() {
+                const lightnessGroup = document.querySelector('#lightness').parentElement;
+                const modeDescription = document.getElementById('modeDescription');
+                
+                const modeDescriptions = {
+                    'wheel': '색상환: 원형 HSL 색공간에서 조화색을 탐험해보세요',
+                    'palette': '색채 팔레트: 선택된 조화색들의 명도 변화를 확인하세요',
+                    'gradient': '그라디언트: 조화색들이 부드럽게 섞이는 그라디언트를 감상하세요',
+                    'interactive': '인터랙티브: 마우스를 움직여 파티클과 색상이 반응하는 예술을 만들어보세요'
+                };
+                
+                modeDescription.textContent = modeDescriptions[this.params.mode];
+                
+                if (this.params.mode === 'palette') {
+                    // 팔레트 모드에서는 명도 슬라이더 비활성화 (명도 그라디언트를 보여주므로)
+                    lightnessGroup.style.opacity = '0.5';
+                    lightnessGroup.style.pointerEvents = 'none';
+                    lightnessGroup.querySelector('.control-label span').textContent = '명도 (비활성화)';
+                } else {
+                    // 다른 모드에서는 명도 슬라이더 활성화
+                    lightnessGroup.style.opacity = '1';
+                    lightnessGroup.style.pointerEvents = 'auto';
+                    lightnessGroup.querySelector('.control-label span').textContent = '명도 (L)';
+                }
             }
             
             setupHarmony() {
@@ -704,7 +737,7 @@
                 const gradient = this.ctx.createLinearGradient(0, 0, this.width, this.height);
                 
                 harmonyColors.forEach((hue, index) => {
-                    const position = index / (harmonyColors.length - 1);
+                    const position = index / Math.max(1, harmonyColors.length - 1);
                     const color = `hsl(${hue}, ${this.params.saturation}%, ${this.params.lightness}%)`;
                     gradient.addColorStop(position, color);
                 });
@@ -712,17 +745,18 @@
                 this.ctx.fillStyle = gradient;
                 this.ctx.fillRect(0, 0, this.width, this.height);
                 
-                // 파동 효과
-                const waveAmplitude = 30;
-                const waveFrequency = 0.01;
+                // 그라디언트 정보 표시
+                this.ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+                this.ctx.font = '16px Arial';
+                this.ctx.textAlign = 'center';
+                this.ctx.fillText(`${harmonyColors.length}색 조화 그라디언트`, this.width / 2, 30);
                 
-                for (let x = 0; x < this.width; x += 2) {
-                    const waveY = this.centerY + Math.sin(x * waveFrequency + this.time * 2) * waveAmplitude;
-                    const hue = (this.params.hue + x * 0.5) % 360;
-                    
-                    this.ctx.fillStyle = `hsl(${hue}, ${this.params.saturation}%, ${this.params.lightness}%)`;
-                    this.ctx.fillRect(x, waveY - 5, 2, 10);
-                }
+                // 색상 정보 하단 표시
+                this.ctx.font = '12px Arial';
+                harmonyColors.forEach((hue, index) => {
+                    const x = (this.width / harmonyColors.length) * index + (this.width / harmonyColors.length) / 2;
+                    this.ctx.fillText(`${Math.round(hue)}°`, x, this.height - 20);
+                });
             }
             
             drawInteractive() {
