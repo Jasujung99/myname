@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>파동 역학 시뮬레이터</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0a0a0a;
+            --primary-color: #1a1a1a;
+            --secondary-color: #2a2a2a;
+            --text-color: #e0e0e0;
+            --accent-color: #00aaff;
+            --button-bg: #333;
+            --button-hover: #555;
+            --grid-color: #333;
+            --wave-color-1: #ff6b6b;
+            --wave-color-2: #4ecdc4;
+            --interference-color: #ffd93d;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background: linear-gradient(135deg, var(--bg-color) 0%, #1a1a2e 50%, #16213e 100%);
+            color: var(--text-color);
+            overflow: hidden;
+            height: 100vh;
+        }
+        
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+        
+        .canvas-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            gap: 20px;
+            min-height: 0;
+        }
+        
+        .canvas-section {
+            flex: 1;
+            background: rgba(26, 26, 26, 0.9);
+            border-radius: 12px;
+            padding: 15px;
+            border: 1px solid #333;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .canvas-section h3 {
+            color: var(--accent-color);
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+            flex-shrink: 0;
+        }
+        
+        canvas {
+            width: 100%;
+            flex: 1;
+            min-height: 200px;
+            background: var(--primary-color);
+            border-radius: 8px;
+            border: 1px solid var(--grid-color);
+            cursor: crosshair;
+        }
+        
+        .controls {
+            width: 350px;
+            background: rgba(26, 26, 26, 0.95);
+            backdrop-filter: blur(10px);
+            border-left: 1px solid #333;
+            padding: 20px;
+            overflow-y: auto;
+        }
+        
+        .nav-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .back-button {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            text-decoration: none;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-button:hover {
+            background: rgba(255,255,255,0.2);
+            transform: translateY(-1px);
+        }
+        
+        .control-header {
+            text-align: center;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid var(--secondary-color);
+        }
+        
+        .control-header h1 {
+            font-size: 1.5rem;
+            color: var(--accent-color);
+            margin-bottom: 5px;
+        }
+        
+        .control-header p {
+            color: #999;
+            font-size: 0.9rem;
+        }
+        
+        .control-group {
+            margin-bottom: 20px;
+        }
+        
+        .control-label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+        
+        .control-value {
+            color: var(--accent-color);
+            font-family: 'Courier New', monospace;
+        }
+        
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            background: var(--secondary-color);
+            border-radius: 3px;
+            outline: none;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            background: var(--accent-color);
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 10px var(--accent-color);
+        }
+        
+        .wave-controls {
+            background: var(--secondary-color);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .wave-controls h4 {
+            color: var(--accent-color);
+            margin-bottom: 10px;
+            font-size: 1rem;
+        }
+        
+        .wave-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        
+        .wave-checkbox {
+            width: 16px;
+            height: 16px;
+            margin-right: 10px;
+        }
+        
+        .wave-color {
+            width: 20px;
+            height: 16px;
+            margin-right: 10px;
+            border-radius: 3px;
+        }
+        
+        .wave-label {
+            flex: 1;
+            font-size: 0.9rem;
+        }
+        
+        .mode-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .mode-button {
+            padding: 8px 12px;
+            background: var(--button-bg);
+            color: var(--text-color);
+            border: 1px solid #555;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.85rem;
+        }
+        
+        .mode-button:hover {
+            background: var(--button-hover);
+            border-color: var(--accent-color);
+        }
+        
+        .mode-button.active {
+            background: var(--accent-color);
+            border-color: var(--accent-color);
+            color: #000;
+        }
+        
+        .source-controls {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .source-controls h4 {
+            color: var(--accent-color);
+            margin-bottom: 10px;
+            font-size: 1rem;
+        }
+        
+        .source-item {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 6px;
+            padding: 10px;
+            margin-bottom: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .source-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        
+        .source-title {
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+        
+        .source-toggle {
+            width: 14px;
+            height: 14px;
+        }
+        
+        .info-section {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 20px;
+        }
+        
+        .info-section h4 {
+            color: var(--accent-color);
+            margin-bottom: 10px;
+            font-size: 1rem;
+        }
+        
+        .info-section p {
+            font-size: 0.85rem;
+            line-height: 1.5;
+            color: #ccc;
+            margin-bottom: 8px;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+                height: 100vh;
+            }
+            
+            .controls {
+                width: 100%;
+                max-height: 40vh;
+                order: -1;
+            }
+            
+            .canvas-area {
+                flex: 1;
+                min-height: 0;
+                padding: 10px;
+                gap: 10px;
+            }
+            
+            .canvas-section {
+                min-height: 150px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="canvas-area">
+            <div class="canvas-section">
+                <h3>🌊 파동 시뮬레이션</h3>
+                <canvas id="waveCanvas"></canvas>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <div class="nav-header">
+                <a href="../../index.html" class="back-button">← 돌아가기</a>
+            </div>
+            
+            <div class="control-header">
+                <h1>🌊 파동 역학</h1>
+                <p>간섭, 회절, 반사 현상 탐구</p>
+            </div>
+            
+            <div class="mode-buttons">
+                <button class="mode-button active" data-mode="interference">간섭</button>
+                <button class="mode-button" data-mode="diffraction">회절</button>
+                <button class="mode-button" data-mode="reflection">반사</button>
+                <button class="mode-button" data-mode="standing">정상파</button>
+            </div>
+            
+            <div class="source-controls">
+                <h4>📍 파동 소스</h4>
+                <div class="source-item">
+                    <div class="source-header">
+                        <span class="source-title" style="color: var(--wave-color-1);">소스 1</span>
+                        <input type="checkbox" class="source-toggle" id="source1" checked>
+                    </div>
+                    <div class="control-group">
+                        <div class="control-label">
+                            <span>주파수</span>
+                            <span class="control-value" id="freq1Value">1.0 Hz</span>
+                        </div>
+                        <input type="range" id="freq1" min="0.1" max="3.0" step="0.1" value="1.0">
+                    </div>
+                    <div class="control-group">
+                        <div class="control-label">
+                            <span>진폭</span>
+                            <span class="control-value" id="amp1Value">50</span>
+                        </div>
+                        <input type="range" id="amp1" min="10" max="100" step="5" value="50">
+                    </div>
+                </div>
+                
+                <div class="source-item">
+                    <div class="source-header">
+                        <span class="source-title" style="color: var(--wave-color-2);">소스 2</span>
+                        <input type="checkbox" class="source-toggle" id="source2" checked>
+                    </div>
+                    <div class="control-group">
+                        <div class="control-label">
+                            <span>주파수</span>
+                            <span class="control-value" id="freq2Value">1.2 Hz</span>
+                        </div>
+                        <input type="range" id="freq2" min="0.1" max="3.0" step="0.1" value="1.2">
+                    </div>
+                    <div class="control-group">
+                        <div class="control-label">
+                            <span>진폭</span>
+                            <span class="control-value" id="amp2Value">50</span>
+                        </div>
+                        <input type="range" id="amp2" min="10" max="100" step="5" value="50">
+                    </div>
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <div class="control-label">
+                    <span>파장</span>
+                    <span class="control-value" id="wavelengthValue">80 px</span>
+                </div>
+                <input type="range" id="wavelength" min="20" max="200" step="10" value="80">
+            </div>
+            
+            <div class="control-group">
+                <div class="control-label">
+                    <span>파동 속도</span>
+                    <span class="control-value" id="speedValue">1.0x</span>
+                </div>
+                <input type="range" id="speed" min="0.1" max="3.0" step="0.1" value="1.0">
+            </div>
+            
+            <div class="control-group">
+                <div class="control-label">
+                    <span>감쇠</span>
+                    <span class="control-value" id="dampingValue">0.98</span>
+                </div>
+                <input type="range" id="damping" min="0.9" max="1.0" step="0.01" value="0.98">
+            </div>
+            
+            <div class="info-section">
+                <h4>📚 학습 포인트</h4>
+                <p><strong>간섭:</strong> 두 파동이 만날 때 진폭이 더해지거나 상쇄되는 현상입니다.</p>
+                <p><strong>회절:</strong> 파동이 장애물이나 틈을 지날 때 휘어지는 현상입니다.</p>
+                <p><strong>반사:</strong> 파동이 경계면에서 되돌아오는 현상입니다.</p>
+                <p><strong>정상파:</strong> 반사파와 입사파가 간섭하여 고정된 마디와 배를 만드는 파동입니다.</p>
+                <p><strong>위상차:</strong> 두 파동의 시간적 어긋남이 간섭 패턴을 결정합니다.</p>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        class WaveMechanics {
+            constructor() {
+                this.canvas = document.getElementById('waveCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                
+                this.params = {
+                    mode: 'interference',
+                    wavelength: 80,
+                    speed: 1.0,
+                    damping: 0.98,
+                    source1: {
+                        active: true,
+                        frequency: 1.0,
+                        amplitude: 50,
+                        x: 0,
+                        y: 0
+                    },
+                    source2: {
+                        active: true,
+                        frequency: 1.2,
+                        amplitude: 50,
+                        x: 0,
+                        y: 0
+                    }
+                };
+                
+                this.time = 0;
+                this.animationId = null;
+                this.sources = [];
+                this.obstacles = [];
+                
+                this.initCanvas();
+                this.setupControls();
+                this.setupModes();
+                this.setupSources();
+                this.animate();
+            }
+            
+            initCanvas() {
+                const resizeCanvas = () => {
+                    const rect = this.canvas.getBoundingClientRect();
+                    const dpr = window.devicePixelRatio || 1;
+                    
+                    this.canvas.width = rect.width * dpr;
+                    this.canvas.height = rect.height * dpr;
+                    
+                    this.canvas.style.width = rect.width + 'px';
+                    this.canvas.style.height = rect.height + 'px';
+                    
+                    this.ctx.scale(dpr, dpr);
+                    
+                    // 캔버스 크기 업데이트
+                    this.width = rect.width;
+                    this.height = rect.height;
+                    
+                    // 소스 위치 초기화
+                    this.updateSourcePositions();
+                };
+                
+                setTimeout(resizeCanvas, 100);
+                
+                window.addEventListener('resize', () => {
+                    setTimeout(resizeCanvas, 100);
+                });
+                
+                // 마우스 클릭으로 소스 위치 조정
+                this.canvas.addEventListener('click', (e) => {
+                    this.handleCanvasClick(e);
+                });
+            }
+            
+            updateSourcePositions() {
+                if (!this.width || !this.height) return;
+                
+                switch(this.params.mode) {
+                    case 'interference':
+                        this.params.source1.x = this.width * 0.25;
+                        this.params.source1.y = this.height * 0.5;
+                        this.params.source2.x = this.width * 0.75;
+                        this.params.source2.y = this.height * 0.5;
+                        break;
+                    case 'diffraction':
+                        this.params.source1.x = this.width * 0.1;
+                        this.params.source1.y = this.height * 0.5;
+                        this.params.source2.x = -100; // 비활성화
+                        this.params.source2.y = -100;
+                        break;
+                    case 'reflection':
+                        this.params.source1.x = this.width * 0.2;
+                        this.params.source1.y = this.height * 0.5;
+                        this.params.source2.x = -100; // 비활성화
+                        this.params.source2.y = -100;
+                        break;
+                    case 'standing':
+                        this.params.source1.x = 0;
+                        this.params.source1.y = this.height * 0.5;
+                        this.params.source2.x = this.width;
+                        this.params.source2.y = this.height * 0.5;
+                        break;
+                }
+            }
+            
+            handleCanvasClick(event) {
+                const rect = this.canvas.getBoundingClientRect();
+                const x = event.clientX - rect.left;
+                const y = event.clientY - rect.top;
+                
+                // 가장 가까운 소스 찾기
+                const dist1 = Math.sqrt((x - this.params.source1.x)**2 + (y - this.params.source1.y)**2);
+                const dist2 = Math.sqrt((x - this.params.source2.x)**2 + (y - this.params.source2.y)**2);
+                
+                if (dist1 < dist2 && dist1 < 50) {
+                    this.params.source1.x = x;
+                    this.params.source1.y = y;
+                } else if (dist2 < 50) {
+                    this.params.source2.x = x;
+                    this.params.source2.y = y;
+                }
+            }
+            
+            setupControls() {
+                const controls = {
+                    wavelength: { element: 'wavelength', display: 'wavelengthValue', unit: ' px' },
+                    speed: { element: 'speed', display: 'speedValue', unit: 'x' },
+                    damping: { element: 'damping', display: 'dampingValue', unit: '' },
+                    freq1: { element: 'freq1', display: 'freq1Value', unit: ' Hz', param: 'source1.frequency' },
+                    amp1: { element: 'amp1', display: 'amp1Value', unit: '', param: 'source1.amplitude' },
+                    freq2: { element: 'freq2', display: 'freq2Value', unit: ' Hz', param: 'source2.frequency' },
+                    amp2: { element: 'amp2', display: 'amp2Value', unit: '', param: 'source2.amplitude' }
+                };
+                
+                Object.entries(controls).forEach(([param, config]) => {
+                    const element = document.getElementById(config.element);
+                    const display = document.getElementById(config.display);
+                    
+                    element.addEventListener('input', (e) => {
+                        const value = parseFloat(e.target.value);
+                        
+                        if (config.param) {
+                            // 중첩된 객체 속성 설정
+                            const [obj, prop] = config.param.split('.');
+                            this.params[obj][prop] = value;
+                        } else {
+                            this.params[param] = value;
+                        }
+                        
+                        display.textContent = value + config.unit;
+                    });
+                    
+                    // 초기값 설정
+                    display.textContent = element.value + config.unit;
+                });
+            }
+            
+            setupModes() {
+                const buttons = document.querySelectorAll('.mode-button');
+                
+                buttons.forEach(button => {
+                    button.addEventListener('click', () => {
+                        buttons.forEach(b => b.classList.remove('active'));
+                        button.classList.add('active');
+                        
+                        this.params.mode = button.dataset.mode;
+                        this.updateSourcePositions();
+                        this.updateModeUI();
+                    });
+                });
+            }
+            
+            setupSources() {
+                const source1Toggle = document.getElementById('source1');
+                const source2Toggle = document.getElementById('source2');
+                
+                source1Toggle.addEventListener('change', (e) => {
+                    this.params.source1.active = e.target.checked;
+                });
+                
+                source2Toggle.addEventListener('change', (e) => {
+                    this.params.source2.active = e.target.checked;
+                });
+            }
+            
+            updateModeUI() {
+                const source2Toggle = document.getElementById('source2');
+                const source2Item = source2Toggle.closest('.source-item');
+                
+                switch(this.params.mode) {
+                    case 'interference':
+                    case 'standing':
+                        source2Item.style.display = 'block';
+                        break;
+                    case 'diffraction':
+                    case 'reflection':
+                        source2Item.style.display = 'none';
+                        this.params.source2.active = false;
+                        source2Toggle.checked = false;
+                        break;
+                }
+            }
+            
+            calculateWaveValue(x, y, sourceX, sourceY, frequency, amplitude, time) {
+                const distance = Math.sqrt((x - sourceX)**2 + (y - sourceY)**2);
+                const waveNumber = 2 * Math.PI / this.params.wavelength;
+                const angularFreq = 2 * Math.PI * frequency;
+                
+                // 거리에 따른 감쇠
+                const dampingFactor = Math.pow(this.params.damping, distance / 10);
+                
+                return amplitude * dampingFactor * Math.sin(waveNumber * distance - angularFreq * time);
+            }
+            
+            drawWave() {
+                if (!this.width || !this.height) return;
+                
+                this.ctx.clearRect(0, 0, this.width, this.height);
+                
+                // 파동 계산 및 그리기
+                const imageData = this.ctx.createImageData(this.width, this.height);
+                const data = imageData.data;
+                
+                for (let x = 0; x < this.width; x += 2) {
+                    for (let y = 0; y < this.height; y += 2) {
+                        let totalValue = 0;
+                        
+                        // 소스 1
+                        if (this.params.source1.active) {
+                            totalValue += this.calculateWaveValue(
+                                x, y,
+                                this.params.source1.x, this.params.source1.y,
+                                this.params.source1.frequency,
+                                this.params.source1.amplitude,
+                                this.time
+                            );
+                        }
+                        
+                        // 소스 2
+                        if (this.params.source2.active) {
+                            totalValue += this.calculateWaveValue(
+                                x, y,
+                                this.params.source2.x, this.params.source2.y,
+                                this.params.source2.frequency,
+                                this.params.source2.amplitude,
+                                this.time
+                            );
+                        }
+                        
+                        // 반사 처리 (reflection 모드)
+                        if (this.params.mode === 'reflection') {
+                            // 오른쪽 벽에서 반사
+                            const reflectionX = this.width - (x - this.width);
+                            if (reflectionX >= 0) {
+                                totalValue += this.calculateWaveValue(
+                                    reflectionX, y,
+                                    this.params.source1.x, this.params.source1.y,
+                                    this.params.source1.frequency,
+                                    -this.params.source1.amplitude * 0.8, // 반사 손실
+                                    this.time
+                                );
+                            }
+                        }
+                        
+                        // 색상 계산
+                        const intensity = Math.max(0, Math.min(255, 128 + totalValue));
+                        const pixelIndex = (y * this.width + x) * 4;
+                        
+                        if (pixelIndex < data.length) {
+                            // 파동 강도에 따른 색상
+                            if (totalValue > 0) {
+                                data[pixelIndex] = intensity;     // R
+                                data[pixelIndex + 1] = intensity * 0.3; // G
+                                data[pixelIndex + 2] = intensity * 0.3; // B
+                            } else {
+                                data[pixelIndex] = intensity * 0.3;     // R
+                                data[pixelIndex + 1] = intensity * 0.3; // G
+                                data[pixelIndex + 2] = intensity;       // B
+                            }
+                            data[pixelIndex + 3] = 255; // A
+                        }
+                    }
+                }
+                
+                this.ctx.putImageData(imageData, 0, 0);
+                
+                // 소스 위치 표시
+                this.drawSources();
+                
+                // 모드별 추가 요소
+                this.drawModeSpecificElements();
+            }
+            
+            drawSources() {
+                // 소스 1
+                if (this.params.source1.active) {
+                    this.ctx.fillStyle = '#ff6b6b';
+                    this.ctx.strokeStyle = '#ffffff';
+                    this.ctx.lineWidth = 2;
+                    this.ctx.beginPath();
+                    this.ctx.arc(this.params.source1.x, this.params.source1.y, 8, 0, Math.PI * 2);
+                    this.ctx.fill();
+                    this.ctx.stroke();
+                }
+                
+                // 소스 2
+                if (this.params.source2.active) {
+                    this.ctx.fillStyle = '#4ecdc4';
+                    this.ctx.strokeStyle = '#ffffff';
+                    this.ctx.lineWidth = 2;
+                    this.ctx.beginPath();
+                    this.ctx.arc(this.params.source2.x, this.params.source2.y, 8, 0, Math.PI * 2);
+                    this.ctx.fill();
+                    this.ctx.stroke();
+                }
+            }
+            
+            drawModeSpecificElements() {
+                switch(this.params.mode) {
+                    case 'diffraction':
+                        // 슬릿 그리기
+                        this.ctx.fillStyle = '#666';
+                        this.ctx.fillRect(this.width * 0.5 - 5, 0, 10, this.height * 0.4);
+                        this.ctx.fillRect(this.width * 0.5 - 5, this.height * 0.6, 10, this.height * 0.4);
+                        break;
+                    case 'reflection':
+                        // 반사 벽 그리기
+                        this.ctx.strokeStyle = '#888';
+                        this.ctx.lineWidth = 3;
+                        this.ctx.beginPath();
+                        this.ctx.moveTo(this.width - 10, 0);
+                        this.ctx.lineTo(this.width - 10, this.height);
+                        this.ctx.stroke();
+                        break;
+                }
+            }
+            
+            animate() {
+                this.drawWave();
+                this.time += 0.1 * this.params.speed;
+                this.animationId = requestAnimationFrame(() => this.animate());
+            }
+        }
+        
+        // 초기화
+        let waveMechanics;
+        window.addEventListener('load', () => {
+            waveMechanics = new WaveMechanics();
+        });
+    </script>
+</body>
+</html>
