@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>푸리에 변환 시각화</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0a0a0a;
+            --primary-color: #1a1a1a;
+            --secondary-color: #2a2a2a;
+            --text-color: #e0e0e0;
+            --accent-color: #00aaff;
+            --button-bg: #333;
+            --button-hover: #555;
+            --grid-color: #333;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background: linear-gradient(135deg, var(--bg-color) 0%, #1a1a2e 50%, #16213e 100%);
+            color: var(--text-color);
+            overflow: hidden;
+            height: 100vh;
+        }
+        
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+        
+        .canvas-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            gap: 20px;
+            min-height: 0; /* 플렉스 아이템이 축소될 수 있도록 */
+        }
+        
+        .canvas-section {
+            flex: 1;
+            background: rgba(26, 26, 26, 0.9);
+            border-radius: 12px;
+            padding: 15px;
+            border: 1px solid #333;
+            min-height: 0; /* 플렉스 아이템이 축소될 수 있도록 */
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .canvas-section h3 {
+            color: var(--accent-color);
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+            flex-shrink: 0; /* 제목은 축소되지 않도록 */
+        }
+        
+        canvas {
+            width: 100%;
+            flex: 1; /* 남은 공간을 모두 차지 */
+            min-height: 200px; /* 최소 높이 설정 */
+            background: var(--primary-color);
+            border-radius: 8px;
+            border: 1px solid var(--grid-color);
+        }
+        
+        .controls {
+            width: 350px;
+            background: rgba(26, 26, 26, 0.95);
+            backdrop-filter: blur(10px);
+            border-left: 1px solid #333;
+            padding: 20px;
+            overflow-y: auto;
+        }
+        
+        .control-header {
+            text-align: center;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid var(--secondary-color);
+        }
+        
+        .control-header h1 {
+            font-size: 1.5rem;
+            color: var(--accent-color);
+            margin-bottom: 5px;
+        }
+        
+        .control-header p {
+            color: #999;
+            font-size: 0.9rem;
+        }
+        
+        .control-group {
+            margin-bottom: 20px;
+        }
+        
+        .control-label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+        
+        .control-value {
+            color: var(--accent-color);
+            font-family: 'Courier New', monospace;
+        }
+        
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            background: var(--secondary-color);
+            border-radius: 3px;
+            outline: none;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            background: var(--accent-color);
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 10px var(--accent-color);
+        }
+        
+        .wave-controls {
+            background: var(--secondary-color);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .wave-controls h4 {
+            color: var(--accent-color);
+            margin-bottom: 10px;
+            font-size: 1rem;
+        }
+        
+        .wave-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        
+        .wave-checkbox {
+            width: 16px;
+            height: 16px;
+            margin-right: 10px;
+        }
+        
+        .wave-color {
+            width: 20px;
+            height: 16px;
+            margin-right: 10px;
+            border-radius: 3px;
+        }
+        
+        .wave-label {
+            flex: 1;
+            font-size: 0.9rem;
+        }
+        
+        .preset-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .preset-button {
+            padding: 8px 12px;
+            background: var(--button-bg);
+            color: var(--text-color);
+            border: 1px solid #555;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.85rem;
+        }
+        
+        .preset-button:hover {
+            background: var(--button-hover);
+            border-color: var(--accent-color);
+        }
+        
+        .preset-button.active {
+            background: var(--accent-color);
+            border-color: var(--accent-color);
+            color: #000;
+        }
+        
+        .info-section {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 20px;
+        }
+        
+        .info-section h4 {
+            color: var(--accent-color);
+            margin-bottom: 10px;
+            font-size: 1rem;
+        }
+        
+        .info-section p {
+            font-size: 0.85rem;
+            line-height: 1.5;
+            color: #ccc;
+            margin-bottom: 8px;
+        }
+        
+        .back-button {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-color);
+            text-decoration: none;
+            border-radius: 25px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+            z-index: 100;
+        }
+        
+        .back-button:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+                height: 100vh;
+            }
+            
+            .controls {
+                width: 100%;
+                max-height: 40vh;
+                order: -1; /* 컨트롤을 위로 이동 */
+            }
+            
+            .canvas-area {
+                flex: 1;
+                min-height: 0;
+                padding: 10px;
+                gap: 10px;
+            }
+            
+            .canvas-section {
+                min-height: 150px; /* 모바일에서 최소 높이 */
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="canvas-area">
+            <div class="canvas-section">
+                <h3>📊 시간 영역 (Time Domain)</h3>
+                <canvas id="timeCanvas"></canvas>
+            </div>
+            
+            <div class="canvas-section">
+                <h3>🔊 주파수 영역 (Frequency Domain)</h3>
+                <canvas id="frequencyCanvas"></canvas>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <div class="control-header">
+                <h1>🌊 푸리에 변환</h1>
+                <p>파형을 주파수 성분으로 분해</p>
+            </div>
+            
+            <div class="preset-buttons">
+                <button class="preset-button active" data-preset="sine">기본 사인파</button>
+                <button class="preset-button" data-preset="square">사각파</button>
+                <button class="preset-button" data-preset="sawtooth">톱니파</button>
+                <button class="preset-button" data-preset="triangle">삼각파</button>
+                <button class="preset-button" data-preset="noise">화이트 노이즈</button>
+                <button class="preset-button" data-preset="custom">사용자 정의</button>
+            </div>
+            
+            <div class="control-group">
+                <div class="control-label">
+                    <span>기본 주파수</span>
+                    <span class="control-value" id="fundamentalValue">2.0 Hz</span>
+                </div>
+                <input type="range" id="fundamental" min="0.5" max="10" step="0.1" value="2">
+            </div>
+            
+            <div class="control-group">
+                <div class="control-label">
+                    <span>샘플링 주파수</span>
+                    <span class="control-value" id="sampleRateValue">100 Hz</span>
+                </div>
+                <input type="range" id="sampleRate" min="50" max="500" step="10" value="100">
+            </div>
+            
+            <div class="control-group">
+                <div class="control-label">
+                    <span>시간 윈도우</span>
+                    <span class="control-value" id="timeWindowValue">2.0 초</span>
+                </div>
+                <input type="range" id="timeWindow" min="0.5" max="5" step="0.1" value="2">
+            </div>
+            
+            <div class="wave-controls">
+                <h4>🎵 하모닉 성분</h4>
+                <div id="harmonicsContainer"></div>
+            </div>
+            
+            <div class="control-group">
+                <div class="control-label">
+                    <span>노이즈 레벨</span>
+                    <span class="control-value" id="noiseValue">0%</span>
+                </div>
+                <input type="range" id="noise" min="0" max="50" step="1" value="0">
+            </div>
+            
+            <div class="info-section">
+                <h4>📚 학습 포인트</h4>
+                <p><strong>시간 영역:</strong> 시간에 따른 신호의 진폭 변화를 보여줍니다.</p>
+                <p><strong>주파수 영역:</strong> 신호를 구성하는 각 주파수 성분의 강도를 나타냅니다.</p>
+                <p><strong>푸리에 변환:</strong> 복잡한 신호를 단순한 사인파들의 합으로 분해하는 수학적 도구입니다.</p>
+                <p><strong>하모닉:</strong> 기본 주파수의 정수배 주파수들로, 음색을 결정합니다.</p>
+            </div>
+        </div>
+    </div>
+    
+    <a href="../../index.html" class="back-button">← 메인으로</a>
+    
+    <script>
+        class FourierVisualizer {
+            constructor() {
+                this.timeCanvas = document.getElementById('timeCanvas');
+                this.frequencyCanvas = document.getElementById('frequencyCanvas');
+                this.timeCtx = this.timeCanvas.getContext('2d');
+                this.frequencyCtx = this.frequencyCanvas.getContext('2d');
+                
+                this.params = {
+                    fundamental: 2.0,
+                    sampleRate: 100,
+                    timeWindow: 2.0,
+                    noise: 0,
+                    preset: 'sine'
+                };
+                
+                this.harmonics = [
+                    { frequency: 1, amplitude: 1.0, phase: 0, active: true, color: '#ff6b6b' },
+                    { frequency: 2, amplitude: 0.5, phase: 0, active: false, color: '#4ecdc4' },
+                    { frequency: 3, amplitude: 0.33, phase: 0, active: false, color: '#45b7d1' },
+                    { frequency: 4, amplitude: 0.25, phase: 0, active: false, color: '#96ceb4' },
+                    { frequency: 5, amplitude: 0.2, phase: 0, active: false, color: '#feca57' },
+                    { frequency: 6, amplitude: 0.17, phase: 0, active: false, color: '#ff9ff3' },
+                    { frequency: 7, amplitude: 0.14, phase: 0, active: false, color: '#54a0ff' },
+                    { frequency: 8, amplitude: 0.125, phase: 0, active: false, color: '#5f27cd' }
+                ];
+                
+                this.animationId = null;
+                this.time = 0;
+                
+                this.initCanvas();
+                this.setupControls();
+                this.setupHarmonics();
+                this.setupPresets();
+                this.animate();
+            }
+            
+            initCanvas() {
+                const resizeCanvas = (canvas) => {
+                    const rect = canvas.getBoundingClientRect();
+                    const dpr = window.devicePixelRatio || 1;
+                    
+                    // 실제 픽셀 크기 설정
+                    canvas.width = rect.width * dpr;
+                    canvas.height = rect.height * dpr;
+                    
+                    // CSS 크기 설정
+                    canvas.style.width = rect.width + 'px';
+                    canvas.style.height = rect.height + 'px';
+                    
+                    const ctx = canvas.getContext('2d');
+                    ctx.scale(dpr, dpr);
+                };
+                
+                // 초기 리사이징
+                const resize = () => {
+                    resizeCanvas(this.timeCanvas);
+                    resizeCanvas(this.frequencyCanvas);
+                };
+                
+                // 조금 지연시켜서 레이아웃이 완전히 안정된 후 리사이징
+                setTimeout(resize, 100);
+                
+                window.addEventListener('resize', () => {
+                    setTimeout(resize, 100);
+                });
+            }
+            
+            setupControls() {
+                const controls = {
+                    fundamental: { element: 'fundamental', display: 'fundamentalValue', unit: ' Hz' },
+                    sampleRate: { element: 'sampleRate', display: 'sampleRateValue', unit: ' Hz' },
+                    timeWindow: { element: 'timeWindow', display: 'timeWindowValue', unit: ' 초' },
+                    noise: { element: 'noise', display: 'noiseValue', unit: '%' }
+                };
+                
+                Object.entries(controls).forEach(([param, config]) => {
+                    const element = document.getElementById(config.element);
+                    const display = document.getElementById(config.display);
+                    
+                    element.addEventListener('input', (e) => {
+                        this.params[param] = parseFloat(e.target.value);
+                        display.textContent = e.target.value + config.unit;
+                    });
+                    
+                    // 초기값 설정
+                    display.textContent = element.value + config.unit;
+                });
+            }
+            
+            setupHarmonics() {
+                const container = document.getElementById('harmonicsContainer');
+                
+                this.harmonics.forEach((harmonic, index) => {
+                    const item = document.createElement('div');
+                    item.className = 'wave-item';
+                    
+                    item.innerHTML = `
+                        <input type="checkbox" class="wave-checkbox" ${harmonic.active ? 'checked' : ''} 
+                               data-harmonic="${index}">
+                        <div class="wave-color" style="background: ${harmonic.color}"></div>
+                        <span class="wave-label">${harmonic.frequency}차 하모닉 (${(harmonic.amplitude * 100).toFixed(0)}%)</span>
+                    `;
+                    
+                    const checkbox = item.querySelector('.wave-checkbox');
+                    checkbox.addEventListener('change', (e) => {
+                        this.harmonics[index].active = e.target.checked;
+                    });
+                    
+                    container.appendChild(item);
+                });
+            }
+            
+            setupPresets() {
+                const buttons = document.querySelectorAll('.preset-button');
+                
+                buttons.forEach(button => {
+                    button.addEventListener('click', () => {
+                        buttons.forEach(b => b.classList.remove('active'));
+                        button.classList.add('active');
+                        
+                        const preset = button.dataset.preset;
+                        this.params.preset = preset;
+                        this.applyPreset(preset);
+                    });
+                });
+            }
+            
+            applyPreset(preset) {
+                // 모든 하모닉 비활성화
+                this.harmonics.forEach(h => h.active = false);
+                
+                switch(preset) {
+                    case 'sine':
+                        this.harmonics[0].active = true;
+                        break;
+                    case 'square':
+                        this.harmonics.forEach((h, i) => {
+                            if (h.frequency % 2 === 1) { // 홀수 하모닉만
+                                h.active = true;
+                                h.amplitude = 1.0 / h.frequency;
+                            }
+                        });
+                        break;
+                    case 'sawtooth':
+                        this.harmonics.forEach((h, i) => {
+                            h.active = true;
+                            h.amplitude = 1.0 / h.frequency;
+                        });
+                        break;
+                    case 'triangle':
+                        this.harmonics.forEach((h, i) => {
+                            if (h.frequency % 2 === 1) { // 홀수 하모닉만
+                                h.active = true;
+                                h.amplitude = 1.0 / (h.frequency * h.frequency);
+                            }
+                        });
+                        break;
+                    case 'custom':
+                        this.harmonics[0].active = true;
+                        this.harmonics[2].active = true;
+                        this.harmonics[4].active = true;
+                        break;
+                }
+                
+                this.updateHarmonicsDisplay();
+            }
+            
+            updateHarmonicsDisplay() {
+                const checkboxes = document.querySelectorAll('.wave-checkbox');
+                checkboxes.forEach((checkbox, index) => {
+                    checkbox.checked = this.harmonics[index].active;
+                });
+            }
+            
+            generateSignal() {
+                const duration = this.params.timeWindow;
+                const sampleRate = this.params.sampleRate;
+                const samples = Math.floor(duration * sampleRate);
+                const signal = new Array(samples);
+                const timeStep = duration / samples;
+                
+                for (let i = 0; i < samples; i++) {
+                    const t = i * timeStep;
+                    let value = 0;
+                    
+                    if (this.params.preset === 'noise') {
+                        value = (Math.random() - 0.5) * 2;
+                    } else {
+                        // 활성화된 하모닉들을 합성
+                        this.harmonics.forEach(harmonic => {
+                            if (harmonic.active) {
+                                const freq = harmonic.frequency * this.params.fundamental;
+                                const amplitude = harmonic.amplitude;
+                                const phase = harmonic.phase;
+                                value += amplitude * Math.sin(2 * Math.PI * freq * t + phase);
+                            }
+                        });
+                    }
+                    
+                    // 노이즈 추가
+                    if (this.params.noise > 0) {
+                        const noiseAmp = this.params.noise / 100;
+                        value += (Math.random() - 0.5) * 2 * noiseAmp;
+                    }
+                    
+                    signal[i] = value;
+                }
+                
+                return signal;
+            }
+            
+            computeFFT(signal) {
+                const N = signal.length;
+                const frequencies = [];
+                const magnitudes = [];
+                
+                // 간단한 DFT 구현 (실제 FFT보다 느리지만 교육용으로 충분)
+                for (let k = 0; k < N / 2; k++) {
+                    let real = 0;
+                    let imag = 0;
+                    
+                    for (let n = 0; n < N; n++) {
+                        const angle = -2 * Math.PI * k * n / N;
+                        real += signal[n] * Math.cos(angle);
+                        imag += signal[n] * Math.sin(angle);
+                    }
+                    
+                    const magnitude = Math.sqrt(real * real + imag * imag) / N * 2;
+                    const frequency = k * this.params.sampleRate / N;
+                    
+                    frequencies.push(frequency);
+                    magnitudes.push(magnitude);
+                }
+                
+                return { frequencies, magnitudes };
+            }
+            
+            drawTimeData(signal) {
+                const canvas = this.timeCanvas;
+                const ctx = this.timeCtx;
+                const rect = canvas.getBoundingClientRect();
+                
+                ctx.clearRect(0, 0, rect.width, rect.height);
+                
+                // 격자 그리기
+                this.drawGrid(ctx, rect.width, rect.height);
+                
+                // 신호 그리기
+                ctx.strokeStyle = '#00aaff';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                
+                const duration = this.params.timeWindow;
+                const samples = signal.length;
+                
+                for (let i = 0; i < samples; i++) {
+                    const x = (i / samples) * rect.width;
+                    const y = rect.height / 2 - (signal[i] / 2) * (rect.height / 2 - 20);
+                    
+                    if (i === 0) {
+                        ctx.moveTo(x, y);
+                    } else {
+                        ctx.lineTo(x, y);
+                    }
+                }
+                
+                ctx.stroke();
+                
+                // 축 레이블
+                this.drawTimeLabels(ctx, rect.width, rect.height, duration);
+            }
+            
+            drawFrequencyData(fftResult) {
+                const canvas = this.frequencyCanvas;
+                const ctx = this.frequencyCtx;
+                const rect = canvas.getBoundingClientRect();
+                
+                ctx.clearRect(0, 0, rect.width, rect.height);
+                
+                // 격자 그리기
+                this.drawGrid(ctx, rect.width, rect.height);
+                
+                const { frequencies, magnitudes } = fftResult;
+                const maxFreq = Math.min(frequencies[frequencies.length - 1], this.params.fundamental * 10);
+                const maxMag = Math.max(...magnitudes) * 1.1;
+                
+                // 막대 그래프로 그리기
+                const barWidth = rect.width / frequencies.length;
+                
+                frequencies.forEach((freq, i) => {
+                    if (freq <= maxFreq) {
+                        const x = (freq / maxFreq) * rect.width;
+                        const height = (magnitudes[i] / maxMag) * (rect.height - 40);
+                        const y = rect.height - 20 - height;
+                        
+                        // 하모닉인지 확인하고 색상 설정
+                        let color = '#666';
+                        const harmonicIndex = Math.round(freq / this.params.fundamental) - 1;
+                        if (harmonicIndex >= 0 && harmonicIndex < this.harmonics.length) {
+                            const expectedFreq = (harmonicIndex + 1) * this.params.fundamental;
+                            if (Math.abs(freq - expectedFreq) < 0.5) {
+                                color = this.harmonics[harmonicIndex].color;
+                            }
+                        }
+                        
+                        ctx.fillStyle = color;
+                        ctx.fillRect(x - barWidth/2, y, barWidth * 0.8, height);
+                    }
+                });
+                
+                // 축 레이블
+                this.drawFrequencyLabels(ctx, rect.width, rect.height, maxFreq);
+            }
+            
+            drawGrid(ctx, width, height) {
+                ctx.strokeStyle = '#333';
+                ctx.lineWidth = 1;
+                
+                // 수직선
+                for (let i = 0; i <= 10; i++) {
+                    const x = (i / 10) * width;
+                    ctx.beginPath();
+                    ctx.moveTo(x, 0);
+                    ctx.lineTo(x, height);
+                    ctx.stroke();
+                }
+                
+                // 수평선
+                for (let i = 0; i <= 10; i++) {
+                    const y = (i / 10) * height;
+                    ctx.beginPath();
+                    ctx.moveTo(0, y);
+                    ctx.lineTo(width, y);
+                    ctx.stroke();
+                }
+            }
+            
+            drawTimeLabels(ctx, width, height, duration) {
+                ctx.fillStyle = '#999';
+                ctx.font = '12px monospace';
+                ctx.textAlign = 'center';
+                
+                for (let i = 0; i <= 5; i++) {
+                    const x = (i / 5) * width;
+                    const time = (i / 5) * duration;
+                    ctx.fillText(`${time.toFixed(1)}s`, x, height - 5);
+                }
+                
+                // Y축 레이블
+                ctx.textAlign = 'left';
+                ctx.fillText('1', 5, 15);
+                ctx.fillText('0', 5, height / 2);
+                ctx.fillText('-1', 5, height - 25);
+            }
+            
+            drawFrequencyLabels(ctx, width, height, maxFreq) {
+                ctx.fillStyle = '#999';
+                ctx.font = '12px monospace';
+                ctx.textAlign = 'center';
+                
+                for (let i = 0; i <= 5; i++) {
+                    const x = (i / 5) * width;
+                    const freq = (i / 5) * maxFreq;
+                    ctx.fillText(`${freq.toFixed(1)}Hz`, x, height - 5);
+                }
+            }
+            
+            animate() {
+                const signal = this.generateSignal();
+                const fftResult = this.computeFFT(signal);
+                
+                this.drawTimeData(signal);
+                this.drawFrequencyData(fftResult);
+                
+                this.time += 0.016; // ~60fps
+                this.animationId = requestAnimationFrame(() => this.animate());
+            }
+        }
+        
+        // 초기화
+        window.addEventListener('load', () => {
+            new FourierVisualizer();
+        });
+    </script>
+</body>
+</html>
