@@ -400,14 +400,10 @@
                     <strong>RGB:</strong> 77, 166, 204<br>
                     <strong>HEX:</strong> #4DA6CC
                 </div>
+                <button id="exportBtn" class="export-button" style="display: none;">PNG로 저장</button>
             </div>
             
-            <div class="info-section">
-                <h4>색채 동역학 이해</h4>
-                <p id="modeDescription">색상환: 원형 HSL 색공간에서 조화색을 탐험해보세요</p>
-                <p>각 조화 유형은 다른 시각적 효과와 감정을 만들어냅니다.</p>
-                <button id="exportBtn" class="export-button">PNG로 저장</button>
-            </div>
+
             
             <div class="info-section">
                 <h4>📚 색채 이론</h4>
@@ -439,7 +435,7 @@
                 this.time = 0;
                 this.animationId = null;
                 this.particles = [];
-                this.touches = []; // 클릭 터치 기록
+                this.permanentCircles = []; // 클릭으로 찍힌 보색 원들
                 this.mouseX = 0;
                 this.mouseY = 0;
                 
@@ -504,8 +500,8 @@
                     document.getElementById('hueValue').textContent = Math.round(hue) + '°';
                     this.updateColorDisplay();
                 } else if (this.params.mode === 'interactive') {
-                    // 인터랙티브 모드에서 터치 추가
-                    this.addTouch(x, y);
+                    // 인터랙티브 모드에서 보색 원 도장 찍기
+                    this.addPermanentCircle(x, y);
                 }
             }
             
@@ -547,17 +543,7 @@
             // 모드에 따른 컨트롤 활성화/비활성화
             updateControlsState() {
                 const lightnessGroup = document.querySelector('#lightness').parentElement;
-                const modeDescription = document.getElementById('modeDescription');
                 const harmonyButtons = document.querySelectorAll('.harmony-button');
-                
-                const modeDescriptions = {
-                    'wheel': '색상환: 원형 HSL 색공간에서 조화색을 탐험해보세요',
-                    'palette': '색채 팔레트: 선택된 조화색들의 명도 변화를 확인하세요',
-                    'gradient': '그라디언트: 조화색들이 부드럽게 섞이는 그라디언트를 감상하세요',
-                    'interactive': '인터랙티브: 마우스 클릭으로 보색 터치를 남기는 예술을 만들어보세요'
-                };
-                
-                modeDescription.textContent = modeDescriptions[this.params.mode];
                 
                 // 팔레트 모드에서 명도 슬라이더 비활성화
                 if (this.params.mode === 'palette') {
@@ -622,8 +608,13 @@
                 const exportBtn = document.getElementById('exportBtn');
                 const canExport = this.params.mode === 'gradient' || this.params.mode === 'interactive';
                 
-                exportBtn.disabled = !canExport;
-                exportBtn.textContent = canExport ? 'PNG로 저장' : '이 모드에서는 저장 불가';
+                if (canExport) {
+                    exportBtn.style.display = 'block';
+                    exportBtn.disabled = false;
+                    exportBtn.textContent = 'PNG로 저장';
+                } else {
+                    exportBtn.style.display = 'none';
+                }
             }
             
             exportPNG() {
@@ -636,24 +627,22 @@
                 link.click();
             }
             
-            // 인터랙티브 터치 추가
-            addTouch(x, y) {
+            // 보색 원 영구 저장 (도장 찍기)
+            addPermanentCircle(x, y) {
                 const baseColor = `hsl(${this.params.hue}, ${this.params.saturation}%, ${this.params.lightness}%)`;
                 const complementaryColor = `hsl(${(this.params.hue + 180) % 360}, ${this.params.saturation}%, ${this.params.lightness}%)`;
                 
-                this.touches.push({
+                this.permanentCircles.push({
                     x: x,
                     y: y,
                     baseColor: baseColor,
                     complementaryColor: complementaryColor,
-                    life: 1.0,
-                    maxRadius: Math.random() * 100 + 50,
-                    decay: 0.02 + Math.random() * 0.01
+                    radius: 30 + Math.random() * 20 // 다양한 크기
                 });
                 
-                // 최대 20개 터치 유지
-                if (this.touches.length > 20) {
-                    this.touches.shift();
+                // 최대 50개 원 유지
+                if (this.permanentCircles.length > 50) {
+                    this.permanentCircles.shift();
                 }
             }
             
@@ -855,22 +844,6 @@
                 
                 this.ctx.fillStyle = gradient;
                 this.ctx.fillRect(0, 0, this.width, this.height);
-                
-                // 색상 마커만 표시 (텍스트 제거)
-                harmonyColors.forEach((hue, index) => {
-                    const x = (this.width / harmonyColors.length) * index + (this.width / harmonyColors.length) / 2;
-                    const y = this.height / 2;
-                    
-                    // 색상 마커
-                    this.ctx.fillStyle = `hsl(${hue}, ${this.params.saturation}%, ${this.params.lightness}%)`;
-                    this.ctx.beginPath();
-                    this.ctx.arc(x, y, 15, 0, Math.PI * 2);
-                    this.ctx.fill();
-                    
-                    this.ctx.strokeStyle = '#fff';
-                    this.ctx.lineWidth = 3;
-                    this.ctx.stroke();
-                });
             }
             
             drawInteractive() {
@@ -889,63 +862,52 @@
                 this.ctx.fillStyle = bgGradient;
                 this.ctx.fillRect(0, 0, this.width, this.height);
                 
-                // 터치 마크 그리기
-                this.touches.forEach(touch => {
-                    const alpha = touch.life;
-                    const radius = touch.maxRadius * (1 - touch.life);
-                    
+                // 영구 저장된 보색 원들 그리기
+                this.permanentCircles.forEach(circle => {
                     // 기본 색상 원
-                    this.ctx.globalAlpha = alpha * 0.8;
-                    this.ctx.fillStyle = touch.baseColor;
+                    this.ctx.fillStyle = circle.baseColor;
                     this.ctx.beginPath();
-                    this.ctx.arc(touch.x, touch.y, radius * 0.7, 0, Math.PI * 2);
+                    this.ctx.arc(circle.x, circle.y, circle.radius, 0, Math.PI * 2);
                     this.ctx.fill();
                     
-                    // 보색 원
-                    this.ctx.fillStyle = touch.complementaryColor;
+                    // 보색 원 (약간 작고 오프셋)
+                    this.ctx.fillStyle = circle.complementaryColor;
                     this.ctx.beginPath();
-                    this.ctx.arc(touch.x + radius * 0.3, touch.y + radius * 0.3, radius * 0.4, 0, Math.PI * 2);
+                    this.ctx.arc(circle.x + circle.radius * 0.3, circle.y + circle.radius * 0.3, circle.radius * 0.6, 0, Math.PI * 2);
                     this.ctx.fill();
                     
-                    this.ctx.globalAlpha = 1;
-                    
-                    // 터치 생명 감소
-                    touch.life -= touch.decay;
+                    // 테두리
+                    this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+                    this.ctx.lineWidth = 2;
+                    this.ctx.beginPath();
+                    this.ctx.arc(circle.x, circle.y, circle.radius, 0, Math.PI * 2);
+                    this.ctx.stroke();
                 });
                 
-                // 생명이 다한 터치 제거
-                this.touches = this.touches.filter(touch => touch.life > 0);
+                // 현재 마우스 위치에 미리보기 보색 원 (반투명)
+                this.ctx.globalAlpha = 0.7;
                 
-                // 인터랙티브 파티클
-                this.particles.forEach(particle => {
-                    const dx = this.mouseX - particle.x;
-                    const dy = this.mouseY - particle.y;
-                    const distance = Math.sqrt(dx * dx + dy * dy);
-                    
-                    if (distance < 100) {
-                        particle.vx += dx * 0.001;
-                        particle.vy += dy * 0.001;
-                    }
-                    
-                    particle.x += particle.vx;
-                    particle.y += particle.vy;
-                    particle.vx *= 0.99;
-                    particle.vy *= 0.99;
-                    
-                    // 경계 처리
-                    if (particle.x < 0 || particle.x > this.width) particle.vx *= -1;
-                    if (particle.y < 0 || particle.y > this.height) particle.vy *= -1;
-                    
-                    particle.x = Math.max(0, Math.min(this.width, particle.x));
-                    particle.y = Math.max(0, Math.min(this.height, particle.y));
-                    
-                    // 파티클 그리기
-                    const hue = (particle.hue + this.time * 50) % 360;
-                    this.ctx.fillStyle = `hsl(${hue}, 80%, 60%)`;
-                    this.ctx.beginPath();
-                    this.ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
-                    this.ctx.fill();
-                });
+                // 미리보기 기본 색상 원
+                this.ctx.fillStyle = baseColor;
+                this.ctx.beginPath();
+                const previewRadius = 35;
+                this.ctx.arc(this.mouseX, this.mouseY, previewRadius, 0, Math.PI * 2);
+                this.ctx.fill();
+                
+                // 미리보기 보색 원
+                this.ctx.fillStyle = complementaryColor;
+                this.ctx.beginPath();
+                this.ctx.arc(this.mouseX + previewRadius * 0.3, this.mouseY + previewRadius * 0.3, previewRadius * 0.6, 0, Math.PI * 2);
+                this.ctx.fill();
+                
+                // 미리보기 테두리
+                this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+                this.ctx.lineWidth = 2;
+                this.ctx.beginPath();
+                this.ctx.arc(this.mouseX, this.mouseY, previewRadius, 0, Math.PI * 2);
+                this.ctx.stroke();
+                
+                this.ctx.globalAlpha = 1;
             }
             
             draw() {
