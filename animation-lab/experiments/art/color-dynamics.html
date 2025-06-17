@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>색채 역학 - 색공간 탐험</title>
+    <title>색채 동역학 - 색공간 탐험</title>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -11,7 +11,7 @@
             --primary-color: #1a1a1a;
             --secondary-color: #2a2a2a;
             --text-color: #e0e0e0;
-            --accent-color: #ff6b6b;
+            --accent-color: #4ecdc4;
             --button-bg: #333;
             --button-hover: #555;
             --grid-color: #333;
@@ -306,7 +306,7 @@
     <div class="container">
         <div class="canvas-area">
             <div class="canvas-section">
-                <h3>🎨 색채 역학 탐험</h3>
+                <h3>🎨 색채 동역학 탐험</h3>
                 <canvas id="colorCanvas"></canvas>
             </div>
         </div>
@@ -317,7 +317,7 @@
                     ← 돌아가기
                 </a>
                 <div class="control-header">
-                    <h1>색채 역학</h1>
+                    <h1>색채 동역학</h1>
                     <p>색공간을 여행하며 발견하는 색의 무한한 가능성</p>
                 </div>
             </div>
@@ -332,25 +332,25 @@
             <div class="control-group">
                 <div class="control-label">
                     <span>색상 (H)</span>
-                    <span class="control-value" id="hueValue">180°</span>
+                    <span class="control-value" id="hueValue">200°</span>
                 </div>
-                <input type="range" id="hue" min="0" max="360" step="1" value="180">
+                <input type="range" id="hue" min="0" max="360" step="1" value="200">
             </div>
             
             <div class="control-group">
                 <div class="control-label">
                     <span>채도 (S)</span>
-                    <span class="control-value" id="saturationValue">80%</span>
+                    <span class="control-value" id="saturationValue">70%</span>
                 </div>
-                <input type="range" id="saturation" min="0" max="100" step="1" value="80">
+                <input type="range" id="saturation" min="0" max="100" step="1" value="70">
             </div>
             
             <div class="control-group">
                 <div class="control-label">
                     <span>명도 (L)</span>
-                    <span class="control-value" id="lightnessValue">50%</span>
+                    <span class="control-value" id="lightnessValue">60%</span>
                 </div>
-                <input type="range" id="lightness" min="0" max="100" step="1" value="50">
+                <input type="range" id="lightness" min="0" max="100" step="1" value="60">
             </div>
             
             <div class="harmony-types">
@@ -365,11 +365,11 @@
             
             <div class="color-display">
                 <h4>🎨 현재 색상</h4>
-                <div class="color-swatch" id="currentColor">HSL(180°, 80%, 50%)</div>
+                <div class="color-swatch" id="currentColor">HSL(200°, 70%, 60%)</div>
                 <div class="color-info" id="colorInfo">
-                    <strong>HSL:</strong> 180°, 80%, 50%<br>
-                    <strong>RGB:</strong> 26, 179, 179<br>
-                    <strong>HEX:</strong> #1AB3B3
+                    <strong>HSL:</strong> 200°, 70%, 60%<br>
+                    <strong>RGB:</strong> 77, 166, 204<br>
+                    <strong>HEX:</strong> #4DA6CC
                 </div>
             </div>
             
@@ -393,9 +393,9 @@
                 this.params = {
                     mode: 'wheel',
                     harmony: 'complementary',
-                    hue: 180,
-                    saturation: 80,
-                    lightness: 50,
+                    hue: 200,
+                    saturation: 70,
+                    lightness: 60,
                     animationSpeed: 0.02,
                     particleCount: 50
                 };
