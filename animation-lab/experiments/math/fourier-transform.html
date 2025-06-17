@@ -228,24 +228,29 @@
             margin-bottom: 8px;
         }
         
+        .nav-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+        }
+
         .back-button {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            padding: 10px 20px;
-            background: rgba(255, 255, 255, 0.1);
-            color: var(--text-color);
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
             text-decoration: none;
-            border-radius: 25px;
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            font-size: 14px;
             transition: all 0.3s ease;
-            z-index: 100;
         }
         
         .back-button:hover {
-            background: rgba(255, 255, 255, 0.2);
-            transform: translateY(-2px);
+            background: rgba(255,255,255,0.2);
+            transform: translateY(-1px);
         }
         
         @media (max-width: 768px) {
@@ -288,6 +293,10 @@
         </div>
         
         <div class="controls">
+            <div class="nav-header">
+                <a href="../../index.html" class="back-button">← 돌아가기</a>
+            </div>
+            
             <div class="control-header">
                 <h1>🌊 푸리에 변환</h1>
                 <p>파형을 주파수 성분으로 분해</p>
@@ -349,8 +358,6 @@
             </div>
         </div>
     </div>
-    
-    <a href="../../index.html" class="back-button">← 메인으로</a>
     
     <script>
         class FourierVisualizer {
@@ -748,7 +755,7 @@
                 this.drawFrequencyData(fftResult);
                 
                 this.time += 0.016; // ~60fps
-                this.timeOffset += 0.05; // 파형이 흘러가는 속도
+                this.timeOffset += 0.01; // 파형이 흘러가는 속도 (훨씬 느리게)
                 this.animationId = requestAnimationFrame(() => this.animate());
             }
         }
