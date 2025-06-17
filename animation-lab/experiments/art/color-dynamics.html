@@ -25,7 +25,10 @@
         
         body {
             font-family: 'Noto Sans KR', sans-serif;
-            background: linear-gradient(135deg, var(--bg-color) 0%, #1a1a2e 50%, #16213e 100%);
+            background: linear-gradient(135deg, var(--bg-color) 0%, #1a1a2e 50%,                    this.ctx.globalAlpha = finalAlpha;
+                    this.ctx.fillStyle = gradient;
+                    this.ctx.fillRect(0, 0, this.width, this.height);
+                    this.ctx.globalAlpha = 1; // 원래대로 복원3e 100%);
             color: var(--text-color);
             overflow: hidden;
             height: 100vh;
@@ -645,8 +648,8 @@
                     overlapCount: overlapCount // 중첩 횟수 저장
                 });
                 
-                // 최대 20개 그라디언트 유지
-                if (this.permanentCircles.length > 20) {
+                // 최대 100개 그라디언트 유지
+                if (this.permanentCircles.length > 100) {
                     this.permanentCircles.shift();
                 }
             }
@@ -880,7 +883,7 @@
                     
                     // 중첩 횟수에 따라 투명도 증가 (0.2 기본 + 중첩당 0.1씩 증가)
                     const baseAlpha = 0.2;
-                    const overlapBonus = circle.overlapCount * 0.1;
+                    const overlapBonus = circle.overlapCount * 0.1; // 다시 0.1로 복구
                     const finalAlpha = Math.min(baseAlpha + overlapBonus, 1.0);
                     
                     this.ctx.globalAlpha = finalAlpha;
