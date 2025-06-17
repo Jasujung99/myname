@@ -627,7 +627,7 @@
                 link.click();
             }
             
-            // 보색 원 영구 저장 (도장 찍기)
+            // 보색 그라디언트 영구 저장 (진짜 도장 찍기)
             addPermanentCircle(x, y) {
                 const baseColor = `hsl(${this.params.hue}, ${this.params.saturation}%, ${this.params.lightness}%)`;
                 const complementaryColor = `hsl(${(this.params.hue + 180) % 360}, ${this.params.saturation}%, ${this.params.lightness}%)`;
@@ -637,11 +637,11 @@
                     y: y,
                     baseColor: baseColor,
                     complementaryColor: complementaryColor,
-                    radius: 30 + Math.random() * 20 // 다양한 크기
+                    radius: Math.min(this.width, this.height) * 0.4 // 그라디언트 반지름
                 });
                 
-                // 최대 50개 원 유지
-                if (this.permanentCircles.length > 50) {
+                // 최대 20개 그라디언트 유지
+                if (this.permanentCircles.length > 20) {
                     this.permanentCircles.shift();
                 }
             }
@@ -847,66 +847,40 @@
             }
             
             drawInteractive() {
-                // 배경 그라디언트
-                const bgGradient = this.ctx.createRadialGradient(
+                // 기본 배경
+                this.ctx.fillStyle = '#1a1a1a';
+                this.ctx.fillRect(0, 0, this.width, this.height);
+                
+                // 영구 저장된 그라디언트들 그리기
+                this.permanentCircles.forEach(circle => {
+                    const gradient = this.ctx.createRadialGradient(
+                        circle.x, circle.y, 0,
+                        circle.x, circle.y, circle.radius
+                    );
+                    
+                    gradient.addColorStop(0, circle.baseColor);
+                    gradient.addColorStop(1, circle.complementaryColor);
+                    
+                    this.ctx.fillStyle = gradient;
+                    this.ctx.fillRect(0, 0, this.width, this.height);
+                });
+                
+                // 현재 마우스 위치의 실시간 그라디언트 (오버레이)
+                const currentGradient = this.ctx.createRadialGradient(
                     this.mouseX, this.mouseY, 0,
-                    this.mouseX, this.mouseY, Math.min(this.width, this.height) * 0.5
+                    this.mouseX, this.mouseY, Math.min(this.width, this.height) * 0.4
                 );
                 
                 const baseColor = `hsl(${this.params.hue}, ${this.params.saturation}%, ${this.params.lightness}%)`;
                 const complementaryColor = `hsl(${(this.params.hue + 180) % 360}, ${this.params.saturation}%, ${this.params.lightness}%)`;
                 
-                bgGradient.addColorStop(0, baseColor);
-                bgGradient.addColorStop(1, complementaryColor);
+                currentGradient.addColorStop(0, baseColor);
+                currentGradient.addColorStop(1, complementaryColor);
                 
-                this.ctx.fillStyle = bgGradient;
+                // 반투명으로 오버레이
+                this.ctx.globalAlpha = 0.6;
+                this.ctx.fillStyle = currentGradient;
                 this.ctx.fillRect(0, 0, this.width, this.height);
-                
-                // 영구 저장된 보색 원들 그리기
-                this.permanentCircles.forEach(circle => {
-                    // 기본 색상 원
-                    this.ctx.fillStyle = circle.baseColor;
-                    this.ctx.beginPath();
-                    this.ctx.arc(circle.x, circle.y, circle.radius, 0, Math.PI * 2);
-                    this.ctx.fill();
-                    
-                    // 보색 원 (약간 작고 오프셋)
-                    this.ctx.fillStyle = circle.complementaryColor;
-                    this.ctx.beginPath();
-                    this.ctx.arc(circle.x + circle.radius * 0.3, circle.y + circle.radius * 0.3, circle.radius * 0.6, 0, Math.PI * 2);
-                    this.ctx.fill();
-                    
-                    // 테두리
-                    this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
-                    this.ctx.lineWidth = 2;
-                    this.ctx.beginPath();
-                    this.ctx.arc(circle.x, circle.y, circle.radius, 0, Math.PI * 2);
-                    this.ctx.stroke();
-                });
-                
-                // 현재 마우스 위치에 미리보기 보색 원 (반투명)
-                this.ctx.globalAlpha = 0.7;
-                
-                // 미리보기 기본 색상 원
-                this.ctx.fillStyle = baseColor;
-                this.ctx.beginPath();
-                const previewRadius = 35;
-                this.ctx.arc(this.mouseX, this.mouseY, previewRadius, 0, Math.PI * 2);
-                this.ctx.fill();
-                
-                // 미리보기 보색 원
-                this.ctx.fillStyle = complementaryColor;
-                this.ctx.beginPath();
-                this.ctx.arc(this.mouseX + previewRadius * 0.3, this.mouseY + previewRadius * 0.3, previewRadius * 0.6, 0, Math.PI * 2);
-                this.ctx.fill();
-                
-                // 미리보기 테두리
-                this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
-                this.ctx.lineWidth = 2;
-                this.ctx.beginPath();
-                this.ctx.arc(this.mouseX, this.mouseY, previewRadius, 0, Math.PI * 2);
-                this.ctx.stroke();
-                
                 this.ctx.globalAlpha = 1;
             }
             
