@@ -638,6 +638,36 @@
                 return amplitude * dampingFactor * Math.sin(waveNumber * distance - angularFreq * time);
             }
             
+            calculateShadowTransition(x, y, slitX, slitTopY, slitBottomY) {
+                // 슬릿 영역 내부면 완전히 밝음
+                if (y >= slitTopY && y <= slitBottomY) {
+                    return 1.0;
+                }
+                
+                // 그림자 전이 영역의 크기 (파장에 비례)
+                const transitionWidth = this.params.wavelength * 0.5;
+                
+                let distanceToSlit;
+                if (y < slitTopY) {
+                    // 슬릿 위쪽
+                    distanceToSlit = slitTopY - y;
+                } else {
+                    // 슬릿 아래쪽  
+                    distanceToSlit = y - slitBottomY;
+                }
+                
+                // 프레넬 회절 근사 - 부드러운 전이
+                // tanh 함수 사용하여 급격한 변화를 부드럽게
+                const transitionFactor = distanceToSlit / transitionWidth;
+                const shadowStrength = 0.5 * (1 + Math.tanh(transitionFactor - 1));
+                
+                // 거리에 따른 추가 감쇠 (슬릿에서 멀어질수록 그림자 진해짐)
+                const distanceFromSlit = x - slitX;
+                const distanceDecay = Math.exp(-distanceFromSlit / (this.width * 0.3));
+                
+                return Math.max(0, Math.min(1, 1 - shadowStrength * distanceDecay));
+            }
+            
             drawWave() {
                 if (!this.width || !this.height) return;
                 
@@ -679,33 +709,45 @@
                             const slitX = this.width * 0.5;
                             const slitTopY = this.height * 0.4;
                             const slitBottomY = this.height * 0.6;
-                            const slitCenterY = (slitTopY + slitBottomY) / 2;
+                            const slitHeight = slitBottomY - slitTopY;
                             
                             // 소스가 슬릿 왼쪽에 있고, 현재 점이 슬릿 오른쪽에 있을 때
                             if (this.params.source1.active && this.params.source1.x < slitX && x > slitX) {
-                                // 장애물에 의한 직접파 차단
-                                if (y < slitTopY || y > slitBottomY) {
-                                    // 그림자 영역 - 직접파 제거
-                                    const directWave = this.calculateWaveValue(
-                                        x, y,
-                                        this.params.source1.x, this.params.source1.y,
-                                        this.params.source1.frequency,
-                                        this.params.source1.amplitude,
-                                        this.time
-                                    );
-                                    totalValue -= directWave; // 직접파 제거
-                                }
+                                // 부드러운 그림자 전이 계산
+                                const shadowTransition = this.calculateShadowTransition(x, y, slitX, slitTopY, slitBottomY);
                                 
-                                // 슬릿에서 나오는 회절파 추가 (휘겐스 원리)
-                                const diffractionAmplitude = this.params.source1.amplitude * 0.6;
-                                const diffractionWave = this.calculateWaveValue(
+                                // 장애물에 의한 직접파 감쇠
+                                const directWave = this.calculateWaveValue(
                                     x, y,
-                                    slitX, slitCenterY, // 슬릿 중심에서 나오는 파동
+                                    this.params.source1.x, this.params.source1.y,
                                     this.params.source1.frequency,
-                                    diffractionAmplitude,
+                                    this.params.source1.amplitude,
                                     this.time
                                 );
-                                totalValue += diffractionWave;
+                                totalValue -= directWave * (1 - shadowTransition); // 부드러운 차단
+                                
+                                // 다중 회절 소스 생성 (슬릿을 여러 점으로 분할)
+                                const numSources = 7; // 홀수로 설정하여 중심 포함
+                                for (let i = 0; i < numSources; i++) {
+                                    const sourceY = slitTopY + (slitHeight * i) / (numSources - 1);
+                                    
+                                    // 각 소스의 가중치 (가우시안 분포)
+                                    const centerY = (slitTopY + slitBottomY) / 2;
+                                    const normalizedPos = (sourceY - centerY) / (slitHeight / 2);
+                                    const weight = Math.exp(-normalizedPos * normalizedPos); // 가우시안 가중치
+                                    
+                                    // 회절파 진폭 (원본의 일정 비율)
+                                    const diffractionAmplitude = this.params.source1.amplitude * 0.4 * weight / numSources;
+                                    
+                                    const diffractionWave = this.calculateWaveValue(
+                                        x, y,
+                                        slitX, sourceY, // 슬릿 내 각 점에서 나오는 파동
+                                        this.params.source1.frequency,
+                                        diffractionAmplitude,
+                                        this.time
+                                    );
+                                    totalValue += diffractionWave;
+                                }
                             }
                         }
                         
