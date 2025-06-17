@@ -285,6 +285,31 @@
             margin-bottom: 8px;
         }
         
+        .export-button {
+            background: var(--accent-color);
+            color: #000;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            width: 100%;
+            margin-top: 10px;
+        }
+        
+        .export-button:hover {
+            background: #3db8b4;
+            transform: translateY(-1px);
+        }
+        
+        .export-button:disabled {
+            background: #666;
+            color: #999;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
         @media (max-width: 768px) {
             .container {
                 flex-direction: column;
@@ -378,6 +403,13 @@
             </div>
             
             <div class="info-section">
+                <h4>색채 동역학 이해</h4>
+                <p id="modeDescription">색상환: 원형 HSL 색공간에서 조화색을 탐험해보세요</p>
+                <p>각 조화 유형은 다른 시각적 효과와 감정을 만들어냅니다.</p>
+                <button id="exportBtn" class="export-button">PNG로 저장</button>
+            </div>
+            
+            <div class="info-section">
                 <h4>📚 색채 이론</h4>
                 <p><strong>색상환(Hue):</strong> 0°-360°의 색상 스펙트럼으로 색의 종류를 나타냅니다.</p>
                 <p><strong>채도(Saturation):</strong> 색의 순수함과 선명도를 나타냅니다.</p>
@@ -407,6 +439,7 @@
                 this.time = 0;
                 this.animationId = null;
                 this.particles = [];
+                this.touches = []; // 클릭 터치 기록
                 this.mouseX = 0;
                 this.mouseY = 0;
                 
@@ -414,6 +447,7 @@
                 this.setupControls();
                 this.setupModes();
                 this.setupHarmony();
+                this.setupExport(); // PNG 저장 기능 추가
                 this.initParticles();
                 this.updateControlsState(); // 초기 컨트롤 상태 설정
                 this.animate();
@@ -469,6 +503,9 @@
                     document.getElementById('hue').value = hue;
                     document.getElementById('hueValue').textContent = Math.round(hue) + '°';
                     this.updateColorDisplay();
+                } else if (this.params.mode === 'interactive') {
+                    // 인터랙티브 모드에서 터치 추가
+                    this.addTouch(x, y);
                 }
             }
             
@@ -511,27 +548,52 @@
             updateControlsState() {
                 const lightnessGroup = document.querySelector('#lightness').parentElement;
                 const modeDescription = document.getElementById('modeDescription');
+                const harmonyButtons = document.querySelectorAll('.harmony-button');
                 
                 const modeDescriptions = {
                     'wheel': '색상환: 원형 HSL 색공간에서 조화색을 탐험해보세요',
                     'palette': '색채 팔레트: 선택된 조화색들의 명도 변화를 확인하세요',
                     'gradient': '그라디언트: 조화색들이 부드럽게 섞이는 그라디언트를 감상하세요',
-                    'interactive': '인터랙티브: 마우스를 움직여 파티클과 색상이 반응하는 예술을 만들어보세요'
+                    'interactive': '인터랙티브: 마우스 클릭으로 보색 터치를 남기는 예술을 만들어보세요'
                 };
                 
                 modeDescription.textContent = modeDescriptions[this.params.mode];
                 
+                // 팔레트 모드에서 명도 슬라이더 비활성화
                 if (this.params.mode === 'palette') {
-                    // 팔레트 모드에서는 명도 슬라이더 비활성화 (명도 그라디언트를 보여주므로)
                     lightnessGroup.style.opacity = '0.5';
                     lightnessGroup.style.pointerEvents = 'none';
                     lightnessGroup.querySelector('.control-label span').textContent = '명도 (비활성화)';
                 } else {
-                    // 다른 모드에서는 명도 슬라이더 활성화
                     lightnessGroup.style.opacity = '1';
                     lightnessGroup.style.pointerEvents = 'auto';
                     lightnessGroup.querySelector('.control-label span').textContent = '명도 (L)';
                 }
+                
+                // 인터랙티브 모드에서 조화 타입 제한 (보색만)
+                if (this.params.mode === 'interactive') {
+                    harmonyButtons.forEach(button => {
+                        if (button.dataset.harmony === 'complementary') {
+                            button.style.opacity = '1';
+                            button.style.pointerEvents = 'auto';
+                            button.classList.add('active');
+                            this.params.harmony = 'complementary';
+                        } else {
+                            button.style.opacity = '0.5';
+                            button.style.pointerEvents = 'none';
+                            button.classList.remove('active');
+                        }
+                    });
+                } else {
+                    // 다른 모드에서는 모든 조화 타입 활성화
+                    harmonyButtons.forEach(button => {
+                        button.style.opacity = '1';
+                        button.style.pointerEvents = 'auto';
+                    });
+                }
+                
+                // 저장 버튼 상태 업데이트
+                this.updateExportButton();
             }
             
             setupHarmony() {
@@ -544,6 +606,55 @@
                         this.params.harmony = button.dataset.harmony;
                     });
                 });
+            }
+            
+            setupExport() {
+                const exportBtn = document.getElementById('exportBtn');
+                exportBtn.addEventListener('click', () => {
+                    this.exportPNG();
+                });
+                
+                // 특정 모드에서만 저장 버튼 활성화
+                this.updateExportButton();
+            }
+            
+            updateExportButton() {
+                const exportBtn = document.getElementById('exportBtn');
+                const canExport = this.params.mode === 'gradient' || this.params.mode === 'interactive';
+                
+                exportBtn.disabled = !canExport;
+                exportBtn.textContent = canExport ? 'PNG로 저장' : '이 모드에서는 저장 불가';
+            }
+            
+            exportPNG() {
+                // 현재 캔버스 상태를 이미지로 저장
+                const link = document.createElement('a');
+                const filename = `색채동역학_${this.params.mode}_${Date.now()}.png`;
+                
+                link.download = filename;
+                link.href = this.canvas.toDataURL('image/png');
+                link.click();
+            }
+            
+            // 인터랙티브 터치 추가
+            addTouch(x, y) {
+                const baseColor = `hsl(${this.params.hue}, ${this.params.saturation}%, ${this.params.lightness}%)`;
+                const complementaryColor = `hsl(${(this.params.hue + 180) % 360}, ${this.params.saturation}%, ${this.params.lightness}%)`;
+                
+                this.touches.push({
+                    x: x,
+                    y: y,
+                    baseColor: baseColor,
+                    complementaryColor: complementaryColor,
+                    life: 1.0,
+                    maxRadius: Math.random() * 100 + 50,
+                    decay: 0.02 + Math.random() * 0.01
+                });
+                
+                // 최대 20개 터치 유지
+                if (this.touches.length > 20) {
+                    this.touches.shift();
+                }
             }
             
             initParticles() {
@@ -745,17 +856,20 @@
                 this.ctx.fillStyle = gradient;
                 this.ctx.fillRect(0, 0, this.width, this.height);
                 
-                // 그라디언트 정보 표시
-                this.ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-                this.ctx.font = '16px Arial';
-                this.ctx.textAlign = 'center';
-                this.ctx.fillText(`${harmonyColors.length}색 조화 그라디언트`, this.width / 2, 30);
-                
-                // 색상 정보 하단 표시
-                this.ctx.font = '12px Arial';
+                // 색상 마커만 표시 (텍스트 제거)
                 harmonyColors.forEach((hue, index) => {
                     const x = (this.width / harmonyColors.length) * index + (this.width / harmonyColors.length) / 2;
-                    this.ctx.fillText(`${Math.round(hue)}°`, x, this.height - 20);
+                    const y = this.height / 2;
+                    
+                    // 색상 마커
+                    this.ctx.fillStyle = `hsl(${hue}, ${this.params.saturation}%, ${this.params.lightness}%)`;
+                    this.ctx.beginPath();
+                    this.ctx.arc(x, y, 15, 0, Math.PI * 2);
+                    this.ctx.fill();
+                    
+                    this.ctx.strokeStyle = '#fff';
+                    this.ctx.lineWidth = 3;
+                    this.ctx.stroke();
                 });
             }
             
@@ -774,6 +888,33 @@
                 
                 this.ctx.fillStyle = bgGradient;
                 this.ctx.fillRect(0, 0, this.width, this.height);
+                
+                // 터치 마크 그리기
+                this.touches.forEach(touch => {
+                    const alpha = touch.life;
+                    const radius = touch.maxRadius * (1 - touch.life);
+                    
+                    // 기본 색상 원
+                    this.ctx.globalAlpha = alpha * 0.8;
+                    this.ctx.fillStyle = touch.baseColor;
+                    this.ctx.beginPath();
+                    this.ctx.arc(touch.x, touch.y, radius * 0.7, 0, Math.PI * 2);
+                    this.ctx.fill();
+                    
+                    // 보색 원
+                    this.ctx.fillStyle = touch.complementaryColor;
+                    this.ctx.beginPath();
+                    this.ctx.arc(touch.x + radius * 0.3, touch.y + radius * 0.3, radius * 0.4, 0, Math.PI * 2);
+                    this.ctx.fill();
+                    
+                    this.ctx.globalAlpha = 1;
+                    
+                    // 터치 생명 감소
+                    touch.life -= touch.decay;
+                });
+                
+                // 생명이 다한 터치 제거
+                this.touches = this.touches.filter(touch => touch.life > 0);
                 
                 // 인터랙티브 파티클
                 this.particles.forEach(particle => {
