@@ -348,6 +348,13 @@
                 <input type="range" id="noise" min="0" max="50" step="1" value="0">
             </div>
             
+            <div class="control-group" id="customControls" style="display: none;">
+                <button class="preset-button" onclick="visualizer.clearCustomPoints()" 
+                        style="width: 100%; background: #ff4757; border-color: #ff4757;">
+                    🗑️ 포인트 모두 지우기
+                </button>
+            </div>
+            
             <div class="info-section">
                 <h4>📚 학습 포인트</h4>
                 <p><strong>시간 영역:</strong> 시간에 따른 신호의 진폭 변화를 보여줍니다.</p>
@@ -390,10 +397,15 @@
                 this.time = 0;
                 this.timeOffset = 0; // 파형 애니메이션을 위한 시간 오프셋
                 
+                // 사용자 정의 파형 관련
+                this.customPoints = []; // 사용자가 클릭한 포인트들
+                this.isCustomMode = false; // 사용자 정의 모드 여부
+                
                 this.initCanvas();
                 this.setupControls();
                 this.setupHarmonics();
                 this.setupPresets();
+                this.setupCustomDrawing(); // 사용자 정의 그리기 설정
                 this.updateNoiseSliderState('sine'); // 초기 상태 설정
                 this.animate();
             }
@@ -491,6 +503,14 @@
             }
             
             applyPreset(preset) {
+                // 사용자 정의 모드 설정
+                this.isCustomMode = (preset === 'custom');
+                
+                if (preset === 'custom') {
+                    // 사용자 정의 모드: 기존 포인트 유지
+                    return;
+                }
+                
                 // 모든 하모닉 비활성화
                 this.harmonics.forEach(h => h.active = false);
                 
@@ -520,11 +540,6 @@
                             }
                         });
                         break;
-                    case 'custom':
-                        this.harmonics[0].active = true;
-                        this.harmonics[2].active = true;
-                        this.harmonics[4].active = true;
-                        break;
                 }
                 
                 this.updateHarmonicsDisplay();
@@ -540,17 +555,73 @@
             updateNoiseSliderState(preset) {
                 const noiseSlider = document.getElementById('noise');
                 const noiseGroup = noiseSlider.closest('.control-group');
+                const customControls = document.getElementById('customControls');
                 
                 if (preset === 'noise') {
                     // 화이트 노이즈일 때 슬라이더 비활성화
                     noiseSlider.disabled = true;
                     noiseGroup.style.opacity = '0.5';
                     noiseGroup.style.pointerEvents = 'none';
-                } else {
-                    // 다른 파형일 때 슬라이더 활성화
+                    customControls.style.display = 'none';
+                } else if (preset === 'custom') {
+                    // 사용자 정의 모드일 때 커스텀 컨트롤 표시
                     noiseSlider.disabled = false;
                     noiseGroup.style.opacity = '1';
                     noiseGroup.style.pointerEvents = 'auto';
+                    customControls.style.display = 'block';
+                } else {
+                    // 다른 파형일 때 슬라이더 활성화, 커스텀 컨트롤 숨김
+                    noiseSlider.disabled = false;
+                    noiseGroup.style.opacity = '1';
+                    noiseGroup.style.pointerEvents = 'auto';
+                    customControls.style.display = 'none';
+                }
+            }
+            
+            clearCustomPoints() {
+                this.customPoints = [];
+            }
+            
+            setupCustomDrawing() {
+                // 시간 영역 캔버스에 클릭 이벤트 추가
+                this.timeCanvas.addEventListener('click', (e) => {
+                    if (this.isCustomMode) {
+                        this.addCustomPoint(e);
+                    }
+                });
+                
+                // 우클릭으로 마지막 포인트 제거
+                this.timeCanvas.addEventListener('contextmenu', (e) => {
+                    e.preventDefault();
+                    if (this.isCustomMode && this.customPoints.length > 0) {
+                        this.customPoints.pop();
+                    }
+                });
+            }
+            
+            addCustomPoint(event) {
+                const rect = this.timeCanvas.getBoundingClientRect();
+                const x = event.clientX - rect.left;
+                const y = event.clientY - rect.top;
+                
+                // 캔버스 좌표를 시간/진폭 값으로 변환
+                const time = (x / rect.width) * this.params.timeWindow;
+                const amplitude = (rect.height / 2 - y) / (rect.height / 2) * 2; // -2 ~ 2 범위
+                
+                // 시간 순서대로 정렬하여 삽입
+                const point = { time, amplitude };
+                let inserted = false;
+                
+                for (let i = 0; i < this.customPoints.length; i++) {
+                    if (this.customPoints[i].time > time) {
+                        this.customPoints.splice(i, 0, point);
+                        inserted = true;
+                        break;
+                    }
+                }
+                
+                if (!inserted) {
+                    this.customPoints.push(point);
                 }
             }
             
@@ -567,6 +638,9 @@
                     
                     if (this.params.preset === 'noise') {
                         value = (Math.random() - 0.5) * 2;
+                    } else if (this.params.preset === 'custom') {
+                        // 사용자 정의 파형 생성
+                        value = this.generateCustomWave(t % duration);
                     } else {
                         // 활성화된 하모닉들을 합성
                         this.harmonics.forEach(harmonic => {
@@ -589,6 +663,38 @@
                 }
                 
                 return signal;
+            }
+            
+            generateCustomWave(time) {
+                if (this.customPoints.length === 0) {
+                    return 0;
+                }
+                
+                if (this.customPoints.length === 1) {
+                    return this.customPoints[0].amplitude;
+                }
+                
+                // 시간 범위를 벗어나면 가장 가까운 값 반환
+                if (time <= this.customPoints[0].time) {
+                    return this.customPoints[0].amplitude;
+                }
+                
+                if (time >= this.customPoints[this.customPoints.length - 1].time) {
+                    return this.customPoints[this.customPoints.length - 1].amplitude;
+                }
+                
+                // 선형 보간으로 중간값 계산
+                for (let i = 0; i < this.customPoints.length - 1; i++) {
+                    const p1 = this.customPoints[i];
+                    const p2 = this.customPoints[i + 1];
+                    
+                    if (time >= p1.time && time <= p2.time) {
+                        const ratio = (time - p1.time) / (p2.time - p1.time);
+                        return p1.amplitude + (p2.amplitude - p1.amplitude) * ratio;
+                    }
+                }
+                
+                return 0; // 기본값
             }
             
             computeFFT(signal) {
@@ -647,6 +753,11 @@
                 }
                 
                 ctx.stroke();
+                
+                // 사용자 정의 모드일 때 클릭 포인트들 표시
+                if (this.isCustomMode) {
+                    this.drawCustomPoints(ctx, rect.width, rect.height, duration);
+                }
                 
                 // 축 레이블
                 this.drawTimeLabels(ctx, rect.width, rect.height, duration);
@@ -747,6 +858,62 @@
                 }
             }
             
+            drawCustomPoints(ctx, width, height, duration) {
+                if (this.customPoints.length === 0) {
+                    // 안내 메시지 표시
+                    ctx.fillStyle = '#00aaff';
+                    ctx.font = '16px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('클릭하여 파형을 그려보세요!', width / 2, height / 2);
+                    ctx.font = '12px sans-serif';
+                    ctx.fillText('우클릭으로 마지막 포인트 제거', width / 2, height / 2 + 25);
+                    return;
+                }
+                
+                // 클릭 포인트들을 원으로 표시
+                ctx.fillStyle = '#ff6b6b';
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 2;
+                
+                this.customPoints.forEach((point, index) => {
+                    const x = (point.time / duration) * width;
+                    const y = height / 2 - (point.amplitude / 2) * (height / 2 - 20);
+                    
+                    ctx.beginPath();
+                    ctx.arc(x, y, 6, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+                    
+                    // 포인트 번호 표시
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = '10px monospace';
+                    ctx.textAlign = 'center';
+                    ctx.fillText((index + 1).toString(), x, y + 3);
+                });
+                
+                // 포인트들을 선으로 연결
+                if (this.customPoints.length > 1) {
+                    ctx.strokeStyle = '#ff6b6b';
+                    ctx.lineWidth = 2;
+                    ctx.setLineDash([5, 5]); // 점선
+                    ctx.beginPath();
+                    
+                    this.customPoints.forEach((point, index) => {
+                        const x = (point.time / duration) * width;
+                        const y = height / 2 - (point.amplitude / 2) * (height / 2 - 20);
+                        
+                        if (index === 0) {
+                            ctx.moveTo(x, y);
+                        } else {
+                            ctx.lineTo(x, y);
+                        }
+                    });
+                    
+                    ctx.stroke();
+                    ctx.setLineDash([]); // 점선 해제
+                }
+            }
+            
             animate() {
                 const signal = this.generateSignal();
                 const fftResult = this.computeFFT(signal);
@@ -761,8 +928,9 @@
         }
         
         // 초기화
+        let visualizer;
         window.addEventListener('load', () => {
-            new FourierVisualizer();
+            visualizer = new FourierVisualizer();
         });
     </script>
 </body>
