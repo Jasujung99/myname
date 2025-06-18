@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>통합 Vega SIR 시뮬레이션</title>
+    <script src="https://cdn.jsdelivr.net/npm/vega@5"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vega-lite@5"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vega-embed@6"></script>
+    <style>
+        body, html { 
+            margin: 0; 
+            padding: 0; 
+            width: 100%; 
+            height: 100%; 
+            background-color: #1a1a1a; 
+            color: white; 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            overflow: hidden;
+        }
+        .main-container { 
+            display: flex; 
+            width: 100%; 
+            height: 100vh; 
+        }
+        .simulation-area { 
+            flex-grow: 1; 
+            display: flex; 
+            flex-direction: column; /* 자식 요소를 세로로 정렬 */
+            justify-content: center; 
+            align-items: center; 
+            background-color: #000; 
+            position: relative;
+        }
+        .side-panel { 
+            width: 350px; 
+            flex-shrink: 0; 
+            background-color: #2a2a2e; 
+            padding: 20px; 
+            overflow-y: auto; 
+            border-left: 1px solid #444; 
+            box-sizing: border-box;
+        }
+        .panel-section { 
+            margin-bottom: 25px; 
+            background-color: rgba(0,0,0,0.2); 
+            border-radius: 8px; 
+            padding: 20px; 
+        }
+        .panel-section h2 { 
+            margin-top: 0; 
+            font-size: 1.1rem; 
+            font-weight: 600;
+            border-bottom: 1px solid #444; 
+            padding-bottom: 10px; 
+            margin-bottom: 20px;
+            color: #eee;
+        }
+        #controls-view form label, #controls-view .vega-bind {
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 18px;
+        }
+        #controls-view .vega-bind-name {
+            font-weight: 500;
+            color: #ccc;
+            margin-bottom: 10px;
+            font-size: 0.9rem;
+        }
+        #controls-view .vega-bind-value {
+            font-weight: bold;
+            color: #fff;
+        }
+        #controls-view input[type="range"] {
+            width: 100%;
+            margin-top: 5px;
+        }
+        #simulation-view {
+            width: 100%;
+            flex-grow: 1; /* 남은 공간을 모두 차지하도록 설정 */
+        }
+        
+        .sim-controls {
+            padding: 15px 0;
+            width: 100%;
+            text-align: center;
+            background-color: #111;
+            flex-shrink: 0; /* 높이가 줄어들지 않도록 설정 */
+        }
+        .sim-controls button {
+            background-color: #4a4a4f;
+            color: white;
+            border: 1px solid #666;
+            border-radius: 6px;
+            padding: 10px 20px;
+            font-size: 1rem;
+            font-weight: 500;
+            margin: 0 10px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .sim-controls button:hover {
+            background-color: #5a5a5f;
+        }
+        .sim-controls button.play {
+             background-color: #28a745; /* 시작 버튼은 녹색 */
+        }
+        .sim-controls button.play:hover {
+             background-color: #218838;
+        }
+
+        @media (max-width: 768px) {
+            .main-container {
+                flex-direction: column;
+                height: auto;
+            }
+            .side-panel {
+                width: 100%;
+                height: auto;
+                border-left: none;
+                border-top: 1px solid #444;
+            }
+            .simulation-area {
+                height: 60vh; /* 모바일에서 시뮬레이션 영역 확보 */
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <div class="simulation-area">
+            <div id="simulation-view"></div>
+            <div class="sim-controls">
+                <button id="play-pause-btn" class="play">시작</button>
+                <button id="reset-btn">초기화</button>
+            </div>
+        </div>
+        <div class="side-panel">
+            <div class="panel-section">
+                <h2>방역 정책 설정</h2>
+                <div id="controls-view"></div>
+            </div>
+        </div>
+    </div>
+
+<script type="text/javascript">
+
+// ========== 1. 명세(Spec) 정의 ==========
+
+const mainSpec = {
+  "$schema": "https://vega.github.io/schema/vega/v5.json",
+  "width": 800,
+  "height": 600,
+  "autosize": "fit",
+  "background": "#111",
+
+  "data": [
+    { 
+      "name": "nodes",
+    }
+  ],
+
+  "signals": [
+    // Vega 타이머는 이제 JS에서 직접 상태를 업데이트하므로 제거 가능하지만,
+    // 다른 확장 기능을 위해 남겨둘 수 있습니다. 현재는 사용되지 않습니다.
+    { "name": "timer", "value": 0 }, 
+    { "name": "population", "value": 200 },
+    { "name": "infection_rate", "value": 50 },
+    { "name": "recovery_duration", "value": 150 },
+    { "name": "social_distancing", "value": 10 },
+  ],
+
+  "scales": [
+    {
+      "name": "color",
+      "type": "ordinal",
+      "domain": ["S", "I", "R"],
+      "range": ["#0ea5e9", "#ef4444", "#6b7280"]
+    }
+  ],
+
+  "marks": [
+    {
+      "name": "node_marks",
+      "type": "symbol",
+      "from": {"data": "nodes"},
+      "encode": {
+        "update": {
+          "size": {"value": 50},
+          "fill": {"scale": "color", "field": "status"},
+          "x": {"field": "x"},
+          "y": {"field": "y"}
+        }
+      },
+      // ===== FIX START: 상태 업데이트 로직을 JS로 옮기고, force만 남김 =====
+      "transform": [
+        { 
+          "type": "force",
+          "iterations": 1,
+          "static": false, 
+          "forces": [
+            {"force": "center", "x": {"signal": "width/2"}, "y": {"signal": "height/2"}},
+            {"force": "collide", "radius": {"signal": "social_distancing"}}, 
+            {"force": "nbody", "strength": -10, "theta": 0.9} 
+          ]
+        }
+      ]
+      // ===== FIX END =====
+    }
+  ]
+};
+
+const controlsSpec = {
+  "$schema": "https://vega.github.io/schema/vega/v5.json",
+  "padding": 5, "background": "transparent",
+  "signals": [
+    { "name": "population", "value": 200, "bind": {"name": "총 인구 수", "input": "range", "min": 50, "max": 500, "step": 10} },
+    // ===== FIX START: 감염률 슬라이더 범위 및 기본값 대폭 상향 =====
+    { "name": "infection_rate", "value": 50, "bind": {"name": "감염률 (β)", "input": "range", "min": 0, "max": 100, "step": 1} },
+    // ===== FIX END =====
+    { "name": "recovery_duration", "value": 150, "bind": {"name": "회복까지의 기간 (프레임)", "input": "range", "min": 50, "max": 500, "step": 10} },
+    { "name": "social_distancing", "value": 10, "bind": {"name": "사회적 거리두기 수준", "input": "range", "min": 2, "max": 20, "step": 1} }
+  ]
+};
+
+// ========== 2. Vega 뷰(View) 생성 및 연동 ==========
+
+(async () => {
+  let mainView, controlsView;
+  let population = 200;
+  
+  let timerId = null; 
+  let isPaused = true;
+
+  try {
+    const controlsResult = await vegaEmbed('#controls-view', controlsSpec, {actions: false});
+    controlsView = controlsResult.view;
+    
+    const mainResult = await vegaEmbed('#simulation-view', mainSpec, {actions: false});
+    mainView = mainResult.view;
+    
+    const playPauseBtn = document.getElementById('play-pause-btn');
+    const resetBtn = document.getElementById('reset-btn');
+
+    function generateInitialData(popCount) {
+      const nodes = [];
+      for (let i = 0; i < popCount; i++) {
+        nodes.push({
+          id: i,
+          status: i === 0 ? 'I' : 'S',
+          infection_timer: i === 0 ? 1 : 0
+        });
+      }
+      return nodes;
+    }
+    
+    function setupControlListeners() {
+        const signals = ['infection_rate', 'recovery_duration', 'social_distancing'];
+        signals.forEach(sigName => {
+            controlsView.addSignalListener(sigName, (name, value) => {
+                // 컨트롤러 값 변경시 즉시 mainView 신호에 반영
+                mainView.signal(name, value).runAsync();
+            });
+        });
+        
+        controlsView.addSignalListener('population', (name, value) => {
+            if (population !== value) {
+                population = value;
+                resetSimulation();
+            }
+        });
+    }
+
+    // ===== REMOVE: setupDataListener 제거 (JS 루프에서 직접 처리) =====
+
+    function playSimulation() {
+        if (timerId) return;
+        timerId = setInterval(() => {
+            // ===== FIX START: JS에서 상태를 직접 계산하고 업데이트 =====
+            const currentNodes = mainView.data('nodes');
+
+            // Vega 컨트롤러에서 현재 설정값 가져오기
+            const infectionRate = mainView.signal('infection_rate');
+            const recoveryDuration = mainView.signal('recovery_duration');
+            const currentPopulation = mainView.signal('population');
+
+            // 현재 감염자 수 계산
+            const iCount = currentNodes.filter(n => n.status === 'I').length;
+
+            // 다음 프레임의 노드 상태 계산
+            const newNodes = currentNodes.map(node => {
+                let newStatus = node.status;
+                let newTimer = node.infection_timer;
+
+                // 1. 회복 로직: 감염된 노드가 회복 기간을 채웠는지 확인
+                if (node.status === 'I') {
+                    if (node.infection_timer >= recoveryDuration) {
+                        newStatus = 'R';
+                        newTimer = 0;
+                    } else {
+                        newTimer = node.infection_timer + 1; // 감염 기간 증가
+                    }
+                }
+
+                // 2. 감염 로직: 감수성자가 감염될 확률 계산
+                if (node.status === 'S' && iCount > 0) {
+                    const infectionChance = (infectionRate * iCount) / currentPopulation;
+                    if (Math.random() < infectionChance) {
+                        newStatus = 'I';
+                        newTimer = 1; // 감염 타이머 시작
+                    }
+                }
+                
+                // 기존 위치(x, y)는 유지하고 상태값만 업데이트된 새 노드 객체 반환
+                return { ...node, status: newStatus, infection_timer: newTimer };
+            });
+
+            // 계산된 새 노드 데이터로 Vega 뷰를 업데이트
+            // 이 명령으로 Vega는 새 데이터를 받아 화면을 다시 그리고, force 레이아웃을 계산함
+            mainView.data('nodes', newNodes).runAsync();
+            // ===== FIX END =====
+        }, 50); // 50ms 마다 (약 20 FPS)
+        isPaused = false;
+        playPauseBtn.textContent = '일시정지';
+        playPauseBtn.classList.remove('play');
+    }
+
+    function pauseSimulation() {
+        clearInterval(timerId);
+        timerId = null;
+        isPaused = true;
+        playPauseBtn.textContent = '시작';
+        playPauseBtn.classList.add('play');
+    }
+
+    function resetSimulation() {
+        pauseSimulation();
+        const initialNodes = generateInitialData(population);
+        
+        // mainView의 신호값을 컨트롤러의 현재값으로 동기화
+        mainView.signal('population', controlsView.signal('population'));
+        mainView.signal('infection_rate', controlsView.signal('infection_rate'));
+        mainView.signal('recovery_duration', controlsView.signal('recovery_duration'));
+        mainView.signal('social_distancing', controlsView.signal('social_distancing'));
+
+        mainView.data('nodes', initialNodes).runAsync();
+    }
+    
+    playPauseBtn.addEventListener('click', () => {
+        if (isPaused) {
+            playSimulation();
+        } else {
+            pauseSimulation();
+        }
+    });
+
+    resetBtn.addEventListener('click', () => {
+        // 컨트롤 패널의 값을 초기값으로 되돌림
+        controlsView.signal('population', 200)
+                    .signal('infection_rate', 50)
+                    .signal('recovery_duration', 150)
+                    .signal('social_distancing', 10)
+                    .runAsync();
+        population = 200;
+        resetSimulation();
+    });
+
+    // 초기 설정
+    setupControlListeners();
+    resetSimulation();
+    
+  } catch(error) {
+      console.error("Vega 시뮬레이션 초기화 실패:", error);
+      document.body.innerHTML = "<h3 style='color:red; text-align:center; padding-top: 50px;'>시뮬레이션을 불러오는 데 실패했습니다. 콘솔 로그를 확인해주세요.</h3>";
+  }
+
+})().catch(console.error);
+
+</script>
+</body>
+</html>
