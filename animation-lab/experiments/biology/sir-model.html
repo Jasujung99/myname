@@ -210,20 +210,10 @@ function createAgentSpec(agentId, initialX, initialY, initialStatus) {
         "background": "transparent",
 
         "signals": [
-            { "name": "agent_x", "value": initialX },
-            { "name": "agent_y", "value": initialY },
             { "name": "status", "value": initialStatus },
-            { "name": "infection_timer", "value": 0 },
-            { "name": "recovery_timer", "value": 0 },
-            { "name": "timer", "value": 0 },
-            { "name": "nearby_infected", "value": false },
             { "name": "infection_rate", "value": 0.8 },
-            { "name": "velocity_x", "value": 0 },
-            { "name": "velocity_y", "value": 0 },
             { "name": "infection_multiplier", "value": 0.3 },
-            { "name": "recovery_time", "value": 50 },
-            { "name": "new_status", "value": initialStatus },
-            { "name": "final_status", "value": initialStatus }
+            { "name": "recovery_time", "value": 50 }
         ],
 
         "data": [
@@ -257,33 +247,6 @@ function createAgentSpec(agentId, initialX, initialY, initialStatus) {
 
         "marks": [
             {
-                "name": "infection_aura",
-                "type": "symbol",
-                "encode": {
-                    "update": {
-                        "x": {"value": AGENT_CENTER},
-                        "y": {"value": AGENT_CENTER},
-                        "size": [
-                            {
-                                "test": "status === 'I'",
-                                "value": 800
-                            },
-                            {"value": 0}
-                        ],
-                        "fill": {"value": "rgba(255, 68, 68, 0.2)"},
-                        "stroke": {"value": "rgba(255, 68, 68, 0.5)"},
-                        "strokeWidth": {"value": 1},
-                        "opacity": [
-                            {
-                                "test": "status === 'I'",
-                                "signal": "0.3 + sin(timer * 0.05) * 0.2"
-                            },
-                            {"value": 0}
-                        ]
-                    }
-                }
-            },
-            {
                 "name": "agent_body",
                 "type": "symbol",
                 "from": {"data": "agent_data"},
@@ -291,53 +254,11 @@ function createAgentSpec(agentId, initialX, initialY, initialStatus) {
                     "update": {
                         "x": {"value": AGENT_CENTER},
                         "y": {"value": AGENT_CENTER},
-                        "size": [
-                            {
-                                "test": "status === 'I'",
-                                "signal": "400 + sin(timer * 0.03) * 30"
-                            },
-                            {
-                                "test": "status === 'R'",
-                                "signal": "250 + sin(timer * 0.02) * 10"
-                            },
-                            {"value": 300}
-                        ],
-                        "fill": [
-                            {
-                                "test": "status === 'I' && infection_timer <= 3",
-                                "value": "#ff0000"
-                            },
-                            {
-                                "test": "status === 'R' && recovery_timer <= 5",
-                                "value": "#22c55e"
-                            },
-                            {"scale": "color", "signal": "status"}
-                        ],
-                        "stroke": [
-                            {
-                                "test": "status === 'I'",
-                                "value": "#ffff00"
-                            },
-                            {
-                                "test": "status === 'R'",
-                                "value": "#4ade80"
-                            },
-                            {"value": "white"}
-                        ],
-                        "strokeWidth": [
-                            {
-                                "test": "status === 'I'",
-                                "signal": "2 + sin(timer * 0.04) * 0.5"
-                            },
-                            {"value": 1}
-                        ],
-                        "opacity": [
-                            {
-                                "test": "status === 'I'",
-                                "signal": "0.9 + sin(timer * 0.03) * 0.1"
-                            },
-                            {"value": 0.85}
-                        ]
+                        "size": {"value": 400},
+                        "fill": {"scale": "color", "signal": "status"},
+                        "stroke": {"value": "white"},
+                        "strokeWidth": {"value": 1},
+                        "opacity": {"value": 0.9}
                     }
                 }
             }
@@ -393,16 +314,15 @@ class SIRSimulation {
             // 처음 5명을 감염된 상태로 시작
             const status = i < 5 ? 'I' : 'S';
             
-            // 에이전트 데이터 (HTML 컨테이너 위치 기준)
+            // 에이전트 데이터 (단순화)
             const agent = {
                 id: i,
-                htmlX: htmlX,  // HTML 컨테이너 left 위치
-                htmlY: htmlY,  // HTML 컨테이너 top 위치
+                htmlX: htmlX,
+                htmlY: htmlY,
                 status: status,
                 vx: (Math.random() - 0.5) * 2,
                 vy: (Math.random() - 0.5) * 2,
-                infection_timer: status === 'I' ? 1 : 0,
-                recovery_timer: 0
+                infection_timer: status === 'I' ? 1 : 0
             };
             
             // HTML 컨테이너 생성 (단순화)
@@ -428,7 +348,6 @@ class SIRSimulation {
         const resetBtn = document.getElementById('reset-btn');
         const infectionRateSlider = document.getElementById('infection-rate');
         const infectionMultiplierSlider = document.getElementById('infection-multiplier');
-        const socialDistanceSlider = document.getElementById('social-distance');
         const recoveryTimeSlider = document.getElementById('recovery-time');
 
         playPauseBtn.addEventListener('click', () => {
@@ -456,14 +375,6 @@ class SIRSimulation {
             document.getElementById('infection-multiplier-value').textContent = value;
             this.agentViews.forEach(view => {
                 view.signal('infection_multiplier', value).runAsync();
-            });
-        });
-
-        socialDistanceSlider.addEventListener('input', (e) => {
-            const value = parseInt(e.target.value);
-            document.getElementById('social-distance-value').textContent = value;
-            this.agentViews.forEach(view => {
-                view.signal('social_distance', value).runAsync();
             });
         });
 
@@ -591,8 +502,6 @@ class SIRSimulation {
                         const distance = Math.sqrt(dx * dx + dy * dy);
                         
                         if (distance < INFECTION_DISTANCE) {
-                            nearbyInfected = true;
-                            
                             // 감염 확률 체크
                             if (Math.random() < infectionRate * infectionMultiplier) {
                                 agent.status = 'I';
@@ -603,37 +512,21 @@ class SIRSimulation {
                     }
                 }
             }
-            
-            // Vega 뷰에 알림
-            this.agentViews[i].signal('nearby_infected', nearbyInfected).runAsync();
         });
     }
 
     updateVegaViews() {
         this.agents.forEach((agent, i) => {
-            // 타이머 업데이트
-            const currentTimer = this.agentViews[i].signal('timer');
-            this.agentViews[i].signal('timer', currentTimer + 1);
-            
-            // 상태 업데이트
+            // 상태 업데이트만
             this.agentViews[i].signal('status', agent.status);
             
-            // 감염/회복 타이머 업데이트
+            // 회복 체크 (단순화)
             if (agent.status === 'I') {
                 agent.infection_timer++;
-                this.agentViews[i].signal('infection_timer', agent.infection_timer);
-                
-                // 동적 회복 시간 사용
                 const recoveryTime = parseInt(document.getElementById('recovery-time').value);
                 if (agent.infection_timer >= recoveryTime) {
                     agent.status = 'R';
-                    agent.recovery_timer = 1;
                 }
-            }
-            
-            if (agent.status === 'R') {
-                agent.recovery_timer++;
-                this.agentViews[i].signal('recovery_timer', agent.recovery_timer);
             }
             
             this.agentViews[i].runAsync();
