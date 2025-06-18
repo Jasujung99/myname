@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIR 전염병 모델 - 풀스크린 모드</title>
+    <script src="https://cdn.jsdelivr.net/npm/vega@5.22.1/build/vega.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vega-lite@5.6.0/build/vega-lite.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vega-embed@6.21.0/build/vega-embed.min.js"></script>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            width: 100%;
+            height: 100%;
+            background-color: #050510;
+            color: white;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        /* 전체 화면 시뮬레이션 영역 */
+        .simulation-area {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: radial-gradient(circle at center, #0d0d1d 0%, #050510 100%);
+            z-index: 0;
+        }
+        
+        /* 개별 에이전트 컨테이너 */
+        .agent {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            pointer-events: none;
+            transition: none;
+        }
+        
+        /* 떠 있는 모달 카드 */
+        .floating-card {
+            position: absolute;
+            background: rgba(30, 30, 40, 0.75);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            padding: 20px;
+            color: white;
+            z-index: 1000;
+            max-height: calc(100vh - 40px);
+            overflow-y: auto;
+            transition: all 0.3s ease;
+        }
+        
+        .floating-card:hover {
+            background: rgba(40, 40, 50, 0.85);
+            box-shadow: 0 12px 42px rgba(0, 0, 0, 0.4);
+        }
+        
+        .card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .card-header h3 {
+            margin: 0;
+            font-size: 1.2rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .card-header .icon {
+            font-size: 1.4rem;
+        }
+        
+        .card-toggle {
+            background: none;
+            border: none;
+            color: rgba(255, 255, 255, 0.7);
+            cursor: pointer;
+            font-size: 1.2rem;
+            padding: 0;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: all 0.2s;
+        }
+        
+        .card-toggle:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+        
+        .card-content {
+            transition: max-height 0.3s ease;
+            overflow: hidden;
+        }
+        
+        .card-content.collapsed {
+            max-height: 0;
+        }
+        
+        /* 카드 위치 */
+        .controls-card {
+            top: 20px;
+            right: 20px;
+            width: 280px;
+        }
+        
+        .stats-card {
+            bottom: 20px;
+            left: 20px;
+            width: 240px;
+        }
+        
+        .guide-card {
+            top: 20px;
+            left: 20px;
+            width: 320px;
+        }
+        
+        /* 범례 */
+        .status-legend {
+            display: flex;
+            justify-content: space-between;
+            margin: 15px 0;
+            padding: 10px;
+            border-radius: 8px;
+            background: rgba(0, 0, 0, 0.2);
+        }
+        
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.85rem;
+        }
+        
+        .status-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .susceptible { background: #0ea5e9; }
+        .infected { background: #ef4444; }
+        .recovered { background: #22c55e; }
+        
+        /* 파라미터 컨트롤 */
+        .param-control {
+            margin-bottom: 16px;
+        }
+        
+        .param-header {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            margin-bottom: 4px;
+        }
+        
+        .param-label {
+            color: #ccc;
+        }
+        
+        .param-value {
+            color: #4a9eff;
+            font-weight: 500;
+        }
+        
+        .param-control input[type="range"] {
+            width: 100%;
+            height: 6px;
+            -webkit-appearance: none;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            outline: none;
+            margin: 8px 0;
+        }
+        
+        .param-control input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            background: #4a9eff;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid rgba(0, 0, 0, 0.3);
+        }
+        
+        /* 버튼 */
+        .button-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .btn {
+            padding: 10px;
+            border: none;
+            border-radius: 6px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.9rem;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(45deg, #22c55e, #16a34a);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(34, 197, 94, 0.4);
+        }
+        
+        .btn-secondary {
+            background: linear-gradient(45deg, #4a9eff, #4860e9);
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(74, 158, 255, 0.4);
+        }
+        
+        /* 통계 섹션 */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+        
+        .stat-box {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            padding: 10px;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        
+        .stat-label {
+            font-size: 0.8rem;
+            color: #aaa;
+        }
+        
+        /* 가이드 섹션 */
+        .guide-content {
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
+        .guide-content p {
+            margin-bottom: 12px;
+        }
+        
+        .guide-content ul {
+            padding-left: 20px;
+            margin: 10px 0;
+        }
+        
+        .guide-content li {
+            margin-bottom: 6px;
+        }
+        
+        .highlight {
+            color: #4a9eff;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <!-- 전체 화면 시뮬레이션 영역 -->
+    <div class="simulation-area" id="simulation-area">
+        <!-- 에이전트들이 여기에 동적으로 추가됩니다 -->
+    </div>
+    
+    <!-- 컨트롤 패널 (우상단) -->
+    <div class="floating-card controls-card" id="controls-card">
+        <div class="card-header">
+            <h3><span class="icon">🎛️</span> 시뮬레이션 제어</h3>
+            <button class="card-toggle" id="toggle-controls">−</button>
+        </div>
+        <div class="card-content" id="controls-content">
+            <div class="status-legend">
+                <div class="status-item">
+                    <div class="status-color susceptible"></div>
+                    <span>감수성자</span>
+                </div>
+                <div class="status-item">
+                    <div class="status-color infected"></div>
+                    <span>감염자</span>
+                </div>
+                <div class="status-item">
+                    <div class="status-color recovered"></div>
+                    <span>회복자</span>
+                </div>
+            </div>
+            
+            <div class="param-control">
+                <div class="param-header">
+                    <span class="param-label">인구수</span>
+                    <span class="param-value" id="population-value">50</span>
+                </div>
+                <input type="range" id="population" min="20" max="100" step="10" value="50">
+            </div>
+            
+            <div class="param-control">
+                <div class="param-header">
+                    <span class="param-label">감염률 (β)</span>
+                    <span class="param-value" id="infection-rate-value">0.6</span>
+                </div>
+                <input type="range" id="infection-rate" min="0.1" max="1.0" step="0.1" value="0.6">
+            </div>
+            
+            <div class="param-control">
+                <div class="param-header">
+                    <span class="param-label">회복 기간 (프레임)</span>
+                    <span class="param-value" id="recovery-period-value">80</span>
+                </div>
+                <input type="range" id="recovery-period" min="40" max="150" step="10" value="80">
+            </div>
+            
+            <div class="param-control">
+                <div class="param-header">
+                    <span class="param-label">사회적 거리두기 (px)</span>
+                    <span class="param-value" id="social-distance-value">30</span>
+                </div>
+                <input type="range" id="social-distance" min="20" max="60" step="5" value="30">
+            </div>
+            
+            <div class="param-control">
+                <div class="param-header">
+                    <span class="param-label">이동 속도</span>
+                    <span class="param-value" id="movement-speed-value">1.5</span>
+                </div>
+                <input type="range" id="movement-speed" min="0.5" max="3.0" step="0.1" value="1.5">
+            </div>
+            
+            <div class="button-row">
+                <button class="btn btn-primary" id="start-btn">시작</button>
+                <button class="btn btn-secondary" id="reset-btn">초기화</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 통계 패널 (좌하단) -->
+    <div class="floating-card stats-card" id="stats-card">
+        <div class="card-header">
+            <h3><span class="icon">📊</span> 실시간 통계</h3>
+            <button class="card-toggle" id="toggle-stats">−</button>
+        </div>
+        <div class="card-content" id="stats-content">
+            <div class="stats-grid">
+                <div class="stat-box">
+                    <div class="stat-value" id="s-count" style="color: #0ea5e9;">45</div>
+                    <div class="stat-label">감수성자 (S)</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value" id="i-count" style="color: #ef4444;">5</div>
+                    <div class="stat-label">감염자 (I)</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value" id="r-count" style="color: #22c55e;">0</div>
+                    <div class="stat-label">회복자 (R)</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value" id="time-count" style="color: #ffa500;">0</div>
+                    <div class="stat-label">시간 (프레임)</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 가이드 패널 (좌상단) -->
+    <div class="floating-card guide-card" id="guide-card">
+        <div class="card-header">
+            <h3><span class="icon">ℹ️</span> SIR 모델 가이드</h3>
+            <button class="card-toggle" id="toggle-guide">−</button>
+        </div>
+        <div class="card-content" id="guide-content">
+            <div class="guide-content">
+                <p>SIR 모델은 <span class="highlight">전염병의 확산</span>을 수학적으로 표현한 모델로, 인구를 세 그룹으로 나눕니다:</p>
+                <ul>
+                    <li><span class="highlight">S (감수성자)</span>: 아직 감염되지 않았지만 감염될 가능성이 있는 사람</li>
+                    <li><span class="highlight">I (감염자)</span>: 현재 감염된 사람으로 다른 사람을 감염시킬 수 있음</li>
+                    <li><span class="highlight">R (회복자)</span>: 감염으로부터 회복되어 면역이 생긴 사람</li>
+                </ul>
+                <p>이 시뮬레이션에서 제어할 수 있는 주요 매개변수:</p>
+                <ul>
+                    <li><span class="highlight">감염률(β)</span>: 접촉 시 감염 확률</li>
+                    <li><span class="highlight">회복 기간</span>: 감염자가 회복되는 데 걸리는 시간</li>
+                    <li><span class="highlight">사회적 거리두기</span>: 감염 가능한 거리 (거리가 클수록 감염 확률 높음)</li>
+                </ul>
+                <p>이 모델을 통해 사회적 거리두기, 백신 접종 등의 방역 정책이 전염병 확산에 미치는 영향을 이해할 수 있습니다.</p>
+            </div>
+        </div>
+    </div>
+
+<script type="text/javascript">
+
+// ========== 상수 정의 ==========
+const AGENT_SIZE = 50;
+const AGENT_RADIUS = 25;
+
+// ========== 개별 에이전트 Vega 스펙 ==========
+function createAgentSpec(agentId, initialStatus) {
+    return {
+        "$schema": "https://vega.github.io/schema/vega/v5.json",
+        "width": AGENT_SIZE,
+        "height": AGENT_SIZE,
+        "padding": 0,
+        "autosize": "none",
+        "background": "transparent",
+
+        "signals": [
+            { "name": "status", "value": initialStatus },
+            { "name": "infection_timer", "value": 0 },
+            { "name": "recovery_timer", "value": 0 }
+        ],
+
+        "data": [
+            {
+                "name": "agent_data",
+                "values": [{"id": agentId}]
+            }
+        ],
+
+        "scales": [
+            {
+                "name": "color_scale",
+                "type": "ordinal",
+                "domain": ["S", "I", "R"],
+                "range": ["#0ea5e9", "#ef4444", "#22c55e"]
+            },
+            {
+                "name": "size_scale",
+                "type": "ordinal",
+                "domain": ["S", "I", "R"],
+                "range": [400, 500, 350]
+            }
+        ],
+
+        "marks": [
+            // 감염 범위 표시 (감염자만)
+            {
+                "name": "infection_range",
+                "type": "symbol",
+                "encode": {
+                    "update": {
+                        "x": {"value": AGENT_RADIUS},
+                        "y": {"value": AGENT_RADIUS},
+                        "size": [
+                            {
+                                "test": "status === 'I'",
+                                "signal": "pow(datum.social_distance || 30, 2) * 3.14"
+                            },
+                            {"value": 0}
+                        ],
+                        "fill": {"value": "rgba(239, 68, 68, 0.15)"},
+                        "stroke": {"value": "rgba(239, 68, 68, 0.3)"},
+                        "strokeWidth": {"value": 1},
+                        "opacity": [
+                            {
+                                "test": "status === 'I'",
+                                "value": 0.6
+                            },
+                            {"value": 0}
+                        ]
+                    }
+                }
+            },
+            // 에이전트 몸체
+            {
+                "name": "agent_body",
+                "type": "symbol",
+                "from": {"data": "agent_data"},
+                "encode": {
+                    "update": {
+                        "x": {"value": AGENT_RADIUS},
+                        "y": {"value": AGENT_RADIUS},
+                        "size": {"scale": "size_scale", "signal": "status"},
+                        "fill": {"scale": "color_scale", "signal": "status"},
+                        "stroke": {"value": "rgba(255, 255, 255, 0.8)"},
+                        "strokeWidth": {"value": 2},
+                        "opacity": {"value": 0.9}
+                    }
+                }
+            }
+        ]
+    };
+}
+
+// ========== SIR 시뮬레이션 클래스 ==========
+class SIRSimulationV2 {
+    constructor() {
+        this.agents = [];
+        this.agentViews = [];
+        this.agentElements = [];
+        this.isRunning = false;
+        this.animationId = null;
+        this.frameCount = 0;
+        
+        this.containerWidth = window.innerWidth;
+        this.containerHeight = window.innerHeight;
+        
+        this.centerForce = 0.0001; // 중앙 인력 (약함)
+        
+        this.init();
+    }
+    
+    async init() {
+        this.setupEventListeners();
+        await this.createAgents();
+        this.updateStats();
+        this.setupCardToggles();
+    }
+    
+    async createAgents() {
+        const container = document.getElementById('simulation-area');
+        container.innerHTML = '';
+        
+        this.agents = [];
+        this.agentViews = [];
+        this.agentElements = [];
+        this.frameCount = 0;
+        
+        const population = parseInt(document.getElementById('population').value);
+        const centerX = this.containerWidth / 2;
+        const centerY = this.containerHeight / 2;
+        
+        for (let i = 0; i < population; i++) {
+            let x, y, status;
+            
+            if (i < 5) {
+                // 처음 5명은 감염자로 중앙에 배치
+                const angle = (i / 5) * Math.PI * 2;
+                const radius = 50 + Math.random() * 30;
+                x = centerX + radius * Math.cos(angle) - AGENT_RADIUS;
+                y = centerY + radius * Math.sin(angle) - AGENT_RADIUS;
+                status = 'I';
+            } else {
+                // 나머지는 감수성자로 주변에 배치
+                const angle = Math.random() * Math.PI * 2;
+                const radius = 150 + Math.random() * Math.min(centerX, centerY) * 0.5;
+                x = centerX + radius * Math.cos(angle) - AGENT_RADIUS;
+                y = centerY + radius * Math.sin(angle) - AGENT_RADIUS;
+                status = 'S';
+            }
+            
+            // 경계 체크
+            x = Math.max(0, Math.min(this.containerWidth - AGENT_SIZE, x));
+            y = Math.max(0, Math.min(this.containerHeight - AGENT_SIZE, y));
+            
+            // 에이전트 데이터
+            const agent = {
+                id: i,
+                x: x,
+                y: y,
+                vx: (Math.random() - 0.5) * 2,
+                vy: (Math.random() - 0.5) * 2,
+                status: status,
+                infection_timer: status === 'I' ? 1 : 0,
+                recovery_timer: 0
+            };
+            
+            // HTML 요소 생성
+            const agentElement = document.createElement('div');
+            agentElement.className = 'agent';
+            agentElement.style.left = `${x}px`;
+            agentElement.style.top = `${y}px`;
+            agentElement.id = `agent-${i}`;
+            container.appendChild(agentElement);
+            
+            // Vega 스펙 생성 및 임베드
+            const spec = createAgentSpec(i, status);
+            const result = await vegaEmbed(`#agent-${i}`, spec, {actions: false});
+            
+            this.agents.push(agent);
+            this.agentViews.push(result.view);
+            this.agentElements.push(agentElement);
+        }
+    }
+    
+    setupEventListeners() {
+        // 시작 버튼
+        document.getElementById('start-btn').addEventListener('click', () => {
+            if (this.isRunning) {
+                this.pause();
+            } else {
+                this.start();
+            }
+        });
+        
+        // 초기화 버튼
+        document.getElementById('reset-btn').addEventListener('click', () => {
+            this.reset();
+        });
+        
+        // 매개변수 슬라이더들
+        const sliders = [
+            'population', 'infection-rate', 'recovery-period', 
+            'social-distance', 'movement-speed'
+        ];
+        
+        sliders.forEach(sliderId => {
+            const slider = document.getElementById(sliderId);
+            const valueSpan = document.getElementById(`${sliderId}-value`);
+            
+            slider.addEventListener('input', (e) => {
+                valueSpan.textContent = e.target.value;
+                
+                // 인구수 변경시 에이전트 재생성
+                if (sliderId === 'population' && !this.isRunning) {
+                    this.reset();
+                }
+                
+                // 사회적 거리두기 변경 시 Vega 뷰에 알림
+                if (sliderId === 'social-distance') {
+                    this.updateSocialDistance();
+                }
+            });
+        });
+        
+        // 창 크기 변경 대응
+        window.addEventListener('resize', () => {
+            this.updateContainerSize();
+        });
+    }
+    
+    // 카드 접기/펼치기 토글 기능
+    setupCardToggles() {
+        const toggles = [
+            { toggleId: 'toggle-controls', contentId: 'controls-content' },
+            { toggleId: 'toggle-stats', contentId: 'stats-content' },
+            { toggleId: 'toggle-guide', contentId: 'guide-content' }
+        ];
+        
+        toggles.forEach(({toggleId, contentId}) => {
+            const toggleBtn = document.getElementById(toggleId);
+            const content = document.getElementById(contentId);
+            
+            toggleBtn.addEventListener('click', () => {
+                if (content.classList.contains('collapsed')) {
+                    content.classList.remove('collapsed');
+                    toggleBtn.textContent = '−';
+                } else {
+                    content.classList.add('collapsed');
+                    toggleBtn.textContent = '+';
+                }
+            });
+        });
+    }
+    
+    // 사회적 거리두기 변경 시 Vega 뷰에 반영
+    updateSocialDistance() {
+        const socialDistance = parseInt(document.getElementById('social-distance').value);
+        
+        this.agents.forEach((agent, i) => {
+            if (agent.status === 'I') {
+                // 감염자의 감염 범위 업데이트
+                this.agentViews[i].data('agent_data', [
+                    {id: agent.id, social_distance: socialDistance}
+                ]).runAsync();
+            }
+        });
+    }
+    
+    updateContainerSize() {
+        this.containerWidth = window.innerWidth;
+        this.containerHeight = window.innerHeight;
+    }
+    
+    start() {
+        this.isRunning = true;
+        document.getElementById('start-btn').textContent = '일시정지';
+        document.getElementById('start-btn').classList.remove('btn-primary');
+        document.getElementById('start-btn').classList.add('btn-secondary');
+        
+        this.animate();
+    }
+    
+    pause() {
+        this.isRunning = false;
+        document.getElementById('start-btn').textContent = '시작';
+        document.getElementById('start-btn').classList.remove('btn-secondary');
+        document.getElementById('start-btn').classList.add('btn-primary');
+        
+        if (this.animationId) {
+            cancelAnimationFrame(this.animationId);
+            this.animationId = null;
+        }
+    }
+    
+    async reset() {
+        this.pause();
+        await this.createAgents();
+        this.updateStats();
+    }
+    
+    animate() {
+        if (!this.isRunning) return;
+        
+        this.frameCount++;
+        this.updateSimulation();
+        this.updateStats();
+        
+        this.animationId = requestAnimationFrame(() => this.animate());
+    }
+    
+    updateSimulation() {
+        const movementSpeed = parseFloat(document.getElementById('movement-speed').value);
+        const socialDistance = parseInt(document.getElementById('social-distance').value);
+        const infectionRate = parseFloat(document.getElementById('infection-rate').value);
+        const recoveryPeriod = parseInt(document.getElementById('recovery-period').value);
+        
+        // 위치 업데이트
+        this.agents.forEach((agent, i) => {
+            // 랜덤 이동
+            agent.vx += (Math.random() - 0.5) * 0.3;
+            agent.vy += (Math.random() - 0.5) * 0.3;
+            
+            // 중앙 인력 (매우 약하게)
+            const centerX = this.containerWidth / 2;
+            const centerY = this.containerHeight / 2;
+            agent.vx += (centerX - agent.x - AGENT_RADIUS) * this.centerForce;
+            agent.vy += (centerY - agent.y - AGENT_RADIUS) * this.centerForce;
+            
+            // 속도 제한
+            const speed = Math.sqrt(agent.vx * agent.vx + agent.vy * agent.vy);
+            if (speed > movementSpeed) {
+                agent.vx = (agent.vx / speed) * movementSpeed;
+                agent.vy = (agent.vy / speed) * movementSpeed;
+            }
+            
+            // 위치 업데이트
+            agent.x += agent.vx;
+            agent.y += agent.vy;
+            
+            // 화면 edge 경계 처리 (극단적인 경우만)
+            const margin = 10;
+            if (agent.x < -margin) {
+                agent.x = -margin;
+                agent.vx = Math.abs(agent.vx);
+            } else if (agent.x > this.containerWidth - AGENT_SIZE + margin) {
+                agent.x = this.containerWidth - AGENT_SIZE + margin;
+                agent.vx = -Math.abs(agent.vx);
+            }
+            
+            if (agent.y < -margin) {
+                agent.y = -margin;
+                agent.vy = Math.abs(agent.vy);
+            } else if (agent.y > this.containerHeight - AGENT_SIZE + margin) {
+                agent.y = this.containerHeight - AGENT_SIZE + margin;
+                agent.vy = -Math.abs(agent.vy);
+            }
+            
+            // UI 요소와의 충돌 방지 (모달 카드 영역 피하기)
+            this.avoidOverlappingCards(agent);
+            
+            // HTML 요소 위치 업데이트
+            this.agentElements[i].style.left = `${agent.x}px`;
+            this.agentElements[i].style.top = `${agent.y}px`;
+        });
+        
+        // 감염 체크
+        this.agents.forEach((agent, i) => {
+            if (agent.status === 'S') {
+                // 주변 감염자 체크
+                for (let other of this.agents) {
+                    if (other.status === 'I') {
+                        const dx = (agent.x + AGENT_RADIUS) - (other.x + AGENT_RADIUS);
+                        const dy = (agent.y + AGENT_RADIUS) - (other.y + AGENT_RADIUS);
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+                        
+                        if (distance < socialDistance && Math.random() < infectionRate / 10) {
+                            agent.status = 'I';
+                            agent.infection_timer = 1;
+                            break;
+                        }
+                    }
+                }
+            } else if (agent.status === 'I') {
+                agent.infection_timer++;
+                if (agent.infection_timer >= recoveryPeriod) {
+                    agent.status = 'R';
+                    agent.recovery_timer = 1;
+                }
+            } else if (agent.status === 'R') {
+                agent.recovery_timer++;
+            }
+            
+            // Vega 뷰 업데이트
+            this.agentViews[i].signal('status', agent.status);
+            this.agentViews[i].signal('infection_timer', agent.infection_timer);
+            this.agentViews[i].signal('recovery_timer', agent.recovery_timer);
+            this.agentViews[i].runAsync();
+        });
+    }
+    
+    // UI 모달 카드와의 충돌 방지
+    avoidOverlappingCards(agent) {
+        const cards = [
+            document.getElementById('controls-card'),
+            document.getElementById('stats-card'),
+            document.getElementById('guide-card')
+        ];
+        
+        for (const card of cards) {
+            if (!card) continue;
+            
+            const cardRect = card.getBoundingClientRect();
+            // 카드 주변 여유 공간
+            const buffer = 10;
+            
+            // 에이전트 중심점
+            const agentCenterX = agent.x + AGENT_RADIUS;
+            const agentCenterY = agent.y + AGENT_RADIUS;
+            
+            // 카드 영역 + 버퍼
+            if (agentCenterX > cardRect.left - buffer && 
+                agentCenterX < cardRect.right + buffer &&
+                agentCenterY > cardRect.top - buffer && 
+                agentCenterY < cardRect.bottom + buffer) {
+                
+                // 카드 중심
+                const cardCenterX = cardRect.left + cardRect.width / 2;
+                const cardCenterY = cardRect.top + cardRect.height / 2;
+                
+                // 카드 중심과 에이전트 중심 간 벡터
+                const dx = agentCenterX - cardCenterX;
+                const dy = agentCenterY - cardCenterY;
+                
+                // 벡터 정규화
+                const length = Math.sqrt(dx * dx + dy * dy);
+                if (length > 0) {
+                    // 카드로부터 멀어지는 방향으로 속도 설정
+                    const repelStrength = 0.5;
+                    agent.vx += dx / length * repelStrength;
+                    agent.vy += dy / length * repelStrength;
+                }
+            }
+        }
+    }
+    
+    updateStats() {
+        const counts = { S: 0, I: 0, R: 0 };
+        this.agents.forEach(agent => {
+            counts[agent.status]++;
+        });
+        
+        document.getElementById('s-count').textContent = counts.S;
+        document.getElementById('i-count').textContent = counts.I;
+        document.getElementById('r-count').textContent = counts.R;
+        document.getElementById('time-count').textContent = this.frameCount;
+    }
+}
+
+// 시뮬레이션 시작
+window.addEventListener('load', () => {
+    if (typeof vega !== 'undefined' && typeof vegaEmbed !== 'undefined') {
+        new SIRSimulationV2();
+    } else {
+        console.error('Vega 라이브러리 로딩 실패');
+        document.body.innerHTML = '<h3 style="color:red; text-align:center; padding-top: 50px;">Vega 라이브러리를 로드할 수 없습니다. 페이지를 새로고침해주세요.</h3>';
+    }
+});
+
+</script>
+</body>
+</html>
