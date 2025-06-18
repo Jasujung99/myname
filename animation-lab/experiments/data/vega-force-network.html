@@ -1,8 +1,9 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>Vega Force-Directed Graph on Canvas - Definitive Fix</title>
+    <title>Vega Force-Directed Graph with External Custom Actions</title>
     <meta charset="utf-8" />
+    <!-- Vega와 Vega-Embed CDN (Vega 5, Vega-Embed 6) -->
     <script src="https://cdn.jsdelivr.net/npm/vega@5"></script>
     <script src="https://cdn.jsdelivr.net/npm/vega-embed@6"></script>
     <style>
@@ -17,15 +18,32 @@
         margin: 0 auto;
         border: 1px solid #ddd;
         background-color: white;
+        padding: 10px;
+      }
+      .btn-container {
+        text-align: center;
+        margin-bottom: 10px;
+      }
+      button {
+        font-size: 1rem;
+        padding: 8px 12px;
+        margin: 2px;
+        cursor: pointer;
       }
     </style>
   </head>
   <body>
-    <h1>Vega 시각화 웹앱 예제 (액션 기능 직접 구현)</h1>
+    <h1>Vega 시각화 웹앱 예제 (외부 액션 버튼 구현)</h1>
+    <div class="btn-container">
+      <button id="view-source-btn">View Source</button>
+      <button id="open-editor-btn">Open in Vega Editor</button>
+    </div>
     <div id="vis-container">
       <div id="vis"></div>
     </div>
+
     <script type="text/javascript">
+      // Vega 스펙 정의 (순수 JSON 객체)
       const spec = {
         "$schema": "https://vega.github.io/schema/vega/v5.json",
         "description": "A node-link diagram with robust link drawing and fully functional embed actions.",
@@ -37,19 +55,19 @@
           {
             "name": "node-data",
             "values": [
-              {"id": "A", "group": 1},
-              {"id": "B", "group": 1},
-              {"id": "C", "group": 2},
-              {"id": "D", "group": 2}
+              { "id": "A", "group": 1 },
+              { "id": "B", "group": 1 },
+              { "id": "C", "group": 2 },
+              { "id": "D", "group": 2 }
             ]
           },
           {
             "name": "link-data",
             "values": [
-              {"source": 0, "target": 1},
-              {"source": 1, "target": 2},
-              {"source": 2, "target": 3},
-              {"source": 3, "target": 0}
+              { "source": 0, "target": 1 },
+              { "source": 1, "target": 2 },
+              { "source": 2, "target": 3 },
+              { "source": 3, "target": 0 }
             ]
           }
         ],
@@ -57,25 +75,25 @@
           {
             "name": "color",
             "type": "ordinal",
-            "domain": {"data": "node-data", "field": "group"},
-            "range": {"scheme": "category20c"}
+            "domain": { "data": "node-data", "field": "group" },
+            "range": { "scheme": "category20c" }
           }
         ],
         "marks": [
           {
             "name": "nodes",
             "type": "symbol",
-            "from": {"data": "node-data"},
+            "from": { "data": "node-data" },
             "encode": {
               "enter": {
-                "fill": {"scale": "color", "field": "group"},
-                "stroke": {"value": "white"},
-                "size": {"value": 200}
+                "fill": { "scale": "color", "field": "group" },
+                "stroke": { "value": "white" },
+                "size": { "value": 200 }
               },
               "update": {
-                "x": {"field": "x"},
-                "y": {"field": "y"},
-                "cursor": {"value": "pointer"}
+                "x": { "field": "x" },
+                "y": { "field": "y" },
+                "cursor": { "value": "pointer" }
               }
             },
             "transform": [
@@ -84,24 +102,25 @@
                 "iterations": 300,
                 "static": false,
                 "forces": [
-                  {"force": "center", "x": {"signal": "width/2"}, "y": {"signal": "height/2"}},
-                  {"force": "collide", "radius": 10},
-                  {"force": "nbody", "strength": -50},
-                  {"force": "link", "links": "link-data", "distance": 50}
+                  { "force": "center", "x": { "signal": "width/2" }, "y": { "signal": "height/2" } },
+                  { "force": "collide", "radius": 10 },
+                  { "force": "nbody", "strength": -50 },
+                  { "force": "link", "links": "link-data", "distance": 50 }
                 ]
               }
             ]
           },
           {
             "type": "path",
-            "from": {"data": "link-data"},
+            "from": { "data": "link-data" },
             "interactive": false,
             "encode": {
               "update": {
-                "stroke": {"value": "#ccc"},
-                "strokeWidth": {"value": 1},
+                "stroke": { "value": "#ccc" },
+                "strokeWidth": { "value": 1 },
                 "path": {
-                  "signal": "datum.source && datum.target && isFinite(datum.source.x) ? 'M' + datum.source.x + ',' + datum.source.y + 'L' + datum.target.x + ',' + datum.target.y : ''"
+                  "signal":
+                    "datum.source && datum.target && isFinite(datum.source.x) ? 'M' + datum.source.x + ',' + datum.source.y + 'L' + datum.target.x + ',' + datum.target.y : ''"
                 }
               }
             }
@@ -109,48 +128,48 @@
         ]
       };
 
-      // ==================
-      // custom action 함수 정의
-      // ==================
-      const viewSource = (event) => {
-        // 이벤트 객체가 있을 때만 방지 처리
-        if (event && event.preventDefault) event.preventDefault();
-        const specString = JSON.stringify(spec, null, 2);
-        const win = window.open('');
-        win.document.write('<title>Vega Source</title><pre>' + specString + '</pre>');
+      // Vega-Embed에 전달하기 전, 원본 스펙을 deep clone 후 문자열화합니다.
+      const cleanSpec = JSON.parse(JSON.stringify(spec));
+      const rawSpecString = JSON.stringify(cleanSpec, null, 2);
+
+      // 외부 액션: View Source (새 창에 스펙 문자열 출력)
+      const viewSource = () => {
+        const win = window.open('', '_blank');
+        win.document.write('<title>Vega Source</title><pre>' + rawSpecString + '</pre>');
       };
 
-      const openInEditor = (event) => {
-        if (event && event.preventDefault) event.preventDefault();
-        const editorUrl = 'https://vega.github.io/editor/';
-        const form = document.createElement('form');
-        form.action = editorUrl;
-        form.method = 'POST';
-        form.target = '_blank';
-        const specInput = document.createElement('input');
-        specInput.type = 'hidden';
-        specInput.name = 'spec';
-        specInput.value = JSON.stringify(spec);
-        form.appendChild(specInput);
-        document.body.appendChild(form);
-        form.submit();
-        document.body.removeChild(form);
+      // 외부 액션: Open in Vega Editor (GET 방식으로 스펙 전송)
+      const openInEditor = () => {
+        // Vega Editor는 POST 대신 GET 요청을 허용합니다.
+        const editorBaseUrl = 'https://vega.github.io/editor/';
+        // URL 인코딩하여 query parameter로 스펙 전달
+        const url = `${editorBaseUrl}?spec=${encodeURIComponent(rawSpecString)}`;
+        window.open(url, '_blank');
       };
 
+      // 외부 버튼에 이벤트 리스너 연결
+      document
+        .getElementById('view-source-btn')
+        .addEventListener('click', viewSource);
+      document
+        .getElementById('open-editor-btn')
+        .addEventListener('click', openInEditor);
+
+      // VegaEmbed 옵션: 내장 액션은 비활성화 (우리가 외부 버튼으로 구현)
       const options = {
         renderer: 'canvas',
         actions: {
           export: true,
-          source: viewSource,
-          editor: openInEditor
+          source: false,
+          editor: false
         }
       };
 
-      // VegaEmbed를 호출하여 실행합니다.
+      // VegaEmbed 호출
       vegaEmbed('#vis', spec, options)
-        .then(result =>
-          console.log('Vega view instantiated with custom action handlers:', result.view)
-        )
+        .then(result => {
+          console.log('Vega view instantiated with external custom action buttons:', result.view);
+        })
         .catch(console.error);
     </script>
   </body>
