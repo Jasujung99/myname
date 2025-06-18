@@ -334,17 +334,17 @@
             <div class="param-control">
                 <div class="param-header">
                     <span class="param-label">감염률 (β)</span>
-                    <span class="param-value" id="infection-rate-value">0.6</span>
+                    <span class="param-value" id="infection-rate-value">1.0</span>
                 </div>
-                <input type="range" id="infection-rate" min="0.1" max="1.0" step="0.1" value="0.6">
+                <input type="range" id="infection-rate" min="0.1" max="3.0" step="0.1" value="1.0">
             </div>
             
             <div class="param-control">
                 <div class="param-header">
                     <span class="param-label">회복 기간 (프레임)</span>
-                    <span class="param-value" id="recovery-period-value">80</span>
+                    <span class="param-value" id="recovery-period-value">150</span>
                 </div>
-                <input type="range" id="recovery-period" min="40" max="150" step="10" value="80">
+                <input type="range" id="recovery-period" min="40" max="300" step="10" value="150">
             </div>
             
             <div class="param-control">
@@ -366,6 +366,23 @@
             <div class="button-row">
                 <button class="btn btn-primary" id="start-btn">시작</button>
                 <button class="btn btn-secondary" id="reset-btn">초기화</button>
+            </div>
+            
+            <div class="guide-content" style="margin-top: 20px; padding-top: 15px; border-top: 1px solid rgba(255, 255, 255, 0.1);">
+                <h4 style="margin-top: 0; color: #ffa500; font-size: 1rem;">📖 SIR 모델 이해하기</h4>
+                <p>SIR 모델은 <span class="highlight">전염병의 확산</span>을 수학적으로 표현한 모델로, 인구를 세 그룹으로 나눕니다:</p>
+                <ul>
+                    <li><span class="highlight">S (감수성자)</span>: 아직 감염되지 않았지만 감염될 가능성이 있는 사람</li>
+                    <li><span class="highlight">I (감염자)</span>: 현재 감염된 사람으로 다른 사람을 감염시킬 수 있음</li>
+                    <li><span class="highlight">R (회복자)</span>: 감염으로부터 회복되어 면역이 생긴 사람</li>
+                </ul>
+                <p>이 시뮬레이션에서 제어할 수 있는 주요 매개변수:</p>
+                <ul>
+                    <li><span class="highlight">감염률(β)</span>: 접촉 시 감염 확률</li>
+                    <li><span class="highlight">회복 기간</span>: 감염자가 회복되는 데 걸리는 시간</li>
+                    <li><span class="highlight">사회적 거리두기</span>: 감염 가능한 거리 (거리가 클수록 감염 확률 높음)</li>
+                </ul>
+                <p>이 모델을 통해 사회적 거리두기, 백신 접종 등의 방역 정책이 전염병 확산에 미치는 영향을 이해할 수 있습니다.</p>
             </div>
         </div>
     </div>
@@ -394,31 +411,6 @@
                     <div class="stat-value" id="time-count" style="color: #ffa500;">0</div>
                     <div class="stat-label">시간 (프레임)</div>
                 </div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- 가이드 패널 (중앙상단) -->
-    <div class="floating-card guide-card draggable" id="guide-card">
-        <div class="card-header">
-            <h3><span class="icon">ℹ️</span> SIR 모델 가이드</h3>
-            <button class="card-toggle" id="toggle-guide">−</button>
-        </div>
-        <div class="card-content" id="guide-content">
-            <div class="guide-content">
-                <p>SIR 모델은 <span class="highlight">전염병의 확산</span>을 수학적으로 표현한 모델로, 인구를 세 그룹으로 나눕니다:</p>
-                <ul>
-                    <li><span class="highlight">S (감수성자)</span>: 아직 감염되지 않았지만 감염될 가능성이 있는 사람</li>
-                    <li><span class="highlight">I (감염자)</span>: 현재 감염된 사람으로 다른 사람을 감염시킬 수 있음</li>
-                    <li><span class="highlight">R (회복자)</span>: 감염으로부터 회복되어 면역이 생긴 사람</li>
-                </ul>
-                <p>이 시뮬레이션에서 제어할 수 있는 주요 매개변수:</p>
-                <ul>
-                    <li><span class="highlight">감염률(β)</span>: 접촉 시 감염 확률</li>
-                    <li><span class="highlight">회복 기간</span>: 감염자가 회복되는 데 걸리는 시간</li>
-                    <li><span class="highlight">사회적 거리두기</span>: 감염 가능한 거리 (거리가 클수록 감염 확률 높음)</li>
-                </ul>
-                <p>이 모델을 통해 사회적 거리두기, 백신 접종 등의 방역 정책이 전염병 확산에 미치는 영향을 이해할 수 있습니다.</p>
             </div>
         </div>
     </div>
@@ -526,6 +518,7 @@ class SIRSimulationV2 {
         this.isRunning = false;
         this.animationId = null;
         this.frameCount = 0;
+        this.animationFrame = 0;
         
         this.containerWidth = window.innerWidth;
         this.containerHeight = window.innerHeight;
@@ -550,6 +543,7 @@ class SIRSimulationV2 {
         this.agentViews = [];
         this.agentElements = [];
         this.frameCount = 0;
+        this.animationFrame = 0;
         
         const population = parseInt(document.getElementById('population').value);
         const centerX = this.containerWidth / 2;
@@ -658,8 +652,7 @@ class SIRSimulationV2 {
     setupCardToggles() {
         const toggles = [
             { toggleId: 'toggle-controls', contentId: 'controls-content' },
-            { toggleId: 'toggle-stats', contentId: 'stats-content' },
-            { toggleId: 'toggle-guide', contentId: 'guide-content' }
+            { toggleId: 'toggle-stats', contentId: 'stats-content' }
         ];
         
         toggles.forEach(({toggleId, contentId}) => {
@@ -713,13 +706,14 @@ class SIRSimulationV2 {
         document.getElementById('start-btn').classList.add('btn-primary');
         
         if (this.animationId) {
-            cancelAnimationFrame(this.animationId);
+            clearTimeout(this.animationId); // setTimeout 취소
             this.animationId = null;
         }
     }
     
     async reset() {
         this.pause();
+        this.animationFrame = 0;
         await this.createAgents();
         this.updateStats();
     }
@@ -727,11 +721,19 @@ class SIRSimulationV2 {
     animate() {
         if (!this.isRunning) return;
         
-        this.frameCount++;
+        // 더 천천히 흐르는 시간 (3프레임마다 1번 카운팅)
+        if (this.animationFrame % 3 === 0) {
+            this.frameCount++;
+        }
+        this.animationFrame = (this.animationFrame || 0) + 1;
+        
         this.updateSimulation();
         this.updateStats();
         
-        this.animationId = requestAnimationFrame(() => this.animate());
+        // 느린 애니메이션을 위해 setTimeout 사용
+        this.animationId = setTimeout(() => {
+            requestAnimationFrame(() => this.animate());
+        }, 50); // 50ms 딜레이 추가
     }
     
     updateSimulation() {
@@ -828,8 +830,7 @@ class SIRSimulationV2 {
     avoidOverlappingCards(agent) {
         const cards = [
             document.getElementById('controls-card'),
-            document.getElementById('stats-card'),
-            document.getElementById('guide-card')
+            document.getElementById('stats-card')
         ];
         
         for (const card of cards) {
