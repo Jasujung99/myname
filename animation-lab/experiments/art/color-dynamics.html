@@ -635,16 +635,16 @@
                 const baseColor = `hsl(${this.params.hue}, ${this.params.saturation}%, ${this.params.lightness}%)`;
                 const complementaryColor = `hsl(${(this.params.hue + 180) % 360}, ${this.params.saturation}%, ${this.params.lightness}%)`;
                 
-                // 중첩 횟수 계산 (전체 캔버스 영역에서 기존 클릭들)
-                const canvasDiagonal = Math.sqrt(this.width ** 2 + this.height ** 2);
-                const overlapCount = this.calculateOverlap(x, y, canvasDiagonal);
+                // 그라디언트의 실제 반지름 사용 (0.75로 통일)
+                const gradientRadius = Math.min(this.width, this.height) * 0.75;
+                const overlapCount = this.calculateOverlap(x, y, gradientRadius);
                 
                 this.permanentCircles.push({
                     x: x,
                     y: y,
                     baseColor: baseColor,
                     complementaryColor: complementaryColor,
-                    radius: Math.min(this.width, this.height) * 0.4,
+                    radius: gradientRadius,
                     overlapCount: overlapCount // 중첩 횟수 저장
                 });
                 
@@ -654,16 +654,19 @@
                 }
             }
             
-            // 중첩 횟수 계산 함수
+            // 중첩 횟수 계산 함수 (더 정교한 계산)
             calculateOverlap(x, y, radius) {
                 let overlapCount = 0;
                 this.permanentCircles.forEach(circle => {
                     const distance = Math.sqrt((x - circle.x) ** 2 + (y - circle.y) ** 2);
-                    if (distance < radius) {
-                        overlapCount++;
+                    // 두 원이 겹치는 경우 (중심 간 거리 < 두 반지름의 합)
+                    if (distance < radius + circle.radius) {
+                        // 거리에 따라 가중치 적용 (완전히 겹칠수록 높은 가중치)
+                        const overlapRatio = Math.max(0, (radius + circle.radius - distance) / (radius + circle.radius));
+                        overlapCount += overlapRatio; // 부분 중첩도 반영
                     }
                 });
-                return overlapCount;
+                return Math.round(overlapCount * 10) / 10; // 소수점 한 자리로 반올림
             }
             
             initParticles() {
@@ -881,10 +884,10 @@
                     gradient.addColorStop(0, circle.baseColor);
                     gradient.addColorStop(1, circle.complementaryColor);
                     
-                    // 중첩 횟수에 따라 투명도 증가 (0.2 기본 + 중첩당 0.1씩 증가)
-                    const baseAlpha = 0.2;
-                    const overlapBonus = circle.overlapCount * 0.1; // 다시 0.1로 복구
-                    const finalAlpha = Math.min(baseAlpha + overlapBonus, 1.0);
+                    // 중첩 횟수에 따라 투명도 증가 (0.15 기본 + 중첩당 0.15씩 증가)
+                    const baseAlpha = 0.15;
+                    const overlapBonus = circle.overlapCount * 0.15; // 더 강한 중첩 효과
+                    const finalAlpha = Math.min(baseAlpha + overlapBonus, 0.9); // 최대값도 0.9로
                     
                     this.ctx.globalAlpha = finalAlpha;
                     this.ctx.fillStyle = gradient;
