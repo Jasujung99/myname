@@ -195,8 +195,8 @@
                     </select>
                 </div>
                 <div class="button-group">
-                    <button id="start-btn">정지</button>
-                    <button id="reset-btn">재설정</button>
+                    <button id="reset-btn">새로 시작</button>
+                    <button id="random-btn">랜덤 설정</button>
                 </div>
             </div>
             <div class="learning-points card">
@@ -237,6 +237,10 @@
             { "name": "reset_trigger", "value": 1, "on": [
                 {"events": "#reset-btn:click", "update": "reset_trigger + 1"},
                 {"events": {"signal": "num_walkers"}, "update": "reset_trigger + 1"}
+              ]
+            },
+            { "name": "random_trigger", "value": 0, "on": [
+                {"events": "#random-btn:click", "update": "random_trigger + 1"}
               ]
             }
           ],
@@ -310,7 +314,8 @@
                 const view = result.view;
                 
                 // --- UI Elements ---
-                const startBtn = document.getElementById('start-btn');
+                const resetBtn = document.getElementById('reset-btn');
+                const randomBtn = document.getElementById('random-btn');
                 const boundarySelect = document.getElementById('boundary-rule-select');
 
                 const valueLabels = {
@@ -349,10 +354,47 @@
                     });
                 });
 
-                // --- Event Listeners ---
-                view.addSignalListener('is_running', (name, value) => {
-                    startBtn.textContent = value ? '정지' : '시작';
-                    startBtn.style.backgroundColor = value ? '#ff4488' : '#5c7cfa';
+                // --- Random Settings Button ---
+                randomBtn.addEventListener('click', () => {
+                    console.log('랜덤 설정 적용 중...');
+                    
+                    // 랜덤 매개변수 생성
+                    const randomWalkers = Math.floor(Math.random() * 20) + 5; // 5-25
+                    const randomStepSize = Math.random() * 8 + 0.5; // 0.5-8.5
+                    const randomOpacity = Math.random() * 0.8 + 0.2; // 0.2-1.0
+                    const randomGravity = Math.random() * 0.6 - 0.3; // -0.3 to 0.3
+                    const boundaries = ['wrap', 'bounce', 'none'];
+                    const randomBoundary = boundaries[Math.floor(Math.random() * 3)];
+                    
+                    // 슬라이더 UI 업데이트
+                    sliders.num_walkers.value = randomWalkers;
+                    sliders.step_size.value = randomStepSize;
+                    sliders.trail_opacity.value = randomOpacity;
+                    sliders.gravity.value = randomGravity;
+                    boundarySelect.value = randomBoundary;
+                    
+                    // Vega 신호 업데이트
+                    view.signal('num_walkers', randomWalkers);
+                    view.signal('step_size', randomStepSize);
+                    view.signal('trail_opacity', randomOpacity);
+                    view.signal('gravity', randomGravity);
+                    view.signal('boundary_rule', randomBoundary);
+                    
+                    // 라벨 업데이트
+                    updateLabel('num_walkers', randomWalkers);
+                    updateLabel('step_size', randomStepSize);
+                    updateLabel('trail_opacity', randomOpacity);
+                    updateLabel('gravity', randomGravity);
+                    
+                    view.runAsync();
+                    
+                    console.log('랜덤 설정:', {
+                        walkers: randomWalkers,
+                        stepSize: randomStepSize,
+                        opacity: randomOpacity,
+                        gravity: randomGravity,
+                        boundary: randomBoundary
+                    });
                 });
 
                 boundarySelect.addEventListener('change', (event) => {
