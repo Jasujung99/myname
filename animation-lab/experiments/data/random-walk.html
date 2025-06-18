@@ -229,15 +229,12 @@
             { "name": "trail_opacity", "value": 0.5 },
             { "name": "gravity", "value": 0 },
             { "name": "boundary_rule", "value": "wrap" },
-            { "name": "is_running", "value": true, "on": [
-                {"events": "#start-btn:click", "update": "!is_running"},
-                {"events": "#reset-btn:click", "update": "false"}
-            ]},
-            { "name": "timer", "on": [
+            { "name": "is_running", "value": true },
+            { "name": "timer", "value": 0, "on": [
                 {"events": "timer", "update": "is_running ? now() : timer"}
               ]
             },
-            { "name": "reset_trigger", "value": 0, "on": [
+            { "name": "reset_trigger", "value": 1, "on": [
                 {"events": "#reset-btn:click", "update": "reset_trigger + 1"},
                 {"events": {"signal": "num_walkers"}, "update": "reset_trigger + 1"}
               ]

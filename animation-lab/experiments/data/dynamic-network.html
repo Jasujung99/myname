@@ -216,22 +216,13 @@
             {"name": "collide_radius", "value": 15},
             {"name": "center_strength", "value": 0.1},
             {"name": "selected_node", "value": null},
-            {"name": "drag", "value": null,
-              "on": [
-                {
-                  "events": "@symbol:mousedown",
-                  "update": "{id: datum.id, x: x(), y: y(), fx: datum.x, fy: datum.y}"
-                },
-                {
-                  "events": "[@symbol:mousedown, window:mouseup] > window:mousemove",
-                  "update": "drag && {id: drag.id, x: x(), y: y(), fx: drag.fx + x() - drag.x, fy: drag.fy + y() - drag.y}"
-                },
-                {
-                  "events": "window:mouseup",
-                  "update": "null"
-                }
-              ]
-            }
+            // 제한적 드래그 구현
+            {"name": "drag_node", "value": null},
+            {"name": "drag_active", "value": false},
+            {"name": "mouse_x", "value": 0},
+            {"name": "mouse_y", "value": 0},
+            {"name": "node_offset_x", "value": 0},
+            {"name": "node_offset_y", "value": 0}
           ],
           
           "data": [
@@ -312,11 +303,11 @@
                   "stroke": {"value": "#000"}
                 },
                 "update": {
-                  "x": {"signal": "drag && datum.id === drag.id ? drag.fx : datum.x"},
-                  "y": {"signal": "drag && datum.id === drag.id ? drag.fy : datum.y"},
+                  "x": {"signal": "drag_active && datum.id === drag_node ? mouse_x + node_offset_x : datum.x"},
+                  "y": {"signal": "drag_active && datum.id === drag_node ? mouse_y + node_offset_y : datum.y"},
                   "size": {"value": 500},
-                  "strokeWidth": {"signal": "datum.id === selected_node ? 6 : 2"},
-                  "stroke": {"signal": "datum.id === selected_node ? '#FFD700' : '#000'"},
+                  "strokeWidth": {"signal": "datum.id === selected_node ? 6 : (datum.id === drag_node ? 4 : 2)"},
+                  "stroke": {"signal": "datum.id === selected_node ? '#FFD700' : (datum.id === drag_node ? '#FF6B6B' : '#000')"},
                   "cursor": {"value": "pointer"},
                   "tooltip": {"signal": "'Node: ' + datum.id + ', Group: ' + datum.group"}
                 },
@@ -325,7 +316,14 @@
                   "stroke": {"value": "#fff"},
                   "strokeWidth": {"value": 4}
                 }
-              }
+              },
+              // 제한적 드래그 이벤트
+              "on": [
+                {
+                  "events": "mousedown",
+                  "update": "drag_node = datum.id, drag_active = true, node_offset_x = datum.x - x(), node_offset_y = datum.y - y()"
+                }
+              ]
             }
           ]
         };
@@ -334,6 +332,35 @@
         vegaEmbed('#vis', spec, {renderer: 'canvas', actions: false})
             .then(result => {
                 const view = result.view;
+                
+                // 글로벌 마우스 이벤트 추가 (제한적 드래그용)
+                let isDragging = false;
+                
+                document.addEventListener('mousemove', (event) => {
+                    if (isDragging) {
+                        const rect = view.container().getBoundingClientRect();
+                        const mouseX = event.clientX - rect.left;
+                        const mouseY = event.clientY - rect.top;
+                        
+                        view.signal('mouse_x', mouseX);
+                        view.signal('mouse_y', mouseY);
+                        view.run();
+                    }
+                });
+                
+                document.addEventListener('mouseup', () => {
+                    if (isDragging) {
+                        isDragging = false;
+                        view.signal('drag_active', false);
+                        view.signal('drag_node', null);
+                        view.run();
+                    }
+                });
+                
+                // 드래그 시작 감지
+                view.addSignalListener('drag_active', (name, value) => {
+                    isDragging = value;
+                });
                 
                 // 슬라이더 제어 설정
                 function setupSlider(sliderId, valueId, signalName) {
