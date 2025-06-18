@@ -215,7 +215,9 @@ function createAgentSpec(agentId, initialX, initialY, initialStatus) {
             { "name": "social_distance", "value": 30 },
             { "name": "velocity_x", "value": 0 },
             { "name": "velocity_y", "value": 0 },
-            { "name": "infection_multiplier", "value": 0.3 }
+            { "name": "infection_multiplier", "value": 0.3 },
+            { "name": "new_status", "value": initialStatus },
+            { "name": "final_status", "value": initialStatus }
         ],
 
         "data": [
@@ -225,13 +227,8 @@ function createAgentSpec(agentId, initialX, initialY, initialStatus) {
                 "transform": [
                     {
                         "type": "formula",
-                        "expr": "status === 'S' && nearby_infected && random() < infection_rate * infection_multiplier ? 'I' : status",
-                        "as": "new_status"
-                    },
-                    {
-                        "type": "formula", 
-                        "expr": "new_status === 'I' && infection_timer >= 50 ? 'R' : new_status",
-                        "as": "final_status"
+                        "expr": "datum.id",
+                        "as": "agent_id"
                     }
                 ]
             }
@@ -308,7 +305,7 @@ function createAgentSpec(agentId, initialX, initialY, initialStatus) {
                                 "test": "status === 'R' && recovery_timer <= 5",
                                 "value": "#22c55e"
                             },
-                            {"scale": "color", "field": "final_status"}
+                            {"scale": "color", "signal": "status"}
                         ],
                         "stroke": [
                             {
@@ -544,6 +541,8 @@ class SIRSimulation {
 
     checkInfections() {
         const socialDistance = parseInt(document.getElementById('social-distance').value);
+        const infectionRate = parseFloat(document.getElementById('infection-rate').value);
+        const infectionMultiplier = parseFloat(document.getElementById('infection-multiplier').value);
         
         this.agents.forEach((agent, i) => {
             let nearbyInfected = false;
@@ -558,6 +557,12 @@ class SIRSimulation {
                         
                         if (distance < socialDistance) {
                             nearbyInfected = true;
+                            
+                            // 감염 확률 체크
+                            if (Math.random() < infectionRate * infectionMultiplier) {
+                                agent.status = 'I';
+                                agent.infection_timer = 1;
+                            }
                             break;
                         }
                     }
@@ -593,13 +598,6 @@ class SIRSimulation {
             if (agent.status === 'R') {
                 agent.recovery_timer++;
                 this.agentViews[i].signal('recovery_timer', agent.recovery_timer);
-            }
-            
-            // 새로운 감염 체크
-            const vegaData = this.agentViews[i].data('agent_data');
-            if (vegaData.length > 0 && vegaData[0].final_status === 'I' && agent.status === 'S') {
-                agent.status = 'I';
-                agent.infection_timer = 1;
             }
             
             this.agentViews[i].runAsync();
