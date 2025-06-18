@@ -693,8 +693,8 @@
                 });
             }
             
-            drawVectorField() {
-                this.ctx.strokeStyle = 'rgba(50, 130, 184, 0.7)';
+            drawVectorShafts() {
+                this.ctx.strokeStyle = 'rgba(50, 130, 184, 0.5)';
                 this.ctx.lineWidth = 1.5;
                 
                 this.vectorData.forEach(data => {
@@ -703,40 +703,22 @@
                     const dy = data.vy * scale;
                     
                     if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
-                        this.drawArrow(data.x, data.y, dx, dy);
+                        this.drawArrowShaft(data.x, data.y, dx, dy);
                     }
                 });
             }
             
-            drawArrow(x, y, dx, dy) {
+            drawArrowShaft(x, y, dx, dy) {
                 const length = Math.sqrt(dx * dx + dy * dy);
                 if (length < 1) return;
                 
-                const angle = Math.atan2(dy, dx);
-                
-                // 화살표 몸체
+                // 화살대(선)만 그리기 - 화살촉은 Vega가 담당
                 this.ctx.beginPath();
                 this.ctx.moveTo(x, y);
                 this.ctx.lineTo(x + dx, y + dy);
                 this.ctx.stroke();
-                
-                // 화살표 머리
-                const headLength = Math.min(length * 0.3, 8);
-                const headAngle = Math.PI / 6;
-                
-                this.ctx.beginPath();
-                this.ctx.moveTo(x + dx, y + dy);
-                this.ctx.lineTo(
-                    x + dx - headLength * Math.cos(angle - headAngle),
-                    y + dy - headLength * Math.sin(angle - headAngle)
-                );
-                this.ctx.moveTo(x + dx, y + dy);
-                this.ctx.lineTo(
-                    x + dx - headLength * Math.cos(angle + headAngle),
-                    y + dy - headLength * Math.sin(angle + headAngle)
-                );
-                this.ctx.stroke();
             }
+            
             
             drawParticles() {
                 this.particles.forEach(particle => {
@@ -937,23 +919,6 @@
                     ],
                     "marks": [
                         {
-                            "type": "rule",
-                            "from": {"data": "vectorData"},
-                            "encode": {
-                                "enter": {
-                                    "stroke": {"value": "rgba(50, 130, 184, 0.5)"},
-                                    "strokeWidth": {"value": 1.5}
-                                },
-                                "update": {
-                                    "x": {"field": "x"},
-                                    "y": {"field": "y"},
-                                    "x2": {"signal": "datum.x + datum.vx * 15"},
-                                    "y2": {"signal": "datum.y + datum.vy * 15"},
-                                    "opacity": {"signal": "sqrt(datum.vx * datum.vx + datum.vy * datum.vy) > 0.05 ? 0.5 : 0"}
-                                }
-                            }
-                        },
-                        {
                             "type": "symbol",
                             "from": {"data": "vectorData"},
                             "encode": {
@@ -1097,8 +1062,8 @@
                 
                 this.ctx.clearRect(0, 0, this.width, this.height);
                 
-                // 벡터장 그리기는 이제 Vega가 담당
-                // this.drawVectorField(); // 비활성화
+                // Canvas로 화살대(선)만 그리기
+                this.drawVectorShafts();
                 
                 // 입자 업데이트 및 그리기 (Canvas로 유지)
                 this.updateParticles();
