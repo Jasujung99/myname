@@ -200,7 +200,7 @@
                 <p>이 시뮬레이션은 <strong>Vega를 사용한 힘-인력 기반(Force-Directed)</strong> 알고리즘을 보여줍니다. D3.js의 force simulation을 Vega의 선언적 문법으로 구현했습니다.</p>
                 <p><strong>Vega vs D3.js:</strong> D3.js는 명령형 프로그래밍으로 세밀한 제어가 가능하지만, Vega는 <code>선언적 문법</code>으로 더 간결하게 시각화를 정의할 수 있습니다. 데이터 변환과 시각적 인코딩이 JSON 스펙으로 분리되어 있어 유지보수가 용이합니다.</p>
                 <p><strong>힘의 균형:</strong> <code>nbody</code>(밀어내는 힘), <code>link</code>(연결 거리), <code>center</code>(중심 인력), <code>collide</code>(충돌 반경)가 상호작용하여 최종 레이아웃을 결정합니다.</p>
-                <p><strong>중심인력 효과:</strong> 중심인력이 <code>1.0 이상</code>이 되면 압축 모드가 활성화되어 다른 물리 매개변수들이 최솟값으로 조정됩니다. <code>4.0 이상</code>에서는 블랙홀 모드로 전환되어 모든 노드가 중심으로 강하게 끌려가는 극한 상황을 시뮬레이션할 수 있습니다. 이는 천체물리학의 중력 지배 현상을 네트워크로 표현한 것입니다.</p>
+                <p><strong>중심인력 효과:</strong> 중심인력이 <code>1.0 이상</code>이 되면 압축 모드가 활성화되어 다른 물리 매개변수들이 최솟값으로 조정됩니다. <code>4.0 이상</code>에서는 블랙홀 모드로 전환되어 밀어내는 힘이 <strong>양수 인력</strong>으로 바뀌면서 노드들이 서로 끌어당기고 중심으로도 강하게 끌려가는 이중 블랙홀 효과를 시뮬레이션합니다. 이는 천체물리학의 극한 중력 상황을 네트워크로 표현한 것입니다.</p>
             </div>
         </div>
     </div>
@@ -401,7 +401,7 @@
                     
                     if (gravity >= 4.0) {
                         // 블랙홀 모드
-                        effectStatus.textContent = '🌌 블랙홀 모드 - 모든 힘이 무력화됨';
+                        effectStatus.textContent = '🌌 블랙홀 모드 - 강력한 인력으로 극한 응집';
                         statusContainer.style.borderColor = '#ff4444';
                         statusContainer.style.backgroundColor = '#2a1a1a';
                         
@@ -411,8 +411,8 @@
                             statusContainer.classList.add('blackhole-mode');
                         }
                         
-                        // 모든 매개변수 최솟값으로 설정
-                        setSliderValue('nbody', -10);
+                        // 모든 매개변수 최솟값으로 설정 (블랙홀 효과)
+                        setSliderValue('nbody', 30);  // 양수로 설정하여 강한 인력 효과
                         setSliderValue('link-dist', 10);
                         setSliderValue('collide', 5);
                         
