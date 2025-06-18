@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>동적 네트워크 그래프 (스타일 업데이트)</title>
+    
+    <!-- Vega 라이브러리 로드 -->
+    <script src="https://cdn.jsdelivr.net/npm/vega@5"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vega-lite@5"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vega-embed@6"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0;
+            padding: 2rem;
+            background-color: #121212;
+            color: #e0e0e0;
+            min-height: 100vh;
+        }
+        h1 {
+            margin-bottom: 2rem;
+            font-weight: 400;
+            color: #f0f0f0;
+            letter-spacing: 0.5px;
+        }
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 2rem;
+            width: 100%;
+            max-width: 1280px;
+            justify-content: center;
+        }
+        .card {
+            background-color: #1E1E1E;
+            border: 1px solid #383838;
+            border-radius: 12px;
+            padding: 1.5rem 2rem;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+        #vis-container {
+            flex: 3;
+            min-width: 600px;
+            height: 550px;
+        }
+        #vis {
+             width: 100%;
+             height: 100%;
+        }
+        .controls {
+            flex: 1;
+            min-width: 280px;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+        .control-row {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        .control-row label {
+            font-size: 0.9rem;
+            color: #bbb;
+            display: flex;
+            justify-content: space-between;
+        }
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 6px;
+            background: #333;
+            border-radius: 5px;
+            outline: none;
+            opacity: 0.8;
+            transition: opacity .2s;
+        }
+        input[type="range"]:hover {
+            opacity: 1;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            background: #0095ff;
+            cursor: pointer;
+            border-radius: 50%;
+            border: 3px solid #1E1E1E;
+        }
+        input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            background: #0095ff;
+            cursor: pointer;
+            border-radius: 50%;
+            border: 3px solid #1E1E1E;
+        }
+        .back-button {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background-color: #2a2a2a;
+            color: #e0e0e0;
+            border: 1px solid #444;
+            padding: 8px 16px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-size: 14px;
+            transition: all 0.2s ease;
+            z-index: 1000;
+        }
+        .back-button:hover {
+            background-color: #3a3a3a;
+            border-color: #666;
+            color: #fff;
+        }
+    </style>
+</head>
+<body>
+    <a href="../../index.html" class="back-button">← 돌아가기</a>
+    
+    <h1>동적 네트워크 그래프</h1>
+
+    <div class="container">
+        <div id="vis-container" class="card">
+            <div id="vis"></div>
+        </div>
+        <div class="controls card">
+            <h2>제어판</h2>
+            <div class="control-row">
+                <label for="nbody">밀어내는 힘 <span id="nbody-value">-30</span></label>
+                <input type="range" id="nbody" min="-100" max="10" step="1" value="-30">
+            </div>
+             <div class="control-row">
+                <label for="link-dist">연결선 길이 <span id="link-dist-value">40</span></label>
+                <input type="range" id="link-dist" min="5" max="150" step="1" value="40">
+            </div>
+            <div class="control-row">
+                <label for="collide">충돌 반경 <span id="collide-value">12</span></label>
+                <input type="range" id="collide" min="1" max="30" step="1" value="12">
+            </div>
+             <div class="control-row">
+                <label for="center-force">중심 인력 <span id="center-force-value">0.05</span></label>
+                <input type="range" id="center-force" min="0" max="0.2" step="0.01" value="0.05">
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 최소한의 Vega 네트워크 그래프 - 검증된 패턴 사용
+        const spec = {
+          "$schema": "https://vega.github.io/schema/vega/v5.json",
+          "width": 600,
+          "height": 500,
+          "padding": 10,
+          "autosize": {"type": "fit", "contains": "padding"},
+          
+          "signals": [
+            {"name": "nbody_strength", "value": -30},
+            {"name": "link_distance", "value": 40},
+            {"name": "collide_radius", "value": 12},
+            {"name": "center_strength", "value": 0.05}
+          ],
+          
+          "data": [
+            {
+              "name": "link-data",
+              "values": [
+                {"source": "A", "target": "B"}, {"source": "B", "target": "C"}, {"source": "C", "target": "A"},
+                {"source": "D", "target": "E"}, {"source": "E", "target": "F"}, {"source": "F", "target": "D"},
+                {"source": "G", "target": "H"}, {"source": "H", "target": "I"}, {"source": "I", "target": "G"},
+                {"source": "A", "target": "D"}, {"source": "D", "target": "G"}, {"source": "A", "target": "G"}
+              ]
+            },
+            {
+              "name": "nodes",
+              "values": [
+                {"id": "A", "group": 1}, {"id": "B", "group": 1}, {"id": "C", "group": 1},
+                {"id": "D", "group": 2}, {"id": "E", "group": 2}, {"id": "F", "group": 2},
+                {"id": "G", "group": 3}, {"id": "H", "group": 3}, {"id": "I", "group": 3}
+              ],
+              "transform": [
+                {
+                  "type": "force",
+                  "iterations": 300,
+                  "restart": true,
+                  "static": false,
+                  "forces": [
+                    {"force": "center", "x": {"signal": "width/2"}, "y": {"signal": "height/2"}, "strength": {"signal": "center_strength"}},
+                    {"force": "collide", "radius": {"signal": "collide_radius"}},
+                    {"force": "nbody", "strength": {"signal": "nbody_strength"}},
+                    {"force": "link", "links": "link-data", "id": "id", "distance": {"signal": "link_distance"}}
+                  ]
+                }
+              ]
+            }
+          ],
+          
+          "scales": [
+            {"name": "color", "type": "ordinal", "domain": {"data": "nodes", "field": "group"}, "range": {"scheme": "category10"}}
+          ],
+          
+          "marks": [
+            {
+              "type": "rule",
+              "from": {"data": "link-data"},
+              "encode": {
+                "update": {
+                  "stroke": {"value": "#666"},
+                  "strokeWidth": {"value": 2},
+                  "x": {"signal": "datum.source.x || 300"},
+                  "y": {"signal": "datum.source.y || 250"},
+                  "x2": {"signal": "datum.target.x || 300"},
+                  "y2": {"signal": "datum.target.y || 250"}
+                }
+              }
+            },
+            {
+              "type": "symbol",
+              "from": {"data": "nodes"},
+              "encode": {
+                "enter": {
+                  "fill": {"scale": "color", "field": "group"},
+                  "stroke": {"value": "#000"}
+                },
+                "update": {
+                  "x": {"field": "x"},
+                  "y": {"field": "y"},
+                  "size": {"value": 300},
+                  "strokeWidth": {"value": 2},
+                  "cursor": {"value": "pointer"},
+                  "tooltip": {"signal": "'Node: ' + datum.id + ', Group: ' + datum.group"}
+                },
+                "hover": {
+                  "size": {"value": 400},
+                  "stroke": {"value": "#fff"},
+                  "strokeWidth": {"value": 3}
+                }
+              }
+            }
+          ]
+        };
+
+        // Vega-Embed로 시각화 생성
+        vegaEmbed('#vis', spec, {renderer: 'canvas', actions: false})
+            .then(result => {
+                const view = result.view;
+                
+                // 슬라이더 제어 설정
+                function setupSlider(sliderId, valueId, signalName) {
+                    const slider = document.getElementById(sliderId);
+                    const valueDisplay = document.getElementById(valueId);
+                    
+                    // 초기값 설정
+                    valueDisplay.textContent = slider.value;
+                    
+                    // 슬라이더 변경 시 Vega 시그널 업데이트
+                    slider.addEventListener('input', (e) => {
+                        const value = parseFloat(e.target.value);
+                        valueDisplay.textContent = value;
+                        view.signal(signalName, value).run();
+                    });
+                }
+                
+                // 모든 컨트롤 설정
+                setupSlider('nbody', 'nbody-value', 'nbody_strength');
+                setupSlider('link-dist', 'link-dist-value', 'link_distance');
+                setupSlider('collide', 'collide-value', 'collide_radius');
+                setupSlider('center-force', 'center-force-value', 'center_strength');
+            })
+            .catch(console.error);
+    </script>
+</body>
+</html>
