@@ -281,6 +281,20 @@ const mainSpec = {
           "as": "particle_y"
         }
       ]
+    },
+    {
+      "name": "newly_infected",
+      "source": "nodes",
+      "transform": [
+        {"type": "filter", "expr": "datum.status === 'I' && datum.infection_timer <= 3"}
+      ]
+    },
+    {
+      "name": "newly_recovered",
+      "source": "nodes", 
+      "transform": [
+        {"type": "filter", "expr": "datum.status === 'R' && datum.recovery_timer <= 5"}
+      ]
     }
   ],
 
@@ -312,6 +326,38 @@ const mainSpec = {
   ],
 
   "marks": [
+    {
+      "name": "infection_pulse",
+      "type": "symbol",
+      "from": {"data": "newly_infected"},
+      "encode": {
+        "update": {
+          "x": {"field": "x"},
+          "y": {"field": "y"},
+          "size": {"signal": "(4 - datum.infection_timer) * (4 - datum.infection_timer) * 100"},
+          "fill": {"value": "rgba(255, 0, 0, 0.6)"},
+          "stroke": {"value": "#ff0000"},
+          "strokeWidth": {"value": 3},
+          "opacity": {"signal": "max(0, 1 - datum.infection_timer / 3)"}
+        }
+      }
+    },
+    {
+      "name": "recovery_glow",
+      "type": "symbol", 
+      "from": {"data": "newly_recovered"},
+      "encode": {
+        "update": {
+          "x": {"field": "x"},
+          "y": {"field": "y"}, 
+          "size": {"signal": "datum.recovery_timer * datum.recovery_timer * 40"},
+          "fill": {"value": "rgba(34, 197, 94, 0.4)"},
+          "stroke": {"value": "#22c55e"},
+          "strokeWidth": {"value": 2},
+          "opacity": {"signal": "max(0, 1 - datum.recovery_timer / 5)"}
+        }
+      }
+    },
     {
       "name": "virus_aura",
       "type": "symbol",
@@ -357,20 +403,54 @@ const mainSpec = {
       "from": {"data": "nodes"},
       "encode": {
         "update": {
-          "size": {"scale": "size", "field": "status"},
-          "fill": {"scale": "color", "field": "status"},
-          "stroke": {"value": "white"},
+          "size": [
+            {
+              "test": "datum.status === 'I'",
+              "signal": "80 + sin(timer * 0.3 + datum.id) * 10"
+            },
+            {
+              "test": "datum.status === 'R'",
+              "signal": "50 + sin(timer * 0.2 + datum.id) * 5"
+            },
+            {"value": 60}
+          ],
+          "fill": [
+            {
+              "test": "datum.status === 'I' && datum.infection_timer <= 2",
+              "value": "#ff0000"
+            },
+            {
+              "test": "datum.status === 'R' && datum.recovery_timer <= 3",
+              "value": "#22c55e"
+            },
+            {"scale": "color", "field": "status"}
+          ],
+          "stroke": [
+            {
+              "test": "datum.status === 'I'",
+              "value": "#ffff00"
+            },
+            {
+              "test": "datum.status === 'R'",
+              "value": "#4ade80"
+            },
+            {"value": "white"}
+          ],
           "strokeWidth": [
             {
               "test": "datum.status === 'I'",
-              "value": 2
+              "signal": "2 + sin(timer * 0.5 + datum.id) * 1"
+            },
+            {
+              "test": "datum.status === 'R'",
+              "value": 1.5
             },
             {"value": 0.5}
           ],
           "opacity": [
             {
               "test": "datum.status === 'I'",
-              "value": 1
+              "signal": "0.9 + sin(timer * 0.4 + datum.id) * 0.1"
             },
             {"value": 0.85}
           ],
@@ -388,6 +468,11 @@ const mainSpec = {
           "type": "formula", 
           "expr": "datum.status === 'I' ? datum.infection_timer + 1 : datum.infection_timer",
           "as": "infection_timer"
+        },
+        {
+          "type": "formula",
+          "expr": "datum.status === 'R' ? (datum.recovery_timer || 0) + 1 : 0",
+          "as": "recovery_timer"
         },
         {
           "type": "formula",
