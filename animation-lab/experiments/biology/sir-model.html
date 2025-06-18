@@ -405,11 +405,11 @@ class SIRSimulation {
                 recovery_timer: 0
             };
             
-            // HTML 컨테이너 생성
+            // HTML 컨테이너 생성 (오프셋 제거)
             const agentElement = document.createElement('div');
             agentElement.className = 'agent-container';
-            agentElement.style.left = `${x - 30}px`;
-            agentElement.style.top = `${y - 30}px`;
+            agentElement.style.left = `${x}px`;
+            agentElement.style.top = `${y}px`;
             agentElement.id = `agent-${i}`;
             container.appendChild(agentElement);
             
@@ -540,28 +540,39 @@ class SIRSimulation {
             agent.y += agent.vy;
             
             // 강화된 경계 처리
-            const margin = 35; // 더 안전한 여백
+            const margin = 35;
             
+            // 강제 경계 클램핑
             if (agent.x < margin) {
                 agent.x = margin;
-                agent.vx = Math.abs(agent.vx) * 0.8; // 반발 시 속도 감소
-            }
-            if (agent.x > this.containerWidth - margin) {
+                agent.vx = Math.abs(agent.vx) * 0.8;
+            } else if (agent.x > this.containerWidth - margin) {
                 agent.x = this.containerWidth - margin;
                 agent.vx = -Math.abs(agent.vx) * 0.8;
             }
+            
             if (agent.y < margin) {
                 agent.y = margin;
                 agent.vy = Math.abs(agent.vy) * 0.8;
-            }
-            if (agent.y > this.containerHeight - margin) {
+            } else if (agent.y > this.containerHeight - margin) {
                 agent.y = this.containerHeight - margin;
                 agent.vy = -Math.abs(agent.vy) * 0.8;
             }
             
-            // HTML 요소 위치 업데이트
-            this.agentElements[i].style.left = `${agent.x - 30}px`;
-            this.agentElements[i].style.top = `${agent.y - 30}px`;
+            // 추가 안전장치: 절대 경계를 벗어나지 않도록 강제 클램핑
+            agent.x = Math.max(margin, Math.min(this.containerWidth - margin, agent.x));
+            agent.y = Math.max(margin, Math.min(this.containerHeight - margin, agent.y));
+            
+            // HTML 요소 위치 업데이트 (오프셋 제거)
+            this.agentElements[i].style.left = `${agent.x}px`;
+            this.agentElements[i].style.top = `${agent.y}px`;
+            
+            // 첫 번째 에이전트만 디버깅
+            if (i === 0 && !this.debugLogged) {
+                console.log(`Container: ${this.containerWidth}x${this.containerHeight}, Agent 0: x=${agent.x}, y=${agent.y}`);
+                console.log(`Element style: left=${agent.x}px, top=${agent.y}px`);
+                this.debugLogged = true;
+            }
         });
     }
 
