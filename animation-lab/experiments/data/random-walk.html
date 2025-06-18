@@ -192,6 +192,8 @@
                     <select id="boundary-rule-select">
                         <option value="wrap">순환 (Wrap)</option>
                         <option value="bounce">반사 (Bounce)</option>
+                        <option value="none">무제한 (None)</option>
+                        <option value="split">분할 (Split)</option>
                     </select>
                 </div>
                 <div class="button-group">
@@ -269,8 +271,9 @@
                 { "type": "formula", "as": "pull_y", "expr": "(height/2 - datum.y) * gravity" },
                 { "type": "formula", "as": "next_x", "expr": "datum.x + datum.dx + datum.pull_x" },
                 { "type": "formula", "as": "next_y", "expr": "datum.y + datum.dy + datum.pull_y" },
-                { "type": "formula", "as": "x", "expr": "is_running ? (boundary_rule === 'wrap' ? (datum.next_x + width) % width : (datum.next_x < 0 || datum.next_x > width ? datum.x - datum.dx : datum.next_x)) : datum.x" },
-                { "type": "formula", "as": "y", "expr": "is_running ? (boundary_rule === 'wrap' ? (datum.next_y + height) % height : (datum.next_y < 0 || datum.next_y > height ? datum.y - datum.dy : datum.next_y)) : datum.y" }
+                { "type": "formula", "as": "hit_boundary", "expr": "datum.next_x < 0 || datum.next_x > width || datum.next_y < 0 || datum.next_y > height" },
+                { "type": "formula", "as": "x", "expr": "is_running ? (boundary_rule === 'wrap' ? (datum.next_x + width) % width : boundary_rule === 'bounce' ? (datum.hit_boundary ? datum.x - datum.dx : datum.next_x) : boundary_rule === 'split' ? (datum.hit_boundary ? width/2 + random() * 100 - 50 : datum.next_x) : datum.next_x) : datum.x" },
+                { "type": "formula", "as": "y", "expr": "is_running ? (boundary_rule === 'wrap' ? (datum.next_y + height) % height : boundary_rule === 'bounce' ? (datum.hit_boundary ? datum.y - datum.dy : datum.next_y) : boundary_rule === 'split' ? (datum.hit_boundary ? height/2 + random() * 100 - 50 : datum.next_y) : datum.next_y) : datum.y" }
               ]
             }
           ],
@@ -362,15 +365,17 @@
                     const randomWalkers = Math.floor(Math.random() * 20) + 5; // 5-25
                     const randomStepSize = Math.random() * 8 + 0.5; // 0.5-8.5
                     const randomOpacity = Math.random() * 0.8 + 0.2; // 0.2-1.0
-                    const randomGravity = Math.random() * 0.6 - 0.3; // -0.3 to 0.3
-                    const boundaries = ['wrap', 'bounce', 'none'];
-                    const randomBoundary = boundaries[Math.floor(Math.random() * 3)];
+                    const randomGravity = Math.random() * 0.06 - 0.03; // -0.03 to 0.03
+                    const boundaries = ['wrap', 'bounce', 'none', 'split'];
+                    const randomBoundary = boundaries[Math.floor(Math.random() * boundaries.length)];
+                    
+                    console.log('Selected boundary:', randomBoundary);
                     
                     // 슬라이더 UI 업데이트
                     sliders.num_walkers.value = randomWalkers;
-                    sliders.step_size.value = randomStepSize;
-                    sliders.trail_opacity.value = randomOpacity;
-                    sliders.gravity.value = randomGravity;
+                    sliders.step_size.value = randomStepSize.toFixed(1);
+                    sliders.trail_opacity.value = randomOpacity.toFixed(2);
+                    sliders.gravity.value = randomGravity.toFixed(3);
                     boundarySelect.value = randomBoundary;
                     
                     // Vega 신호 업데이트
@@ -395,6 +400,45 @@
                         gravity: randomGravity,
                         boundary: randomBoundary
                     });
+                });
+                
+                // --- Reset Button (새로 시작) ---
+                resetBtn.addEventListener('click', () => {
+                    console.log('초기값으로 리셋 중...');
+                    
+                    // 초기값들
+                    const initialValues = {
+                        num_walkers: 10,
+                        step_size: 2.0,
+                        trail_opacity: 0.5,
+                        gravity: 0.0,
+                        boundary_rule: 'wrap'
+                    };
+                    
+                    // 슬라이더 UI 업데이트
+                    sliders.num_walkers.value = initialValues.num_walkers;
+                    sliders.step_size.value = initialValues.step_size;
+                    sliders.trail_opacity.value = initialValues.trail_opacity;
+                    sliders.gravity.value = initialValues.gravity;
+                    boundarySelect.value = initialValues.boundary_rule;
+                    
+                    // Vega 신호 업데이트
+                    view.signal('num_walkers', initialValues.num_walkers);
+                    view.signal('step_size', initialValues.step_size);
+                    view.signal('trail_opacity', initialValues.trail_opacity);
+                    view.signal('gravity', initialValues.gravity);
+                    view.signal('boundary_rule', initialValues.boundary_rule);
+                    view.signal('reset_trigger', view.signal('reset_trigger') + 1); // 위치도 리셋
+                    
+                    // 라벨 업데이트
+                    updateLabel('num_walkers', initialValues.num_walkers);
+                    updateLabel('step_size', initialValues.step_size);
+                    updateLabel('trail_opacity', initialValues.trail_opacity);
+                    updateLabel('gravity', initialValues.gravity);
+                    
+                    view.runAsync();
+                    
+                    console.log('초기값으로 리셋 완료');
                 });
 
                 boundarySelect.addEventListener('change', (event) => {
