@@ -240,6 +240,47 @@ const mainSpec = {
       "transform": [
         {"type": "filter", "expr": "datum.status === 'I'"}
       ]
+    },
+    {
+      "name": "virus_particles",
+      "source": "infected_nodes",
+      "transform": [
+        {
+          "type": "formula",
+          "expr": "[0, 1, 2, 3, 4, 5, 6, 7]",
+          "as": "particle_indices"
+        },
+        {
+          "type": "flatten",
+          "fields": ["particle_indices"],
+          "as": ["particle_index"]
+        },
+        {
+          "type": "formula",
+          "expr": "datum.particle_index * PI / 4",
+          "as": "angle"
+        },
+        {
+          "type": "formula",
+          "expr": "((timer + datum.id * 3) % 30) * 1.5",
+          "as": "distance"
+        },
+        {
+          "type": "formula",
+          "expr": "max(0, 1 - datum.distance / 45)",
+          "as": "particle_opacity"
+        },
+        {
+          "type": "formula",
+          "expr": "datum.x + cos(datum.angle) * datum.distance",
+          "as": "particle_x"
+        },
+        {
+          "type": "formula",
+          "expr": "datum.y + sin(datum.angle) * datum.distance",
+          "as": "particle_y"
+        }
+      ]
     }
   ],
 
@@ -291,6 +332,22 @@ const mainSpec = {
             },
             {"value": 0.4}
           ]
+        }
+      }
+    },
+    {
+      "name": "virus_particles_marks",
+      "type": "symbol",
+      "from": {"data": "virus_particles"},
+      "encode": {
+        "update": {
+          "x": {"field": "particle_x"},
+          "y": {"field": "particle_y"},
+          "size": {"signal": "15 + sin(timer * 0.5) * 5"},
+          "fill": {"value": "#ff4444"},
+          "stroke": {"value": "#ff6666"},
+          "strokeWidth": {"value": 0.5},
+          "opacity": {"field": "particle_opacity"}
         }
       }
     },
