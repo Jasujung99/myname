@@ -235,7 +235,7 @@ const mainSpec = {
   "signals": [
     { "name": "timer", "value": 0 }, 
     { "name": "population", "value": 200 },
-    { "name": "infection_rate", "value": 0.08 },
+    { "name": "infection_rate", "value": 0.3 },
     { "name": "recovery_duration", "value": 150 },
     { "name": "social_distancing", "value": 12 },
     { "name": "movement_speed", "value": 2 },
@@ -306,7 +306,7 @@ const controlsSpec = {
   "padding": 5, "background": "transparent",
   "signals": [
     { "name": "population", "value": 200, "bind": {"name": "총 인구 수", "input": "range", "min": 50, "max": 400, "step": 10} },
-    { "name": "infection_rate", "value": 0.08, "bind": {"name": "감염률 (β)", "input": "range", "min": 0.01, "max": 0.3, "step": 0.01} },
+    { "name": "infection_rate", "value": 0.3, "bind": {"name": "감염률 (β)", "input": "range", "min": 0.01, "max": 1.0, "step": 0.01} },
     { "name": "recovery_duration", "value": 150, "bind": {"name": "회복 기간 (프레임)", "input": "range", "min": 50, "max": 400, "step": 10} },
     { "name": "social_distancing", "value": 12, "bind": {"name": "사회적 거리두기", "input": "range", "min": 5, "max": 25, "step": 1} },
     { "name": "movement_speed", "value": 2, "bind": {"name": "이동 속도", "input": "range", "min": 0.5, "max": 5, "step": 0.1} }
@@ -456,7 +456,7 @@ const controlsSpec = {
                     }
                 }
 
-                // 3. 감염 로직 (거리 기반)
+                // 3. 개선된 감염 로직 (거리 기반 + 높은 확률)
                 if (node.status === 'S') {
                     for (let other of currentNodes) {
                         if (other.status === 'I' && other.id !== node.id) {
@@ -464,10 +464,15 @@ const controlsSpec = {
                             const dy = (node.y || 0) - (other.y || 0);
                             const distance = Math.sqrt(dx * dx + dy * dy);
                             
-                            // 감염자와 가까우면 감염 확률 계산
-                            if (distance < socialDistance * 2.5) {
-                                const infectionChance = infectionRate * (1 - distance / (socialDistance * 2.5));
-                                if (Math.random() < infectionChance) {
+                            // 감염 범위 내에 있으면 감염 확률 계산
+                            const infectionRange = socialDistance * 1.5;
+                            if (distance < infectionRange) {
+                                // 거리가 가까울수록 감염 확률 높아짐
+                                const proximityFactor = 1 - (distance / infectionRange);
+                                const baseInfectionChance = infectionRate * 0.1; // 매 프레임 기본 감염 확률
+                                const finalInfectionChance = baseInfectionChance * proximityFactor;
+                                
+                                if (Math.random() < finalInfectionChance) {
                                     newStatus = 'I';
                                     newTimer = 1;
                                     break;
@@ -489,7 +494,7 @@ const controlsSpec = {
             });
 
             mainView.data('nodes', newNodes).runAsync();
-        }, 30); // 30ms 마다 (약 33 FPS)로 더 부드러운 애니메이션
+        }, 50); // 50ms 마다로 조정하여 변화를 더 잘 관찰할 수 있도록
         
         isPaused = false;
         playPauseBtn.textContent = '일시정지';
@@ -529,7 +534,7 @@ const controlsSpec = {
     resetBtn.addEventListener('click', () => {
         // 컨트롤 패널의 값을 초기값으로 되돌림
         controlsView.signal('population', 200)
-                    .signal('infection_rate', 0.08)
+                    .signal('infection_rate', 0.3)
                     .signal('recovery_duration', 150)
                     .signal('social_distancing', 12)
                     .signal('movement_speed', 2)
