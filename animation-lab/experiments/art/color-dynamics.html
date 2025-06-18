@@ -501,9 +501,15 @@
             }
             
             handleCanvasClick(e) {
+                console.log('🖱️ 클릭 이벤트 발생');
+                console.log('현재 모드:', this.params.mode);
+                console.log('permanentCircles 개수:', this.permanentCircles.length);
+                
                 const rect = this.canvas.getBoundingClientRect();
                 const x = e.clientX - rect.left;
                 const y = e.clientY - rect.top;
+                
+                console.log('클릭 위치:', { x, y });
                 
                 if (this.params.mode === 'wheel') {
                     // 색상환에서 클릭한 위치의 색상 추출
@@ -517,8 +523,10 @@
                     document.getElementById('hueValue').textContent = Math.round(hue) + '°';
                     this.updateColorDisplay();
                 } else if (this.params.mode === 'interactive') {
+                    console.log('📍 인터랙티브 모드에서 원 추가 시도');
                     // 인터랙티브 모드에서 보색 원 도장 찍기
                     this.addPermanentCircle(x, y);
+                    console.log('추가 후 permanentCircles 개수:', this.permanentCircles.length);
                 }
             }
             
@@ -646,12 +654,18 @@
             
             // 보색 그라디언트 영구 저장 (진짜 도장 찍기)
             addPermanentCircle(x, y) {
+                console.log('🎨 addPermanentCircle 호출됨:', { x, y });
+                
                 const baseColor = `hsl(${this.params.hue}, ${this.params.saturation}%, ${this.params.lightness}%)`;
                 const complementaryColor = `hsl(${(this.params.hue + 180) % 360}, ${this.params.saturation}%, ${this.params.lightness}%)`;
+                
+                console.log('색상:', { baseColor, complementaryColor });
                 
                 // 그라디언트의 실제 반지름 사용 (0.75로 통일)
                 const gradientRadius = Math.min(this.width, this.height) * 0.75;
                 const overlapCount = this.calculateOverlap(x, y, gradientRadius);
+                
+                console.log('반지름:', gradientRadius, '중첩 횟수:', overlapCount);
                 
                 this.permanentCircles.push({
                     x: x,
@@ -661,6 +675,8 @@
                     radius: gradientRadius,
                     overlapCount: overlapCount // 중첩 횟수 저장
                 });
+                
+                console.log('✅ 원 추가 완료, 총 개수:', this.permanentCircles.length);
                 
                 // 그라디언트 무제한 유지 (FIFO 제거 로직 삭제)
             }
@@ -898,8 +914,8 @@
                     // 중첩 횟수에 따라 투명도 증가 (0.15 기본 + 중첩당 0.15씩 증가)
                     const baseAlpha = 0.3;
                     const overlapBonus = circle.overlapCount * 0.2; // 더 강한 중첩 효과
-                    const finalAlpha = Math.min(baseAlpha + overlapBonus, 3); // 최대값도 0.9로
-                    
+                    const finalAlpha = baseAlpha + overlapBonus;  // Math.min 제거
+
                     this.ctx.globalAlpha = finalAlpha;
                     this.ctx.fillStyle = gradient;
                     this.ctx.fillRect(0, 0, this.width, this.height);
@@ -913,13 +929,13 @@
                 );
                 
                 const baseColor = `hsl(${this.params.hue}, ${this.params.saturation}%, ${this.params.lightness}%)`;
-                const complementaryColor = `hsl(${(this.params.hue + 180) % 360}, ${this.params.saturation}%, ${this.params.lightness}%)`;
+                const complementaryColor = `hsl(${(this.params.hue + 180) % 180}, ${this.params.saturation}%, ${this.params.lightness}%)`;
                 
                 currentGradient.addColorStop(0, baseColor);
                 currentGradient.addColorStop(1, complementaryColor);
                 
                 // 반투명으로 오버레이
-                this.ctx.globalAlpha = 0.2;
+                this.ctx.globalAlpha = 0.05;
                 this.ctx.fillStyle = currentGradient;
                 this.ctx.fillRect(0, 0, this.width, this.height);
                 this.ctx.globalAlpha = 3;
