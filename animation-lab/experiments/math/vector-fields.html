@@ -404,7 +404,7 @@
         // 설정 상수들
         const CONFIG = {
             VECTOR_DENSITY: 20,
-            ARROW_SHAFT_LENGTH: 0,
+            ARROW_SHAFT_LENGTH: 15,
             PARTICLE_TRAIL_MAX: 15,
             PARTICLE_LIFE_MIN: 500,
             PARTICLE_LIFE_MAX: 1500,
@@ -797,6 +797,15 @@
                     .then(result => {
                         this.vegaCharts[chartName] = result;
                         console.log(`${chartName} 차트 초기화 완료`);
+                        
+                        // 초기 빈 데이터 설정으로 null 에러 방지
+                        if (chartName === 'fieldStats') {
+                            result.view.insert('fieldData', []).run();
+                        } else if (chartName === 'vectorArrows') {
+                            result.view.insert('vectorData', []).run();
+                        }
+                        
+                        // 실제 데이터가 있으면 업데이트
                         if (this.vectorData?.length > 0) {
                             this.updateVegaCharts();
                         }
@@ -876,7 +885,8 @@
                                 "fill": {"value": CONFIG.COLORS.ARROW_HEAD},
                                 "stroke": {"value": CONFIG.COLORS.ARROW_HEAD},
                                 "strokeWidth": {"value": 0.5},
-                                "size": {"value": 25}
+                                "size": {"value": 25},
+                                "shape": {"value": "triangle-up"}
                             },
                             "update": {
                                 "x": {"signal": `datum.x + datum.vx * ${CONFIG.ARROW_SHAFT_LENGTH}`},
@@ -884,8 +894,7 @@
                                 "angle": {"signal": "atan2(datum.vy, datum.vx)"},
                                 "opacity": {"signal": "sqrt(datum.vx * datum.vx + datum.vy * datum.vy) > 0.05 ? 0.8 : 0"}
                             }
-                        },
-                        "transform": [{"type": "symbol", "shape": "triangle-up"}]
+                        }
                     }]
                 };
             }
