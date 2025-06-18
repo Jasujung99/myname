@@ -1,0 +1,965 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>벡터장 시각화 - Animation Lab</title>
+    <script src="https://cdn.jsdelivr.net/npm/vega@5"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vega-lite@5"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vega-embed@6"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0F4C75 0%, #3282B8 50%, #0F3460 100%);
+            color: white;
+            overflow: hidden;
+        }
+
+        .container {
+            display: flex;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        .canvas-area {
+            flex: 1;
+            position: relative;
+            background: radial-gradient(circle at 20% 80%, rgba(255,255,255,0.03) 0%, rgba(0,0,0,0.4) 100%);
+        }
+
+        #mainCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+
+        #vegaVectorField {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 2;
+            pointer-events: none;
+            background: rgba(0,0,0,0.6);
+            border-radius: 10px;
+            padding: 10px;
+        }
+
+        #vegaFieldStats {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            z-index: 2;
+            pointer-events: none;
+            background: rgba(0,0,0,0.6);
+            border-radius: 10px;
+            padding: 10px;
+        }
+
+        .control-panel {
+            width: 380px;
+            background: rgba(0,0,0,0.85);
+            backdrop-filter: blur(20px);
+            border-left: 1px solid rgba(255,255,255,0.1);
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .nav-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .back-btn {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            text-decoration: none;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .back-btn:hover {
+            background: rgba(255,255,255,0.2);
+            transform: translateY(-1px);
+        }
+
+        .experiment-title {
+            font-size: 1.4rem;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 8px;
+            color: #3282B8;
+        }
+
+        .experiment-desc {
+            font-size: 0.9rem;
+            opacity: 0.8;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .field-selector {
+            margin-bottom: 25px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 10px;
+            padding: 15px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .field-selector h3 {
+            margin-bottom: 15px;
+            color: #3282B8;
+            font-size: 1.1rem;
+        }
+
+        .field-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .field-btn {
+            background: rgba(50, 130, 184, 0.2);
+            border: 1px solid rgba(50, 130, 184, 0.4);
+            color: white;
+            padding: 10px 8px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        .field-btn:hover {
+            background: rgba(50, 130, 184, 0.4);
+            transform: translateY(-1px);
+        }
+
+        .field-btn.active {
+            background: rgba(50, 130, 184, 0.6);
+            border-color: #3282B8;
+        }
+
+        .control-group {
+            margin-bottom: 25px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 10px;
+            padding: 15px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .control-group h3 {
+            margin-bottom: 15px;
+            color: #3282B8;
+            font-size: 1.1rem;
+        }
+
+        .control-item {
+            margin-bottom: 15px;
+        }
+
+        .control-item label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        input[type="range"] {
+            flex: 1;
+            height: 6px;
+            border-radius: 3px;
+            background: rgba(255,255,255,0.2);
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #3282B8;
+            cursor: pointer;
+            border: 2px solid white;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        }
+
+        .value-display {
+            background: rgba(255,255,255,0.1);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            min-width: 50px;
+            text-align: center;
+        }
+
+        .animation-controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .anim-btn {
+            flex: 1;
+            background: rgba(76, 175, 80, 0.3);
+            border: 1px solid rgba(76, 175, 80, 0.5);
+            color: white;
+            padding: 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+
+        .anim-btn:hover {
+            background: rgba(76, 175, 80, 0.5);
+            transform: translateY(-1px);
+        }
+
+        .anim-btn.active {
+            background: rgba(76, 175, 80, 0.7);
+        }
+
+        .learning-section {
+            background: rgba(255,255,255,0.05);
+            border-radius: 10px;
+            padding: 15px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .learning-section h3 {
+            margin-bottom: 15px;
+            color: #FF6B6B;
+            font-size: 1.1rem;
+        }
+
+        .concept-item {
+            margin-bottom: 12px;
+            padding: 8px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 6px;
+            border-left: 3px solid #FF6B6B;
+        }
+
+        .concept-item h4 {
+            font-size: 0.9rem;
+            margin-bottom: 4px;
+            color: #FFB74D;
+        }
+
+        .concept-item p {
+            font-size: 0.8rem;
+            opacity: 0.8;
+            line-height: 1.3;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+            
+            .control-panel {
+                width: 100%;
+                max-height: 40vh;
+                order: -1;
+            }
+            
+            .canvas-area {
+                flex: 1;
+                min-height: 60vh;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="canvas-area">
+            <canvas id="mainCanvas"></canvas>
+            <div id="vegaVectorField"></div>
+            <div id="vegaFieldStats"></div>
+        </div>
+        
+        <div class="control-panel">
+            <div class="nav-header">
+                <a href="../../index.html" class="back-btn">← 돌아가기</a>
+            </div>
+            
+            <div class="experiment-title">📐 벡터장 시각화</div>
+            <div class="experiment-desc">그래디언트, 발산, 회전 필드의 흐름을 직관적으로 시각화</div>
+            
+            <div class="field-selector">
+                <h3>🎯 벡터장 유형</h3>
+                <div class="field-buttons">
+                    <button class="field-btn active" data-field="gradient">그래디언트</button>
+                    <button class="field-btn" data-field="divergence">발산</button>
+                    <button class="field-btn" data-field="curl">회전</button>
+                    <button class="field-btn" data-field="uniform">균등</button>
+                    <button class="field-btn" data-field="saddle">새들점</button>
+                    <button class="field-btn" data-field="wave">파동</button>
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <h3>📊 실시간 분석</h3>
+                <div class="control-item">
+                    <label>현재 필드 정보</label>
+                    <div id="fieldInfo" class="value-display" style="width: 100%; margin-top: 5px; padding: 8px; background: rgba(255,255,255,0.1)">
+                        분석 중...
+                    </div>
+                </div>
+                <div class="control-item">
+                    <label>활성 입자 수</label>
+                    <div class="slider-container">
+                        <div class="value-display" id="activeParticles" style="background: rgba(76, 175, 80, 0.3)">0</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <h3>🎛️ 필드 매개변수</h3>
+                <div class="control-item">
+                    <label>강도 (Strength)</label>
+                    <div class="slider-container">
+                        <input type="range" id="strength" min="0.1" max="3.0" step="0.1" value="1.0">
+                        <div class="value-display" id="strengthValue">1.0</div>
+                    </div>
+                </div>
+                <div class="control-item">
+                    <label>벡터 밀도</label>
+                    <div class="slider-container">
+                        <input type="range" id="density" min="10" max="50" step="2" value="20">
+                        <div class="value-display" id="densityValue">20</div>
+                    </div>
+                </div>
+                <div class="control-item">
+                    <label>화살표 크기</label>
+                    <div class="slider-container">
+                        <input type="range" id="arrowSize" min="0.5" max="2.0" step="0.1" value="1.0">
+                        <div class="value-display" id="arrowSizeValue">1.0</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <h3>🌊 흐름 시각화</h3>
+                <div class="control-item">
+                    <label>입자 수</label>
+                    <div class="slider-container">
+                        <input type="range" id="particleCount" min="50" max="500" step="25" value="200">
+                        <div class="value-display" id="particleCountValue">200</div>
+                    </div>
+                </div>
+                <div class="control-item">
+                    <label>흐름 속도</label>
+                    <div class="slider-container">
+                        <input type="range" id="flowSpeed" min="0.1" max="2.0" step="0.1" value="0.5">
+                        <div class="value-display" id="flowSpeedValue">0.5</div>
+                    </div>
+                </div>
+                <div class="animation-controls">
+                    <button class="anim-btn" id="playPause">⏸️ 일시정지</button>
+                    <button class="anim-btn" id="reset">🔄 초기화</button>
+                </div>
+            </div>
+            
+            <div class="learning-section">
+                <h3>📚 학습 가이드</h3>
+                <div class="concept-item">
+                    <h4>그래디언트 (Gradient)</h4>
+                    <p>스칼라 함수 f(x,y)의 그래디언트 ∇f는 가장 가파른 증가 방향을 나타냅니다. 물리학에서는 중력장이나 전기장에서 나타납니다.</p>
+                </div>
+                <div class="concept-item">
+                    <h4>발산 (Divergence)</h4>
+                    <p>div F = ∂Fx/∂x + ∂Fy/∂y로 계산되며, 양수면 소스, 음수면 싱크를 의미합니다. 유체역학에서 압축성을 나타냅니다.</p>
+                </div>
+                <div class="concept-item">
+                    <h4>회전 (Curl)</h4>
+                    <p>2D에서 curl F = ∂Fy/∂x - ∂Fx/∂y로 계산되며, 벡터장의 회전 정도를 나타냅니다. 전자기학에서 중요한 개념입니다.</p>
+                </div>
+                <div class="concept-item">
+                    <h4>새들점 (Saddle Point)</h4>
+                    <p>한 방향으로는 수렴하고 다른 방향으로는 발산하는 불안정한 평형점입니다. 역학계에서 중요한 특이점입니다.</p>
+                </div>
+                <div class="concept-item">
+                    <h4>유선 (Streamlines)</h4>
+                    <p>벡터장의 흐름을 따라 그려지는 곡선으로, 입자의 궤적을 보여줍니다. 미분방정식 dx/dt = F(x,y)의 해입니다.</p>
+                </div>
+                <div class="concept-item">
+                    <h4>💡 실험 팁</h4>
+                    <p>• 서로 다른 필드 간 전환하여 비교해보세요<br>
+                    • 강도를 변화시켜 스케일링 효과를 관찰하세요<br>
+                    • 입자의 궤적을 통해 필드의 성질을 파악하세요</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        class VectorFieldVisualizer {
+            constructor() {
+                this.canvas = document.getElementById('mainCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                
+                this.params = {
+                    fieldType: 'gradient',
+                    strength: 1.0,
+                    density: 20,
+                    arrowSize: 1.0,
+                    particleCount: 200,
+                    flowSpeed: 0.5,
+                    isAnimating: true
+                };
+                
+                this.particles = [];
+                this.vectorData = [];
+                this.fieldData = [];
+                this.time = 0;
+                this.animationId = null;
+                
+                this.initCanvas();
+                this.setupControls();
+                this.setupFieldButtons();
+                this.initParticles();
+                this.initVegaCharts();
+                this.animate();
+            }
+            
+            initCanvas() {
+                const resizeCanvas = () => {
+                    const rect = this.canvas.getBoundingClientRect();
+                    const dpr = window.devicePixelRatio || 1;
+                    
+                    this.canvas.width = rect.width * dpr;
+                    this.canvas.height = rect.height * dpr;
+                    
+                    this.canvas.style.width = rect.width + 'px';
+                    this.canvas.style.height = rect.height + 'px';
+                    
+                    this.ctx.scale(dpr, dpr);
+                    
+                    this.width = rect.width;
+                    this.height = rect.height;
+                    this.centerX = this.width / 2;
+                    this.centerY = this.height / 2;
+                    
+                    this.generateVectorField();
+                    this.initParticles();
+                };
+                
+                setTimeout(resizeCanvas, 100);
+                window.addEventListener('resize', () => setTimeout(resizeCanvas, 100));
+            }
+            
+            setupControls() {
+                const controls = {
+                    strength: { element: 'strength', display: 'strengthValue' },
+                    density: { element: 'density', display: 'densityValue' },
+                    arrowSize: { element: 'arrowSize', display: 'arrowSizeValue' },
+                    particleCount: { element: 'particleCount', display: 'particleCountValue' },
+                    flowSpeed: { element: 'flowSpeed', display: 'flowSpeedValue' }
+                };
+                
+                Object.entries(controls).forEach(([param, config]) => {
+                    const element = document.getElementById(config.element);
+                    const display = document.getElementById(config.display);
+                    
+                    element.addEventListener('input', (e) => {
+                        const value = parseFloat(e.target.value);
+                        this.params[param] = value;
+                        display.textContent = value;
+                        
+                        if (param === 'density') {
+                            this.generateVectorField();
+                        }
+                        if (param === 'particleCount') {
+                            this.initParticles();
+                        }
+                    });
+                    
+                    display.textContent = element.value;
+                });
+                
+                // 애니메이션 컨트롤
+                document.getElementById('playPause').addEventListener('click', () => {
+                    this.params.isAnimating = !this.params.isAnimating;
+                    const btn = document.getElementById('playPause');
+                    btn.textContent = this.params.isAnimating ? '⏸️ 일시정지' : '▶️ 재생';
+                    btn.classList.toggle('active', this.params.isAnimating);
+                });
+                
+                document.getElementById('reset').addEventListener('click', () => {
+                    this.initParticles();
+                    this.time = 0;
+                });
+            }
+            
+            setupFieldButtons() {
+                const buttons = document.querySelectorAll('.field-btn');
+                
+                buttons.forEach(button => {
+                    button.addEventListener('click', () => {
+                        buttons.forEach(b => b.classList.remove('active'));
+                        button.classList.add('active');
+                        
+                        this.params.fieldType = button.dataset.field;
+                        this.generateVectorField();
+                        this.initParticles();
+                        this.updateVegaCharts();
+                    });
+                });
+            }
+            
+            getVectorAt(x, y) {
+                const nx = (x - this.centerX) / 100;
+                const ny = (y - this.centerY) / 100;
+                const t = this.time * 0.02;
+                
+                let vx, vy;
+                
+                switch (this.params.fieldType) {
+                    case 'gradient':
+                        // 중심에서 바깥으로의 그래디언트
+                        const dist = Math.sqrt(nx * nx + ny * ny);
+                        if (dist > 0) {
+                            vx = nx / dist * this.params.strength;
+                            vy = ny / dist * this.params.strength;
+                        } else {
+                            vx = vy = 0;
+                        }
+                        break;
+                        
+                    case 'divergence':
+                        // 발산 필드 (중심에서 퍼져나감)
+                        vx = nx * this.params.strength;
+                        vy = ny * this.params.strength;
+                        break;
+                        
+                    case 'curl':
+                        // 회전 필드
+                        vx = -ny * this.params.strength;
+                        vy = nx * this.params.strength;
+                        break;
+                        
+                    case 'uniform':
+                        // 균등 필드
+                        vx = this.params.strength;
+                        vy = 0;
+                        break;
+                        
+                    case 'saddle':
+                        // 새들점 필드
+                        vx = nx * this.params.strength;
+                        vy = -ny * this.params.strength;
+                        break;
+                        
+                    case 'wave':
+                        // 파동 필드
+                        vx = Math.sin(ny * 2 + t) * this.params.strength;
+                        vy = Math.cos(nx * 2 + t) * this.params.strength;
+                        break;
+                        
+                    default:
+                        vx = vy = 0;
+                }
+                
+                return { x: vx, y: vy };
+            }
+            
+            generateVectorField() {
+                this.vectorData = [];
+                this.fieldData = [];
+                
+                const step = Math.max(this.width, this.height) / this.params.density;
+                
+                for (let x = step; x < this.width; x += step) {
+                    for (let y = step; y < this.height; y += step) {
+                        const vector = this.getVectorAt(x, y);
+                        const magnitude = Math.sqrt(vector.x * vector.x + vector.y * vector.y);
+                        
+                        this.vectorData.push({
+                            x: x,
+                            y: y,
+                            vx: vector.x,
+                            vy: vector.y,
+                            magnitude: magnitude,
+                            angle: Math.atan2(vector.y, vector.x) * 180 / Math.PI
+                        });
+                        
+                        this.fieldData.push({
+                            x: x,
+                            y: y,
+                            value: magnitude
+                        });
+                    }
+                }
+            }
+            
+            initParticles() {
+                this.particles = [];
+                
+                for (let i = 0; i < this.params.particleCount; i++) {
+                    this.particles.push({
+                        x: Math.random() * this.width,
+                        y: Math.random() * this.height,
+                        trail: [],
+                        color: `hsl(${200 + Math.random() * 160}, 70%, 60%)`,
+                        life: Math.random() * 1000 + 500
+                    });
+                }
+            }
+            
+            updateParticles() {
+                if (!this.params.isAnimating) return;
+                
+                this.particles.forEach(particle => {
+                    const vector = this.getVectorAt(particle.x, particle.y);
+                    
+                    // 궤적 저장
+                    particle.trail.push({ x: particle.x, y: particle.y });
+                    if (particle.trail.length > 15) {
+                        particle.trail.shift();
+                    }
+                    
+                    // 입자 이동
+                    particle.x += vector.x * this.params.flowSpeed * 10;
+                    particle.y += vector.y * this.params.flowSpeed * 10;
+                    
+                    // 경계 처리
+                    if (particle.x < 0 || particle.x > this.width || 
+                        particle.y < 0 || particle.y > this.height) {
+                        particle.x = Math.random() * this.width;
+                        particle.y = Math.random() * this.height;
+                        particle.trail = [];
+                    }
+                    
+                    particle.life--;
+                    if (particle.life <= 0) {
+                        particle.x = Math.random() * this.width;
+                        particle.y = Math.random() * this.height;
+                        particle.trail = [];
+                        particle.life = Math.random() * 1000 + 500;
+                    }
+                });
+            }
+            
+            drawVectorField() {
+                this.ctx.strokeStyle = 'rgba(50, 130, 184, 0.7)';
+                this.ctx.lineWidth = 1.5;
+                
+                this.vectorData.forEach(data => {
+                    const scale = 15 * this.params.arrowSize;
+                    const dx = data.vx * scale;
+                    const dy = data.vy * scale;
+                    
+                    if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
+                        this.drawArrow(data.x, data.y, dx, dy);
+                    }
+                });
+            }
+            
+            drawArrow(x, y, dx, dy) {
+                const length = Math.sqrt(dx * dx + dy * dy);
+                if (length < 1) return;
+                
+                const angle = Math.atan2(dy, dx);
+                
+                // 화살표 몸체
+                this.ctx.beginPath();
+                this.ctx.moveTo(x, y);
+                this.ctx.lineTo(x + dx, y + dy);
+                this.ctx.stroke();
+                
+                // 화살표 머리
+                const headLength = Math.min(length * 0.3, 8);
+                const headAngle = Math.PI / 6;
+                
+                this.ctx.beginPath();
+                this.ctx.moveTo(x + dx, y + dy);
+                this.ctx.lineTo(
+                    x + dx - headLength * Math.cos(angle - headAngle),
+                    y + dy - headLength * Math.sin(angle - headAngle)
+                );
+                this.ctx.moveTo(x + dx, y + dy);
+                this.ctx.lineTo(
+                    x + dx - headLength * Math.cos(angle + headAngle),
+                    y + dy - headLength * Math.sin(angle + headAngle)
+                );
+                this.ctx.stroke();
+            }
+            
+            drawParticles() {
+                this.particles.forEach(particle => {
+                    // 궤적 그리기
+                    if (particle.trail.length > 1) {
+                        this.ctx.strokeStyle = particle.color + '80';
+                        this.ctx.lineWidth = 1;
+                        this.ctx.globalAlpha = 0.6;
+                        
+                        this.ctx.beginPath();
+                        particle.trail.forEach((point, i) => {
+                            if (i === 0) {
+                                this.ctx.moveTo(point.x, point.y);
+                            } else {
+                                this.ctx.lineTo(point.x, point.y);
+                            }
+                        });
+                        this.ctx.stroke();
+                    }
+                    
+                    // 입자 그리기
+                    this.ctx.fillStyle = particle.color;
+                    this.ctx.globalAlpha = 1.0;
+                    this.ctx.beginPath();
+                    this.ctx.arc(particle.x, particle.y, 2, 0, Math.PI * 2);
+                    this.ctx.fill();
+                });
+                
+                this.ctx.globalAlpha = 1.0;
+            }
+            
+            initVegaCharts() {
+                // 벡터 필드 통계 차트 (더 상세한 분포)
+                const fieldStatsSpec = {
+                    "$schema": "https://vega-lite.org/v4/schema/",
+                    "width": 200,
+                    "height": 100,
+                    "title": {
+                        "text": "벡터 강도 분포",
+                        "fontSize": 12,
+                        "color": "white"
+                    },
+                    "data": {"name": "fieldData"},
+                    "layer": [
+                        {
+                            "mark": {
+                                "type": "bar", 
+                                "color": "#3282B8",
+                                "opacity": 0.8
+                            },
+                            "encoding": {
+                                "x": {
+                                    "bin": {"maxbins": 12},
+                                    "field": "value",
+                                    "title": "벡터 강도",
+                                    "axis": {"labelColor": "white", "titleColor": "white"}
+                                },
+                                "y": {
+                                    "aggregate": "count",
+                                    "title": "빈도",
+                                    "axis": {"labelColor": "white", "titleColor": "white"}
+                                }
+                            }
+                        },
+                        {
+                            "mark": {
+                                "type": "rule",
+                                "color": "#FF6B6B",
+                                "size": 2
+                            },
+                            "encoding": {
+                                "x": {
+                                    "aggregate": "mean",
+                                    "field": "value"
+                                }
+                            }
+                        }
+                    ],
+                    "config": {
+                        "background": "transparent",
+                        "text": {"color": "white"},
+                        "axis": {"labelColor": "white", "titleColor": "white", "domainColor": "white"},
+                        "title": {"color": "white"}
+                    }
+                };
+                
+                vegaEmbed('#vegaFieldStats', fieldStatsSpec)
+                    .then(result => {
+                        this.vegaFieldStats = result;
+                        this.updateVegaCharts();
+                    });
+                
+                // 극좌표 벡터 방향 차트 (더 직관적)
+                const vectorInfoSpec = {
+                    "$schema": "https://vega-lite.org/v4/schema/",
+                    "width": 180,
+                    "height": 180,
+                    "title": {
+                        "text": "벡터 방향 & 강도",
+                        "fontSize": 12,
+                        "color": "white"
+                    },
+                    "data": {"name": "vectorData"},
+                    "mark": {
+                        "type": "point", 
+                        "size": 50,
+                        "opacity": 0.7
+                    },
+                    "encoding": {
+                        "x": {
+                            "field": "angle",
+                            "type": "quantitative",
+                            "scale": {"domain": [-180, 180]},
+                            "title": "방향 (도)",
+                            "axis": {"labelColor": "white", "titleColor": "white"}
+                        },
+                        "y": {
+                            "field": "magnitude",
+                            "type": "quantitative",
+                            "title": "강도",
+                            "axis": {"labelColor": "white", "titleColor": "white"}
+                        },
+                        "color": {
+                            "field": "magnitude",
+                            "type": "quantitative",
+                            "scale": {
+                                "scheme": "plasma",
+                                "range": ["#3282B8", "#FF6B6B", "#FFB74D"]
+                            },
+                            "legend": {
+                                "title": "강도",
+                                "titleColor": "white",
+                                "labelColor": "white"
+                            }
+                        },
+                        "size": {
+                            "field": "magnitude",
+                            "type": "quantitative",
+                            "scale": {"range": [20, 100]}
+                        }
+                    },
+                    "config": {
+                        "background": "transparent",
+                        "text": {"color": "white"},
+                        "axis": {"labelColor": "white", "titleColor": "white", "domainColor": "white"},
+                        "title": {"color": "white"}
+                    }
+                };
+                
+                vegaEmbed('#vegaVectorField', vectorInfoSpec)
+                    .then(result => {
+                        this.vegaVectorField = result;
+                        this.updateVegaCharts();
+                    });
+            }
+            
+            updateVegaCharts() {
+                if (this.vegaFieldStats && this.fieldData.length > 0) {
+                    this.vegaFieldStats.view
+                        .remove('fieldData', () => true)
+                        .insert('fieldData', this.fieldData)
+                        .run();
+                }
+                
+                if (this.vegaVectorField && this.vectorData.length > 0) {
+                    this.vegaVectorField.view
+                        .remove('vectorData', () => true)
+                        .insert('vectorData', this.vectorData)
+                        .run();
+                }
+                
+                // 실시간 필드 정보 업데이트
+                this.updateFieldInfo();
+            }
+            
+            updateFieldInfo() {
+                if (!this.vectorData.length) return;
+                
+                const magnitudes = this.vectorData.map(d => d.magnitude);
+                const avgMagnitude = magnitudes.reduce((a, b) => a + b, 0) / magnitudes.length;
+                const maxMagnitude = Math.max(...magnitudes);
+                const minMagnitude = Math.min(...magnitudes);
+                
+                // 발산 계산 (간단한 근사)
+                let divergence = 0;
+                if (this.params.fieldType === 'divergence') {
+                    divergence = avgMagnitude > 0 ? 'Positive (Source)' : 'Negative (Sink)';
+                } else if (this.params.fieldType === 'curl') {
+                    divergence = 'Rotational';
+                } else if (this.params.fieldType === 'saddle') {
+                    divergence = 'Mixed (Saddle)';
+                } else {
+                    divergence = 'Variable';
+                }
+                
+                const activeParticles = this.particles.filter(p => p.life > 0).length;
+                
+                const info = `${this.getFieldDescription()} | 평균: ${avgMagnitude.toFixed(2)} | 최대: ${maxMagnitude.toFixed(2)}`;
+                
+                document.getElementById('fieldInfo').textContent = info;
+                document.getElementById('activeParticles').textContent = activeParticles;
+            }
+            
+            getFieldDescription() {
+                const descriptions = {
+                    'gradient': '∇f - 그래디언트',
+                    'divergence': '∇·F - 발산',
+                    'curl': '∇×F - 회전',
+                    'uniform': 'F = const - 균등',
+                    'saddle': 'Saddle - 새들점',
+                    'wave': 'Wave - 파동'
+                };
+                return descriptions[this.params.fieldType] || 'Unknown';
+            }
+            
+            draw() {
+                if (!this.width || !this.height) return;
+                
+                this.ctx.clearRect(0, 0, this.width, this.height);
+                
+                // 벡터장 그리기
+                this.drawVectorField();
+                
+                // 입자 업데이트 및 그리기
+                this.updateParticles();
+                this.drawParticles();
+                
+                // 실시간 정보 업데이트 (60fps에서 매 프레임마다는 과부하이므로 간헐적으로)
+                if (this.time % 30 === 0) {
+                    this.updateFieldInfo();
+                }
+            }
+            
+            animate() {
+                this.draw();
+                
+                if (this.params.isAnimating) {
+                    this.time += 1;
+                    
+                    // Vega 차트 주기적 업데이트 (성능 고려)
+                    if (this.time % 60 === 0) {
+                        this.updateVegaCharts();
+                    }
+                }
+                
+                this.animationId = requestAnimationFrame(() => this.animate());
+            }
+        }
+        
+        // 초기화
+        let vectorField;
+        window.addEventListener('load', () => {
+            vectorField = new VectorFieldVisualizer();
+        });
+    </script>
+</body>
+</html>
