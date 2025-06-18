@@ -116,20 +116,25 @@
         /* 카드 위치 */
         .controls-card {
             top: 20px;
-            right: 20px;
+            left: 20px;
             width: 280px;
         }
         
         .stats-card {
-            bottom: 20px;
-            left: 20px;
+            top: 20px;
+            right: 20px;
             width: 240px;
         }
         
         .guide-card {
             top: 20px;
-            left: 20px;
+            left: 320px;
             width: 320px;
+        }
+        
+        /* 드래그 가능한 요소 */
+        .draggable {
+            cursor: move;
         }
         
         /* 범례 */
@@ -185,6 +190,7 @@
             width: 100%;
             height: 6px;
             -webkit-appearance: none;
+            appearance: none;
             background: rgba(255, 255, 255, 0.1);
             border-radius: 3px;
             outline: none;
@@ -295,8 +301,8 @@
         <!-- 에이전트들이 여기에 동적으로 추가됩니다 -->
     </div>
     
-    <!-- 컨트롤 패널 (우상단) -->
-    <div class="floating-card controls-card" id="controls-card">
+    <!-- 컨트롤 패널 (좌상단) -->
+    <div class="floating-card controls-card draggable" id="controls-card">
         <div class="card-header">
             <h3><span class="icon">🎛️</span> 시뮬레이션 제어</h3>
             <button class="card-toggle" id="toggle-controls">−</button>
@@ -364,8 +370,8 @@
         </div>
     </div>
     
-    <!-- 통계 패널 (좌하단) -->
-    <div class="floating-card stats-card" id="stats-card">
+    <!-- 통계 패널 (우상단) -->
+    <div class="floating-card stats-card draggable" id="stats-card">
         <div class="card-header">
             <h3><span class="icon">📊</span> 실시간 통계</h3>
             <button class="card-toggle" id="toggle-stats">−</button>
@@ -392,8 +398,8 @@
         </div>
     </div>
     
-    <!-- 가이드 패널 (좌상단) -->
-    <div class="floating-card guide-card" id="guide-card">
+    <!-- 가이드 패널 (중앙상단) -->
+    <div class="floating-card guide-card draggable" id="guide-card">
         <div class="card-header">
             <h3><span class="icon">ℹ️</span> SIR 모델 가이드</h3>
             <button class="card-toggle" id="toggle-guide">−</button>
@@ -876,10 +882,94 @@ class SIRSimulationV2 {
     }
 }
 
+// 드래그 가능한 모달 카드 구현
+function makeDraggable() {
+    const draggableElements = document.querySelectorAll('.draggable');
+    
+    draggableElements.forEach(element => {
+        const header = element.querySelector('.card-header');
+        let isDragging = false;
+        let offsetX, offsetY;
+        
+        // 드래그 시작
+        header.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            offsetX = e.clientX - element.getBoundingClientRect().left;
+            offsetY = e.clientY - element.getBoundingClientRect().top;
+            element.style.zIndex = 1001; // 현재 드래그 중인 요소를 최상위로
+            
+            // 드래그 중 커서 스타일 추가
+            header.style.cursor = 'grabbing';
+        });
+        
+        // 드래그 이동
+        document.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            
+            // 새 위치 계산
+            let newLeft = e.clientX - offsetX;
+            let newTop = e.clientY - offsetY;
+            
+            // 화면 밖으로 나가지 않도록 제한
+            newLeft = Math.max(0, Math.min(window.innerWidth - element.offsetWidth, newLeft));
+            newTop = Math.max(0, Math.min(window.innerHeight - element.offsetHeight, newTop));
+            
+            // 위치 적용
+            element.style.left = newLeft + 'px';
+            element.style.top = newTop + 'px';
+            element.style.right = 'auto'; // right 속성 제거
+            element.style.bottom = 'auto'; // bottom 속성 제거
+        });
+        
+        // 드래그 종료
+        document.addEventListener('mouseup', () => {
+            if (isDragging) {
+                isDragging = false;
+                element.style.zIndex = 1000; // 원래 z-index로 복원
+                header.style.cursor = 'move'; // 커서 스타일 복원
+            }
+        });
+        
+        // 터치 이벤트 지원 (모바일)
+        header.addEventListener('touchstart', (e) => {
+            isDragging = true;
+            const touch = e.touches[0];
+            offsetX = touch.clientX - element.getBoundingClientRect().left;
+            offsetY = touch.clientY - element.getBoundingClientRect().top;
+            element.style.zIndex = 1001;
+        });
+        
+        document.addEventListener('touchmove', (e) => {
+            if (!isDragging) return;
+            e.preventDefault(); // 스크롤 방지
+            
+            const touch = e.touches[0];
+            let newLeft = touch.clientX - offsetX;
+            let newTop = touch.clientY - offsetY;
+            
+            newLeft = Math.max(0, Math.min(window.innerWidth - element.offsetWidth, newLeft));
+            newTop = Math.max(0, Math.min(window.innerHeight - element.offsetHeight, newTop));
+            
+            element.style.left = newLeft + 'px';
+            element.style.top = newTop + 'px';
+            element.style.right = 'auto';
+            element.style.bottom = 'auto';
+        });
+        
+        document.addEventListener('touchend', () => {
+            if (isDragging) {
+                isDragging = false;
+                element.style.zIndex = 1000;
+            }
+        });
+    });
+}
+
 // 시뮬레이션 시작
 window.addEventListener('load', () => {
     if (typeof vega !== 'undefined' && typeof vegaEmbed !== 'undefined') {
         new SIRSimulationV2();
+        makeDraggable(); // 드래그 기능 활성화
     } else {
         console.error('Vega 라이브러리 로딩 실패');
         document.body.innerHTML = '<h3 style="color:red; text-align:center; padding-top: 50px;">Vega 라이브러리를 로드할 수 없습니다. 페이지를 새로고침해주세요.</h3>';
