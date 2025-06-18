@@ -50,10 +50,14 @@
             pointer-events: none;
             background: rgba(0,0,0,0.8);
             border-radius: 12px;
-            padding: 20px;
-            width: 320px;
-            height: 200px;
+            padding: 25px;
+            width: 380px;
+            height: 240px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
         }
 
         .control-panel {
@@ -868,16 +872,17 @@
             }
             
             createFieldStatsSpec() {
-                // 도표 카드에 맞게 크기 조정
+                // 더 큰 카드에 맞게 크기 및 중앙 정렬 조정
                 return {
                     "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
-                    "width": 280,
-                    "height": 140,
+                    "width": 330,
+                    "height": 160,
                     "title": {
                         "text": "벡터 강도 분포",
                         "color": "white",
-                        "fontSize": 14,
-                        "offset": 10
+                        "fontSize": 16,
+                        "offset": 15,
+                        "anchor": "middle"
                     },
                     "data": {"name": "fieldData"},
                     "mark": "bar",
@@ -890,8 +895,8 @@
                             "axis": {
                                 "labelColor": "white",
                                 "titleColor": "white",
-                                "labelFontSize": 11,
-                                "titleFontSize": 12
+                                "labelFontSize": 12,
+                                "titleFontSize": 14
                             }
                         },
                         "y": {
@@ -901,8 +906,8 @@
                             "axis": {
                                 "labelColor": "white",
                                 "titleColor": "white",
-                                "labelFontSize": 11,
-                                "titleFontSize": 12
+                                "labelFontSize": 12,
+                                "titleFontSize": 14
                             }
                         }
                     },
