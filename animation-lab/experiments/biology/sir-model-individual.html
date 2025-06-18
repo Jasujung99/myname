@@ -161,8 +161,12 @@
             <div class="control-section">
                 <h3>🎛️ 시뮬레이션 제어</h3>
                 <div>
-                    <label>감염률: <span id="infection-rate-value">0.5</span></label>
-                    <input type="range" id="infection-rate" min="0.1" max="1.0" step="0.1" value="0.5">
+                    <label>기본 감염률: <span id="infection-rate-value">0.8</span></label>
+                    <input type="range" id="infection-rate" min="0.1" max="1.0" step="0.1" value="0.8">
+                </div>
+                <div style="margin-top: 10px;">
+                    <label>감염 확률 배수: <span id="infection-multiplier-value">0.3</span></label>
+                    <input type="range" id="infection-multiplier" min="0.1" max="0.8" step="0.1" value="0.3">
                 </div>
                 <div style="margin-top: 10px;">
                     <label>사회적 거리두기: <span id="social-distance-value">30</span></label>
@@ -178,8 +182,8 @@
             <div class="info-box">
                 <h3>📊 실시간 통계</h3>
                 <div id="live-stats">
-                    <div>감수성자: <span id="s-count">9</span></div>
-                    <div>감염자: <span id="i-count">1</span></div>
+                    <div>감수성자: <span id="s-count">4</span></div>
+                    <div>감염자: <span id="i-count">6</span></div>
                     <div>회복자: <span id="r-count">0</span></div>
                 </div>
             </div>
@@ -207,10 +211,11 @@ function createAgentSpec(agentId, initialX, initialY, initialStatus) {
             { "name": "recovery_timer", "value": 0 },
             { "name": "timer", "value": 0 },
             { "name": "nearby_infected", "value": false },
-            { "name": "infection_rate", "value": 0.5 },
+            { "name": "infection_rate", "value": 0.8 },
             { "name": "social_distance", "value": 30 },
             { "name": "velocity_x", "value": 0 },
-            { "name": "velocity_y", "value": 0 }
+            { "name": "velocity_y", "value": 0 },
+            { "name": "infection_multiplier", "value": 0.3 }
         ],
 
         "data": [
@@ -220,7 +225,7 @@ function createAgentSpec(agentId, initialX, initialY, initialStatus) {
                 "transform": [
                     {
                         "type": "formula",
-                        "expr": "status === 'S' && nearby_infected && random() < infection_rate * 0.1 ? 'I' : status",
+                        "expr": "status === 'S' && nearby_infected && random() < infection_rate * infection_multiplier ? 'I' : status",
                         "as": "new_status"
                     },
                     {
@@ -378,8 +383,8 @@ class SIRSimulation {
             const x = this.containerWidth / 2 + radius * Math.cos(angle);
             const y = this.containerHeight / 2 + radius * Math.sin(angle);
             
-            // 첫 번째 에이전트만 감염된 상태로 시작
-            const status = i === 0 ? 'I' : 'S';
+            // 처음 6명을 감염된 상태로 시작
+            const status = i < 6 ? 'I' : 'S';
             
             // 에이전트 데이터
             const agent = {
@@ -415,6 +420,7 @@ class SIRSimulation {
         const playPauseBtn = document.getElementById('play-pause-btn');
         const resetBtn = document.getElementById('reset-btn');
         const infectionRateSlider = document.getElementById('infection-rate');
+        const infectionMultiplierSlider = document.getElementById('infection-multiplier');
         const socialDistanceSlider = document.getElementById('social-distance');
 
         playPauseBtn.addEventListener('click', () => {
@@ -434,6 +440,14 @@ class SIRSimulation {
             document.getElementById('infection-rate-value').textContent = value;
             this.agentViews.forEach(view => {
                 view.signal('infection_rate', value).runAsync();
+            });
+        });
+
+        infectionMultiplierSlider.addEventListener('input', (e) => {
+            const value = parseFloat(e.target.value);
+            document.getElementById('infection-multiplier-value').textContent = value;
+            this.agentViews.forEach(view => {
+                view.signal('infection_multiplier', value).runAsync();
             });
         });
 
