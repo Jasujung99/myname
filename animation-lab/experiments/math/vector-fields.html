@@ -50,9 +50,10 @@
             pointer-events: none;
             background: rgba(0,0,0,0.8);
             border-radius: 12px;
-            padding: 15px;
-            width: 280px;
-            height: 160px;
+            padding: 20px;
+            width: 320px;
+            height: 200px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
         }
 
         .control-panel {
@@ -398,7 +399,7 @@
             PARTICLE_LIFE_MIN: 500,
             PARTICLE_LIFE_MAX: 1500,
             CANVAS_UPDATE_RATE: 60, // FPS
-            VEGA_UPDATE_RATE: 60,   // 60프레임마다 Vega 업데이트
+            VEGA_UPDATE_RATE: 30,   // 30프레임마다 Vega 업데이트 (더 빠른 반응)
             INFO_UPDATE_RATE: 30,   // 30프레임마다 정보 업데이트
             COLORS: {
                 ARROW_SHAFT: 'rgba(50, 130, 184, 0.5)',
@@ -643,6 +644,9 @@
                         if (config.param === 'particleCount') {
                             this.particleSystem?.initParticles(value);
                         }
+                        
+                        // 파라미터 변경 시 즉시 히스토그램 업데이트
+                        this.onParameterChange();
                     });
                     
                     display.textContent = element.value;
@@ -847,14 +851,16 @@
             }
             
             createFieldStatsSpec() {
-                // 2단계: 단순화된 Vega-Lite 스펙 (성공한 다른 파일들의 패턴 따름)
+                // 도표 카드에 맞게 크기 조정
                 return {
                     "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
-                    "width": 250,
-                    "height": 120,
+                    "width": 280,
+                    "height": 140,
                     "title": {
                         "text": "벡터 강도 분포",
-                        "color": "white"
+                        "color": "white",
+                        "fontSize": 14,
+                        "offset": 10
                     },
                     "data": {"name": "fieldData"},
                     "mark": "bar",
@@ -863,12 +869,24 @@
                             "bin": {"maxbins": 8},
                             "field": "magnitude",
                             "type": "quantitative",
-                            "title": "벡터 강도"
+                            "title": "벡터 강도",
+                            "axis": {
+                                "labelColor": "white",
+                                "titleColor": "white",
+                                "labelFontSize": 11,
+                                "titleFontSize": 12
+                            }
                         },
                         "y": {
                             "aggregate": "count",
                             "type": "quantitative",
-                            "title": "빈도"
+                            "title": "빈도",
+                            "axis": {
+                                "labelColor": "white",
+                                "titleColor": "white",
+                                "labelFontSize": 11,
+                                "titleFontSize": 12
+                            }
                         }
                     },
                     "config": {
@@ -877,9 +895,14 @@
                         "axis": {
                             "labelColor": "white",
                             "titleColor": "white",
-                            "domainColor": "white"
+                            "domainColor": "white",
+                            "gridColor": "rgba(255,255,255,0.1)"
                         },
-                        "title": {"color": "white"}
+                        "title": {"color": "white"},
+                        "bar": {
+                            "color": "#3282B8",
+                            "opacity": 0.85
+                        }
                     }
                 };
             }
@@ -930,7 +953,11 @@
                 if (this.params.isAnimating) {
                     this.time += 1;
                     
-                    if (this.time % CONFIG.VEGA_UPDATE_RATE === 0) {
+                    // Wave 타입은 더 빈번한 히스토그램 업데이트 (실시간 변화 강조)
+                    const updateRate = this.params.fieldType === 'wave' ? 
+                        Math.floor(CONFIG.VEGA_UPDATE_RATE / 2) : CONFIG.VEGA_UPDATE_RATE;
+                    
+                    if (this.time % updateRate === 0) {
                         this.updateVegaCharts();
                     }
                 }
