@@ -1,17 +1,70 @@
 <!DOCTYPE html>
-<html>
+<html lang="ko">
 <head>
-  <script src="https://cdn.jsdelivr.net/npm/vega@5"></script>
-  <script src="https://cdn.jsdelivr.net/npm/vega-embed@6"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vega Force Network</title>
+  <script src="https://cdn.jsdelivr.net/npm/vega@5.22.1"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vega-embed@6.21.0"></script>
+  <!-- 한글 폰트 추가 -->
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
   <style>
+    * {
+      font-family: 'Noto Sans KR', sans-serif;
+    }
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #f5f5f5;
+    }
     #vis {
       width: 100%;
       height: 600px;
+      border: 1px solid #ccc;
+      background: white;
+    }
+    .controls {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: white;
+      padding: 15px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      min-width: 200px;
+    }
+    button {
+      margin: 3px;
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      background: white;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 400;
+      transition: all 0.2s;
+    }
+    button:hover {
+      background: #f0f0f0;
+      border-color: #bbb;
+    }
+    .control-group {
+      margin-bottom: 10px;
     }
   </style>
 </head>
 <body>
   <div id="vis"></div>
+  <div class="controls">
+    <div class="control-group">
+      <button onclick="addRandomNode()">노드 추가</button>
+      <button onclick="addRandomLink()">링크 추가</button>
+    </div>
+    <div class="control-group">
+      <button onclick="restartSimulation()">시뮬레이션 재시작</button>
+      <button onclick="resetNetwork()">네트워크 초기화</button>
+    </div>
+  </div>
 
   <script>
     const spec = {
@@ -32,18 +85,22 @@
         },
         {
           "name": "nodeRadius",
-          "value": 15
+          "value": 12
         },
         {
           "name": "nodeCharge",
-          "value": -60
+          "value": -100
         },
         {
           "name": "linkDistance",
-          "value": 100
+          "value": 80
         },
         {
           "name": "static",
+          "value": false
+        },
+        {
+          "name": "restart",
           "value": true
         },
         {
@@ -71,17 +128,22 @@
               "update": "dragging ? [x(), y()] : dragPosition"
             }
           ]
-        },
-        {
-          "name": "restart",
-          "update": "static",
-          "on": [
-            {"events": {"signal": "dragging"}, "update": "dragging"}
-          ]
         }
       ],
       
       "data": [
+        {
+          "name": "link-data",
+          "values": [
+            {"source": "1", "target": "2"},
+            {"source": "2", "target": "3"},
+            {"source": "3", "target": "4"},
+            {"source": "4", "target": "5"},
+            {"source": "5", "target": "6"},
+            {"source": "6", "target": "1"},
+            {"source": "2", "target": "4"}
+          ]
+        },
         {
           "name": "node-data",
           "values": [
@@ -98,25 +160,28 @@
               "iterations": 300,
               "restart": {"signal": "restart"},
               "static": {"signal": "static"},
-              "signal": "force",
               "forces": [
-                {"force": "center", "x": {"signal": "cx"}, "y": {"signal": "cy"}},
-                {"force": "collide", "radius": {"signal": "nodeRadius"}, "iterations": 2},
-                {"force": "nbody", "strength": {"signal": "nodeCharge"}},
-                {"force": "link", "links": "link-data", "distance": {"signal": "linkDistance"}}
+                {
+                  "force": "center",
+                  "x": {"signal": "cx"},
+                  "y": {"signal": "cy"}
+                },
+                {
+                  "force": "collide",
+                  "radius": {"signal": "nodeRadius + 5"},
+                  "iterations": 2
+                },
+                {
+                  "force": "nbody",
+                  "strength": {"signal": "nodeCharge"}
+                },
+                {
+                  "force": "link",
+                  "links": "link-data",
+                  "distance": {"signal": "linkDistance"}
+                }
               ]
             }
-          ]
-        },
-        {
-          "name": "link-data",
-          "values": [
-            {"source": "1", "target": "2", "value": 1},
-            {"source": "2", "target": "3", "value": 1},
-            {"source": "3", "target": "4", "value": 1},
-            {"source": "4", "target": "5", "value": 1},
-            {"source": "5", "target": "6", "value": 1},
-            {"source": "6", "target": "1", "value": 1}
           ]
         }
       ],
@@ -134,20 +199,23 @@
         {
           "type": "path",
           "from": {"data": "link-data"},
+          "interactive": false,
           "encode": {
             "update": {
-              "stroke": {"value": "#ccc"},
-              "strokeWidth": {"value": 1.5}
+              "stroke": {"value": "#999"},
+              "strokeWidth": {"value": 2},
+              "strokeOpacity": {"value": 0.6}
             }
           },
           "transform": [
             {
               "type": "linkpath",
+              "require": {"data": "node-data"},
               "shape": "line",
-              "sourceX": {"field": "source.x"},
-              "sourceY": {"field": "source.y"},
-              "targetX": {"field": "target.x"},
-              "targetY": {"field": "target.y"}
+              "sourceX": "datum.source.x", 
+              "sourceY": "datum.source.y",
+              "targetX": "datum.target.x", 
+              "targetY": "datum.target.y"
             }
           ]
         },
@@ -159,100 +227,211 @@
             "enter": {
               "fill": {"scale": "color", "field": "group"},
               "stroke": {"value": "white"},
-              "strokeWidth": {"value": 1.5}
+              "strokeWidth": {"value": 2}
             },
             "update": {
-              "x": {"field": "x"},
-              "y": {"field": "y"},
-              "size": {"value": 600},
-              "cursor": {"value": "pointer"},
+              "size": {"signal": "nodeRadius * nodeRadius * 4"},
+              "cursor": {"value": "move"},
               "fill": [
                 {
-                  "test": "dragging && datum === draggedNode",
-                  "value": "red"
+                  "test": "datum === draggedNode",
+                  "value": "#ff4500"
                 },
                 {
                   "scale": "color", 
                   "field": "group"
                 }
+              ],
+              "stroke": [
+                {
+                  "test": "datum === draggedNode",
+                  "value": "#333"
+                },
+                {"value": "white"}
+              ],
+              "strokeWidth": [
+                {
+                  "test": "datum === draggedNode",
+                  "value": 3
+                },
+                {"value": 2}
+              ],
+              "x": [
+                {
+                  "test": "datum === draggedNode",
+                  "signal": "dragPosition[0]"
+                },
+                {"field": "x"}
+              ],
+              "y": [
+                {
+                  "test": "datum === draggedNode",
+                  "signal": "dragPosition[1]"
+                },
+                {"field": "y"}
               ]
             }
-          },
-          "transform": [
-            {
-              "type": "formula",
-              "expr": "dragging && datum === draggedNode ? dragPosition[0] : datum.x",
-              "as": "x"
-            },
-            {
-              "type": "formula",
-              "expr": "dragging && datum === draggedNode ? dragPosition[1] : datum.y",
-              "as": "y"
-            }
-          ]
+          }
         },
         {
           "type": "text",
           "from": {"data": "node-data"},
+          "interactive": false,
           "encode": {
             "enter": {
-              "fontSize": {"value": 12},
-              "fontWeight": {"value": "bold"},
-              "fill": {"value": "black"},
+              "fontSize": {"value": 11},
+              "fontWeight": {"value": "500"},
+              "fill": {"value": "#333"},
               "align": {"value": "center"},
               "baseline": {"value": "middle"},
               "text": {"field": "name"}
             },
             "update": {
-              "x": {"field": "x"},
-              "y": {"field": "y", "offset": 25}
+              "x": [
+                {
+                  "test": "datum === draggedNode",
+                  "signal": "dragPosition[0]"
+                },
+                {"field": "x"}
+              ],
+              "y": [
+                {
+                  "test": "datum === draggedNode",
+                  "signal": "dragPosition[1] + nodeRadius + 15"
+                },
+                {"field": "y", "offset": {"signal": "nodeRadius + 15"}}
+              ]
             }
           }
         }
       ]
     };
 
+    let view;
+    let nodeCounter = 6;
+
     vegaEmbed('#vis', spec)
       .then(result => {
-        // 뷰 인스턴스에 접근
-        const view = result.view;
+        view = result.view;
+        console.log('Vega Force Network 로드 완료');
         
-        // 외부에서 노드 추가 기능 예시
-        window.addNode = function() {
-          const nodeData = view.data('node-data');
-          const newId = (nodeData.length + 1).toString();
-          const group = Math.ceil(Math.random() * 3);
-          
-          // 새 노드 추가
-          view.insert('node-data', {
-            "id": newId,
-            "name": `노드 ${newId}`,
-            "group": group
-          }).run();
-          
-          // 새 링크 추가 (마지막 노드와 연결)
-          if (nodeData.length > 0) {
-            const lastNode = nodeData[nodeData.length - 1].id;
-            view.insert('link-data', {
-              "source": lastNode,
-              "target": newId,
-              "value": 1
-            }).run();
-          }
-          
-          // 시뮬레이션 재시작
-          view.signal('static', false).run();
-          setTimeout(() => view.signal('static', true).run(), 1000);
-        };
+        // 시뮬레이션 시작
+        view.signal('static', false).run();
+        view.signal('restart', true).run();
         
-        console.log('Vega-Embed 결과:', result);
+        // 5초 후 정적 모드로 전환
+        setTimeout(() => {
+          view.signal('static', true).run();
+          console.log('시뮬레이션 정적 모드로 전환');
+        }, 5000);
       })
       .catch(console.error);
+
+    // 랜덤 노드 추가 함수
+    window.addRandomNode = function() {
+      if (!view) return;
+      
+      nodeCounter++;
+      const newId = nodeCounter.toString();
+      const group = Math.ceil(Math.random() * 3);
+      
+      // 새 노드 추가
+      view.insert('node-data', {
+        "id": newId,
+        "name": `노드 ${newId}`,
+        "group": group
+      }).run();
+      
+      console.log(`새 노드 추가: 노드 ${newId}`);
+      
+      // 시뮬레이션 재시작
+      restartSimulation();
+    };
+
+    // 랜덤 링크 추가 함수
+    window.addRandomLink = function() {
+      if (!view) return;
+      
+      const nodeData = view.data('node-data');
+      if (nodeData.length < 2) return;
+      
+      const sourceIndex = Math.floor(Math.random() * nodeData.length);
+      let targetIndex;
+      do {
+        targetIndex = Math.floor(Math.random() * nodeData.length);
+      } while (targetIndex === sourceIndex);
+      
+      const source = nodeData[sourceIndex].id;
+      const target = nodeData[targetIndex].id;
+      
+      // 기존 링크 중복 체크
+      const linkData = view.data('link-data');
+      const linkExists = linkData.some(l => 
+        (l.source === source && l.target === target) || 
+        (l.source === target && l.target === source)
+      );
+      
+      if (!linkExists) {
+        view.insert('link-data', {
+          "source": source,
+          "target": target
+        }).run();
+        
+        console.log(`새 링크 추가: ${source} -> ${target}`);
+        
+        // 시뮬레이션 재시작
+        restartSimulation();
+      } else {
+        console.log('이미 존재하는 링크입니다.');
+      }
+    };
+
+    // 시뮬레이션 재시작 함수
+    window.restartSimulation = function() {
+      if (!view) return;
+      
+      view.signal('static', false).run();
+      view.signal('restart', true).run();
+      
+      // 3초 후 정적 모드로 전환
+      setTimeout(() => {
+        view.signal('static', true).run();
+      }, 3000);
+      
+      console.log('시뮬레이션 재시작');
+    };
+
+    // 네트워크 초기화 함수
+    window.resetNetwork = function() {
+      if (!view) return;
+      
+      // 데이터 초기화
+      view.data('link-data', [
+        {"source": "1", "target": "2"},
+        {"source": "2", "target": "3"},
+        {"source": "3", "target": "4"},
+        {"source": "4", "target": "5"},
+        {"source": "5", "target": "6"},
+        {"source": "6", "target": "1"},
+        {"source": "2", "target": "4"}
+      ]).run();
+      
+      view.data('node-data', [
+        {"id": "1", "name": "노드 1", "group": 1},
+        {"id": "2", "name": "노드 2", "group": 2},
+        {"id": "3", "name": "노드 3", "group": 1},
+        {"id": "4", "name": "노드 4", "group": 3},
+        {"id": "5", "name": "노드 5", "group": 2},
+        {"id": "6", "name": "노드 6", "group": 3}
+      ]).run();
+      
+      nodeCounter = 6;
+      
+      // 시뮬레이션 재시작
+      restartSimulation();
+      
+      console.log('네트워크 초기화 완료');
+    };
   </script>
-  
-  <!-- 테스트용 버튼 추가 -->
-  <div style="position: absolute; top: 10px; left: 10px; background: white; padding: 10px; border-radius: 5px;">
-    <button onclick="addNode()">노드 추가</button>
-  </div>
 </body>
 </html>
