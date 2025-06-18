@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>실험: SIR 전염병 모델 시뮬레이션</title>
+    <title>실험: 개별 Vega 요소 SIR 모델</title>
     <script src="https://cdn.jsdelivr.net/npm/vega@5"></script>
     <script src="https://cdn.jsdelivr.net/npm/vega-lite@5"></script>
     <script src="https://cdn.jsdelivr.net/npm/vega-embed@6"></script>
@@ -26,21 +26,14 @@
         .simulation-container {
             flex-grow: 1;
             height: 100%;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
             background-color: #000;
+            position: relative;
         }
-        #simulation-view {
-            width: 100%;
-            height: 100%;
-            max-width: 100%;
-            max-height: 100%;
-        }
-        #simulation-view canvas {
-            width: 100% !important;
-            height: 100% !important;
+        .agent-container {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            pointer-events: none;
         }
         .side-panel {
             width: 300px;
@@ -104,90 +97,48 @@
         }
         .control-section h3 {
             margin-top: 0;
-            color: #4a9eff;
+            color: #ffa500;
             font-size: 1rem;
-            margin-bottom: 15px;
         }
-        #controls-view {
-            margin-bottom: 20px;
-        }
-        #controls-view .vega-bind {
-            display: flex;
-            flex-direction: column;
-            margin-bottom: 15px;
-        }
-        #controls-view .vega-bind-name {
-            font-weight: 500;
-            color: #ccc;
-            margin-bottom: 8px;
-            font-size: 0.9rem;
-        }
-        #controls-view .vega-bind-value {
-            font-weight: bold;
-            color: #fff;
-            margin-bottom: 5px;
-        }
-        #controls-view input[type="range"] {
-            width: 100%;
-            margin-top: 5px;
-        }
-        
         .sim-controls {
             display: flex;
             gap: 10px;
-            justify-content: center;
+            margin-top: 15px;
         }
         .sim-controls button {
-            background-color: #4a4a4f;
-            color: white;
-            border: 1px solid #666;
-            border-radius: 6px;
-            padding: 10px 16px;
-            font-size: 0.9rem;
-            font-weight: 500;
-            cursor: pointer;
-            transition: background-color 0.2s;
             flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            background-color: #4a9eff;
+            color: white;
+            cursor: pointer;
+            font-weight: bold;
         }
         .sim-controls button:hover {
-            background-color: #5a5a5f;
+            background-color: #357abd;
         }
         .sim-controls button.play {
-            background-color: #28a745;
+            background-color: #22c55e;
         }
         .sim-controls button.play:hover {
-            background-color: #218838;
+            background-color: #16a34a;
         }
-
-        @media (max-width: 768px) {
-            .main-container {
-                flex-direction: column;
-            }
-            .side-panel {
-                width: 100%;
-                height: auto;
-                border-left: none;
-                border-top: 1px solid #444;
-                max-height: 40vh;
-            }
-            .simulation-container {
-                height: 60vh;
-            }
+        #stats {
+            font-size: 0.9rem;
+            line-height: 1.4;
         }
     </style>
 </head>
 <body>
     <div class="main-container">
-        <div class="simulation-container">
-            <div id="simulation-view"></div>
+        <div class="simulation-container" id="simulation-container">
+            <!-- 개별 에이전트들이 여기에 동적으로 추가됩니다 -->
         </div>
+
         <div class="side-panel">
             <div class="panel-header">
-                <h1>🦠 SIR 전염병 모델</h1>
-            </div>
-            
-            <div class="info-box">
-                <h3>📊 상태 범례</h3>
+                <h1>🦠 개별 SIR 모델</h1>
                 <div class="status-legend">
                     <div class="status-item">
                         <div class="status-color susceptible"></div>
@@ -202,18 +153,34 @@
                         <span>회복자 (R)</span>
                     </div>
                 </div>
-                <p style="font-size: 0.85rem; color: #ccc; margin: 0;">
-                    개체들이 자유롭게 이동하며 감염이 확산되는 과정을 관찰하세요.
-                </p>
+                <div id="stats">
+                    개체들이 각각 독립적인 Vega 요소로 움직이며 서로 통신합니다.
+                </div>
             </div>
 
             <div class="control-section">
-                <h3>🎛️ 방역 정책 설정</h3>
-                <div id="controls-view"></div>
+                <h3>🎛️ 시뮬레이션 제어</h3>
+                <div>
+                    <label>감염률: <span id="infection-rate-value">0.5</span></label>
+                    <input type="range" id="infection-rate" min="0.1" max="1.0" step="0.1" value="0.5">
+                </div>
+                <div style="margin-top: 10px;">
+                    <label>사회적 거리두기: <span id="social-distance-value">30</span></label>
+                    <input type="range" id="social-distance" min="20" max="60" step="5" value="30">
+                </div>
                 
                 <div class="sim-controls">
                     <button id="play-pause-btn" class="play">시작</button>
                     <button id="reset-btn">초기화</button>
+                </div>
+            </div>
+
+            <div class="info-box">
+                <h3>📊 실시간 통계</h3>
+                <div id="live-stats">
+                    <div>감수성자: <span id="s-count">9</span></div>
+                    <div>감염자: <span id="i-count">1</span></div>
+                    <div>회복자: <span id="r-count">0</span></div>
                 </div>
             </div>
         </div>
@@ -221,456 +188,431 @@
 
 <script type="text/javascript">
 
-// ========== 1. 명세(Spec) 정의 ==========
+// ========== 개별 에이전트 Vega 스펙 ==========
 
-const mainSpec = {
-  "$schema": "https://vega.github.io/schema/vega/v5.json",
-  "width": {"signal": "containerWidth"},
-  "height": {"signal": "containerHeight"},  
-  "autosize": {"type": "none"},
-  "background": "#000",
+function createAgentSpec(agentId, initialX, initialY, initialStatus) {
+    return {
+        "$schema": "https://vega.github.io/schema/vega/v5.json",
+        "width": 60,
+        "height": 60,
+        "padding": 0,
+        "autosize": "none",
+        "background": "transparent",
 
-  "data": [
-    { 
-      "name": "nodes",
-    },
-    {
-      "name": "infected_nodes",
-      "source": "nodes",
-      "transform": [
-        {"type": "filter", "expr": "datum.status === 'I'"}
-      ]
-    },
-    {
-      "name": "virus_particles",
-      "source": "infected_nodes",
-      "transform": [
-        {
-          "type": "formula",
-          "expr": "[0, 1, 2, 3, 4, 5, 6, 7]",
-          "as": "particle_indices"
-        },
-        {
-          "type": "flatten",
-          "fields": ["particle_indices"],
-          "as": ["particle_index"]
-        },
-        {
-          "type": "formula",
-          "expr": "datum.particle_index * PI / 4",
-          "as": "angle"
-        },
-        {
-          "type": "formula",
-          "expr": "((timer + datum.id * 3) % 30) * 1.5",
-          "as": "distance"
-        },
-        {
-          "type": "formula",
-          "expr": "max(0, 1 - datum.distance / 45)",
-          "as": "particle_opacity"
-        },
-        {
-          "type": "formula",
-          "expr": "datum.x + cos(datum.angle) * datum.distance",
-          "as": "particle_x"
-        },
-        {
-          "type": "formula",
-          "expr": "datum.y + sin(datum.angle) * datum.distance",
-          "as": "particle_y"
-        }
-      ]
-    },
-    {
-      "name": "newly_infected",
-      "source": "nodes",
-      "transform": [
-        {"type": "filter", "expr": "datum.status === 'I' && datum.infection_timer <= 3"}
-      ]
-    },
-    {
-      "name": "newly_recovered",
-      "source": "nodes", 
-      "transform": [
-        {"type": "filter", "expr": "datum.status === 'R' && datum.recovery_timer <= 5"}
-      ]
-    }
-  ],
+        "signals": [
+            { "name": "agent_x", "value": initialX },
+            { "name": "agent_y", "value": initialY },
+            { "name": "status", "value": initialStatus },
+            { "name": "infection_timer", "value": 0 },
+            { "name": "recovery_timer", "value": 0 },
+            { "name": "timer", "value": 0 },
+            { "name": "nearby_infected", "value": false },
+            { "name": "infection_rate", "value": 0.5 },
+            { "name": "social_distance", "value": 30 },
+            { "name": "velocity_x", "value": 0 },
+            { "name": "velocity_y", "value": 0 }
+        ],
 
-  "signals": [
-    { "name": "containerWidth", "value": 800 },
-    { "name": "containerHeight", "value": 600 },
-    { "name": "timer", "value": 0 }, 
-    { "name": "population", "value": 200 },
-    { "name": "infection_rate", "value": 0.8 },
-    { "name": "recovery_duration", "value": 150 },
-    { "name": "social_distancing", "value": 12 },
-    { "name": "movement_speed", "value": 2 },
-    { "name": "infected_count", "update": "length(data('infected_nodes'))" }
-  ],
-
-  "scales": [
-    {
-      "name": "color",
-      "type": "ordinal",
-      "domain": ["S", "I", "R"],
-      "range": ["#0ea5e9", "#ef4444", "#6b7280"]
-    },
-    {
-      "name": "size",
-      "type": "ordinal", 
-      "domain": ["S", "I", "R"],
-      "range": [60, 80, 50]
-    }
-  ],
-
-  "marks": [
-    {
-      "name": "infection_pulse",
-      "type": "symbol",
-      "from": {"data": "newly_infected"},
-      "encode": {
-        "update": {
-          "x": {"field": "x"},
-          "y": {"field": "y"},
-          "size": {"signal": "(4 - datum.infection_timer) * (4 - datum.infection_timer) * 100"},
-          "fill": {"value": "rgba(255, 0, 0, 0.6)"},
-          "stroke": {"value": "#ff0000"},
-          "strokeWidth": {"value": 3},
-          "opacity": {"signal": "max(0, 1 - datum.infection_timer / 3)"}
-        }
-      }
-    },
-    {
-      "name": "recovery_glow",
-      "type": "symbol", 
-      "from": {"data": "newly_recovered"},
-      "encode": {
-        "update": {
-          "x": {"field": "x"},
-          "y": {"field": "y"}, 
-          "size": {"signal": "datum.recovery_timer * datum.recovery_timer * 40"},
-          "fill": {"value": "rgba(34, 197, 94, 0.4)"},
-          "stroke": {"value": "#22c55e"},
-          "strokeWidth": {"value": 2},
-          "opacity": {"signal": "max(0, 1 - datum.recovery_timer / 5)"}
-        }
-      }
-    },
-    {
-      "name": "virus_aura",
-      "type": "symbol",
-      "from": {"data": "infected_nodes"},
-      "encode": {
-        "update": {
-          "x": {"field": "x"},
-          "y": {"field": "y"},
-          "size": {"signal": "social_distancing * social_distancing * 8"},
-          "fill": {"value": "rgba(255, 68, 68, 0.15)"},
-          "stroke": {"value": "rgba(255, 68, 68, 0.4)"},
-          "strokeWidth": {"value": 1},
-          "strokeDash": {"value": [3, 3]},
-          "opacity": [
+        "data": [
             {
-              "test": "sin(timer * 0.1 + datum.id * 0.2) > 0",
-              "value": 0.6
-            },
-            {"value": 0.3}
-          ]
-        }
-      }
-    },
-    {
-      "name": "virus_particles_marks",
-      "type": "symbol",
-      "from": {"data": "virus_particles"},
-      "encode": {
-        "update": {
-          "x": {"field": "particle_x"},
-          "y": {"field": "particle_y"},
-          "size": {"signal": "15 + sin(timer * 0.1) * 3"},
-          "fill": {"value": "#ff4444"},
-          "stroke": {"value": "#ff6666"},
-          "strokeWidth": {"value": 0.5},
-          "opacity": {"field": "particle_opacity"}
-        }
-      }
-    },
-    {
-      "name": "node_marks",
-      "type": "symbol",
-      "from": {"data": "nodes"},
-      "encode": {
-        "update": {
-          "size": [
+                "name": "agent_data",
+                "values": [{"id": agentId}],
+                "transform": [
+                    {
+                        "type": "formula",
+                        "expr": "status === 'S' && nearby_infected && random() < infection_rate * 0.1 ? 'I' : status",
+                        "as": "current_status"
+                    },
+                    {
+                        "type": "formula", 
+                        "expr": "datum.current_status === 'I' && infection_timer >= 50 ? 'R' : datum.current_status",
+                        "as": "final_status"
+                    }
+                ]
+            }
+        ],
+
+        "scales": [
             {
-              "test": "datum.status === 'I'",
-              "signal": "80 + sin(timer * 0.05 + datum.id * 0.1) * 8"
+                "name": "color",
+                "type": "ordinal",
+                "domain": ["S", "I", "R"],
+                "range": ["#0ea5e9", "#ef4444", "#6b7280"]
             },
             {
-              "test": "datum.status === 'R'",
-              "signal": "50 + sin(timer * 0.03 + datum.id * 0.1) * 3"
-            },
-            {"value": 60}
-          ],
-          "fill": [
-            {
-              "test": "datum.status === 'I' && datum.infection_timer <= 2",
-              "value": "#ff0000"
-            },
-            {
-              "test": "datum.status === 'R' && datum.recovery_timer <= 3",
-              "value": "#22c55e"
-            },
-            {"scale": "color", "field": "status"}
-          ],
-          "stroke": [
-            {
-              "test": "datum.status === 'I'",
-              "value": "#ffff00"
-            },
-            {
-              "test": "datum.status === 'R'",
-              "value": "#4ade80"
-            },
-            {"value": "white"}
-          ],
-          "strokeWidth": [
-            {
-              "test": "datum.status === 'I'",
-              "signal": "2 + sin(timer * 0.08 + datum.id * 0.1) * 0.8"
-            },
-            {
-              "test": "datum.status === 'R'",
-              "value": 1.5
-            },
-            {"value": 0.5}
-          ],
-          "opacity": [
-            {
-              "test": "datum.status === 'I'",
-              "signal": "0.85 + sin(timer * 0.06 + datum.id * 0.1) * 0.1"
-            },
-            {"value": 0.85}
-          ],
-          "x": {"field": "x"},
-          "y": {"field": "y"}
-        }
-      },
-      "transform": [
-        {
-          "type": "formula",
-          "expr": "datum.status === 'I' && datum.infection_timer >= recovery_duration ? 'R' : datum.status",
-          "as": "status"
-        },
-        {
-          "type": "formula", 
-          "expr": "datum.status === 'I' ? datum.infection_timer + 1 : datum.infection_timer",
-          "as": "infection_timer"
-        },
-        {
-          "type": "formula",
-          "expr": "datum.status === 'R' ? (datum.recovery_timer || 0) + 1 : 0",
-          "as": "recovery_timer"
-        },
-        {
-          "type": "formula",
-          "expr": "datum.status === 'S' && infected_count > 0 && random() < (infection_rate * infected_count / population * 0.1) ? 'I' : datum.status",
-          "as": "status"
-        },
-        {
-          "type": "formula",
-          "expr": "datum.status === 'I' && datum.infection_timer === 0 ? 1 : datum.infection_timer",
-          "as": "infection_timer"
-        },
-        { 
-          "type": "force",
-          "iterations": 1,
-          "static": false,
-          "restart": true,
-          "forces": [
-            {"force": "center", "x": {"signal": "containerWidth/2"}, "y": {"signal": "containerHeight/2"}, "strength": 0.05},
-            {"force": "collide", "radius": {"signal": "social_distancing"}, "strength": 0.3}, 
-            {"force": "nbody", "strength": -2, "theta": 0.9}
-          ]
-        }
-      ]
-    }
-  ]
-};
+                "name": "size_scale",
+                "type": "ordinal",
+                "domain": ["S", "I", "R"], 
+                "range": [300, 400, 250]
+            }
+        ],
 
-const controlsSpec = {
-  "$schema": "https://vega.github.io/schema/vega/v5.json",
-  "padding": 5, "background": "transparent",
-  "signals": [
-    { "name": "population", "value": 200, "bind": {"name": "총 인구 수", "input": "range", "min": 50, "max": 400, "step": 10} },
-    { "name": "infection_rate", "value": 0.8, "bind": {"name": "감염률 (β)", "input": "range", "min": 0.1, "max": 2.0, "step": 0.1} },
-    { "name": "recovery_duration", "value": 150, "bind": {"name": "회복 기간 (프레임)", "input": "range", "min": 50, "max": 400, "step": 10} },
-    { "name": "social_distancing", "value": 12, "bind": {"name": "사회적 거리두기", "input": "range", "min": 5, "max": 25, "step": 1} },
-    { "name": "movement_speed", "value": 2, "bind": {"name": "이동 속도", "input": "range", "min": 0.5, "max": 5, "step": 0.1} }
-  ]
-};
+        "marks": [
+            {
+                "name": "infection_aura",
+                "type": "symbol",
+                "encode": {
+                    "update": {
+                        "x": {"value": 30},
+                        "y": {"value": 30},
+                        "size": [
+                            {
+                                "test": "status === 'I'",
+                                "signal": "social_distance * social_distance * 0.5"
+                            },
+                            {"value": 0}
+                        ],
+                        "fill": {"value": "rgba(255, 68, 68, 0.2)"},
+                        "stroke": {"value": "rgba(255, 68, 68, 0.5)"},
+                        "strokeWidth": {"value": 1},
+                        "opacity": [
+                            {
+                                "test": "status === 'I'",
+                                "signal": "0.3 + sin(timer * 0.05) * 0.2"
+                            },
+                            {"value": 0}
+                        ]
+                    }
+                }
+            },
+            {
+                "name": "agent_body",
+                "type": "symbol",
+                "from": {"data": "agent_data"},
+                "encode": {
+                    "update": {
+                        "x": {"value": 30},
+                        "y": {"value": 30},
+                        "size": [
+                            {
+                                "test": "status === 'I'",
+                                "signal": "400 + sin(timer * 0.03) * 30"
+                            },
+                            {
+                                "test": "status === 'R'",
+                                "signal": "250 + sin(timer * 0.02) * 10"
+                            },
+                            {"value": 300}
+                        ],
+                        "fill": [
+                            {
+                                "test": "status === 'I' && infection_timer <= 3",
+                                "value": "#ff0000"
+                            },
+                            {
+                                "test": "status === 'R' && recovery_timer <= 5",
+                                "value": "#22c55e"
+                            },
+                            {"scale": "color", "field": "final_status"}
+                        ],
+                        "stroke": [
+                            {
+                                "test": "status === 'I'",
+                                "value": "#ffff00"
+                            },
+                            {
+                                "test": "status === 'R'",
+                                "value": "#4ade80"
+                            },
+                            {"value": "white"}
+                        ],
+                        "strokeWidth": [
+                            {
+                                "test": "status === 'I'",
+                                "signal": "2 + sin(timer * 0.04) * 0.5"
+                            },
+                            {"value": 1}
+                        ],
+                        "opacity": [
+                            {
+                                "test": "status === 'I'",
+                                "signal": "0.9 + sin(timer * 0.03) * 0.1"
+                            },
+                            {"value": 0.85}
+                        ]
+                    }
+                }
+            }
+        ]
+    };
+}
 
-// ========== 2. Vega 뷰(View) 생성 및 연동 ==========
+// ========== 시뮬레이션 관리자 ==========
 
-(async () => {
-  let mainView, controlsView;
-  let population = 200;
-  
-  let timerId = null; 
-  let isPaused = true;
-
-  try {
-    const controlsResult = await vegaEmbed('#controls-view', controlsSpec, {actions: false});
-    controlsView = controlsResult.view;
-    
-    // 컨테이너 크기 감지 및 설정
-    const simulationElement = document.getElementById('simulation-view');
-    const containerWidth = simulationElement.clientWidth || 800;
-    const containerHeight = simulationElement.clientHeight || 600;
-    
-    // 메인 스펙에 크기 설정
-    mainSpec.signals.find(s => s.name === 'containerWidth').value = containerWidth;
-    mainSpec.signals.find(s => s.name === 'containerHeight').value = containerHeight;
-    
-    const mainResult = await vegaEmbed('#simulation-view', mainSpec, {actions: false});
-    mainView = mainResult.view;
-    
-    // 리사이즈 이벤트 리스너 추가
-    window.addEventListener('resize', () => {
-      const newWidth = simulationElement.clientWidth || 800;
-      const newHeight = simulationElement.clientHeight || 600;
-      mainView.signal('containerWidth', newWidth)
-              .signal('containerHeight', newHeight)
-              .runAsync();
-    });
-    
-    const playPauseBtn = document.getElementById('play-pause-btn');
-    const resetBtn = document.getElementById('reset-btn');
-
-    function generateInitialData(popCount) {
-      const nodes = [];
-      // 현재 컨테이너 크기 또는 Vega 신호값 가져오기
-      const width = mainView ? mainView.signal('containerWidth') : 800;
-      const height = mainView ? mainView.signal('containerHeight') : 600;
-      const centerX = width / 2;
-      const centerY = height / 2;
-      const clusterRadius = Math.min(width, height) * 0.12; // 더 작은 클러스터
-      
-      for (let i = 0; i < popCount; i++) {
-        let x, y;
+class SIRSimulation {
+    constructor() {
+        this.agents = [];
+        this.agentViews = [];
+        this.agentElements = [];
+        this.population = 10;
+        this.isRunning = false;
+        this.timerId = null;
+        this.containerWidth = 0;
+        this.containerHeight = 0;
         
-        if (i < 8) {
-          // 더 많은 감염자를 정중앙에 배치
-          const angle = (i / 8) * 2 * Math.PI;
-          const r = Math.random() * 25; // 중심에서 25px 반경 내로 줄임
-          x = centerX + r * Math.cos(angle);
-          y = centerY + r * Math.sin(angle);
-        } else {
-          // 나머지는 중앙 주변 원형으로 밀집 배치
-          const angle = Math.random() * 2 * Math.PI;
-          const r = Math.random() * clusterRadius;
-          x = centerX + r * Math.cos(angle);
-          y = centerY + r * Math.sin(angle);
-        }
-        
-        // 정확히 중앙에 위치하도록 조정
-        nodes.push({
-          id: i,
-          status: i < 8 ? 'I' : 'S',
-          infection_timer: i < 8 ? 1 : 0,
-          x: x,
-          y: y,
-          vx: (Math.random() - 0.5) * 0.8, // 초기 속도 더 줄임
-          vy: (Math.random() - 0.5) * 0.8
-        });
-      }
-      return nodes;
+        this.init();
     }
-    
-    function setupControlListeners() {
-        const signals = ['infection_rate', 'recovery_duration', 'social_distancing', 'movement_speed'];
-        signals.forEach(sigName => {
-            controlsView.addSignalListener(sigName, (name, value) => {
-                mainView.signal(name, value).runAsync();
-            });
-        });
+
+    async init() {
+        const container = document.getElementById('simulation-container');
+        this.containerWidth = container.clientWidth;
+        this.containerHeight = container.clientHeight;
         
-        controlsView.addSignalListener('population', (name, value) => {
-            if (population !== value) {
-                population = value;
-                resetSimulation();
+        await this.createAgents();
+        this.setupEventListeners();
+        this.updateStats();
+    }
+
+    async createAgents() {
+        const container = document.getElementById('simulation-container');
+        container.innerHTML = '';
+        
+        this.agents = [];
+        this.agentViews = [];
+        this.agentElements = [];
+
+        for (let i = 0; i < this.population; i++) {
+            // 초기 위치 (중앙 클러스터)
+            const angle = Math.random() * Math.PI * 2;
+            const radius = Math.random() * 100;
+            const x = this.containerWidth / 2 + radius * Math.cos(angle);
+            const y = this.containerHeight / 2 + radius * Math.sin(angle);
+            
+            // 첫 번째 에이전트만 감염된 상태로 시작
+            const status = i === 0 ? 'I' : 'S';
+            
+            // 에이전트 데이터
+            const agent = {
+                id: i,
+                x: x,
+                y: y,
+                status: status,
+                vx: (Math.random() - 0.5) * 2,
+                vy: (Math.random() - 0.5) * 2,
+                infection_timer: status === 'I' ? 1 : 0,
+                recovery_timer: 0
+            };
+            
+            // HTML 컨테이너 생성
+            const agentElement = document.createElement('div');
+            agentElement.className = 'agent-container';
+            agentElement.style.left = `${x - 30}px`;
+            agentElement.style.top = `${y - 30}px`;
+            agentElement.id = `agent-${i}`;
+            container.appendChild(agentElement);
+            
+            // Vega 스펙 생성 및 임베드
+            const spec = createAgentSpec(i, x, y, status);
+            const result = await vegaEmbed(`#agent-${i}`, spec, {actions: false});
+            
+            this.agents.push(agent);
+            this.agentViews.push(result.view);
+            this.agentElements.push(agentElement);
+        }
+    }
+
+    setupEventListeners() {
+        const playPauseBtn = document.getElementById('play-pause-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        const infectionRateSlider = document.getElementById('infection-rate');
+        const socialDistanceSlider = document.getElementById('social-distance');
+
+        playPauseBtn.addEventListener('click', () => {
+            if (this.isRunning) {
+                this.pause();
+            } else {
+                this.play();
             }
         });
+
+        resetBtn.addEventListener('click', () => {
+            this.reset();
+        });
+
+        infectionRateSlider.addEventListener('input', (e) => {
+            const value = parseFloat(e.target.value);
+            document.getElementById('infection-rate-value').textContent = value;
+            this.agentViews.forEach(view => {
+                view.signal('infection_rate', value).runAsync();
+            });
+        });
+
+        socialDistanceSlider.addEventListener('input', (e) => {
+            const value = parseInt(e.target.value);
+            document.getElementById('social-distance-value').textContent = value;
+            this.agentViews.forEach(view => {
+                view.signal('social_distance', value).runAsync();
+            });
+        });
     }
 
-    function playSimulation() {
-        if (timerId) return;
-        timerId = setInterval(() => {
-            // Vega가 모든 감염/회복 로직을 처리하므로
-            // JavaScript는 단순히 타이머 신호만 업데이트
-            const currentTimer = mainView.signal('timer');
-            mainView.signal('timer', currentTimer + 1).runAsync();
-        }, 100); // 100ms 마다 업데이트
+    play() {
+        this.isRunning = true;
+        document.getElementById('play-pause-btn').textContent = '일시정지';
+        document.getElementById('play-pause-btn').classList.remove('play');
         
-        isPaused = false;
-        playPauseBtn.textContent = '일시정지';
-        playPauseBtn.classList.remove('play');
+        this.timerId = setInterval(() => {
+            this.update();
+        }, 100);
     }
 
-    function pauseSimulation() {
-        clearInterval(timerId);
-        timerId = null;
-        isPaused = true;
-        playPauseBtn.textContent = '시작';
-        playPauseBtn.classList.add('play');
-    }
-
-    function resetSimulation() {
-        pauseSimulation();
-        const initialNodes = generateInitialData(population);
+    pause() {
+        this.isRunning = false;
+        document.getElementById('play-pause-btn').textContent = '시작';
+        document.getElementById('play-pause-btn').classList.add('play');
         
-        // mainView의 신호값을 컨트롤러의 현재값으로 동기화
-        mainView.signal('population', controlsView.signal('population'));
-        mainView.signal('infection_rate', controlsView.signal('infection_rate'));
-        mainView.signal('recovery_duration', controlsView.signal('recovery_duration'));
-        mainView.signal('social_distancing', controlsView.signal('social_distancing'));
-        mainView.signal('movement_speed', controlsView.signal('movement_speed'));
-
-        mainView.data('nodes', initialNodes).runAsync();
-    }
-    
-    playPauseBtn.addEventListener('click', () => {
-        if (isPaused) {
-            playSimulation();
-        } else {
-            pauseSimulation();
+        if (this.timerId) {
+            clearInterval(this.timerId);
+            this.timerId = null;
         }
-    });
+    }
 
-    resetBtn.addEventListener('click', () => {
-        // 컨트롤 패널의 값을 초기값으로 되돌림
-        controlsView.signal('population', 200)
-                    .signal('infection_rate', 0.8)
-                    .signal('recovery_duration', 150)
-                    .signal('social_distancing', 12)
-                    .signal('movement_speed', 2)
-                    .runAsync();
-        population = 200;
-        resetSimulation();
-    });
+    async reset() {
+        this.pause();
+        await this.createAgents();
+        this.updateStats();
+    }
 
-    // 초기 설정
-    setupControlListeners();
-    resetSimulation();
-    
-  } catch(error) {
-      console.error("Vega 시뮬레이션 초기화 실패:", error);
-      document.body.innerHTML = "<h3 style='color:red; text-align:center; padding-top: 50px;'>시뮬레이션을 불러오는 데 실패했습니다. 콘솔 로그를 확인해주세요.</h3>";
-  }
+    update() {
+        // 1. 에이전트 위치 업데이트
+        this.updatePositions();
+        
+        // 2. 감염 체크
+        this.checkInfections();
+        
+        // 3. Vega 뷰 업데이트
+        this.updateVegaViews();
+        
+        // 4. 통계 업데이트
+        this.updateStats();
+    }
 
-})().catch(console.error);
+    updatePositions() {
+        this.agents.forEach((agent, i) => {
+            // 랜덤 이동
+            agent.vx += (Math.random() - 0.5) * 0.5;
+            agent.vy += (Math.random() - 0.5) * 0.5;
+            
+            // 속도 제한
+            const speed = Math.sqrt(agent.vx * agent.vx + agent.vy * agent.vy);
+            if (speed > 2) {
+                agent.vx = (agent.vx / speed) * 2;
+                agent.vy = (agent.vy / speed) * 2;
+            }
+            
+            // 위치 업데이트
+            agent.x += agent.vx;
+            agent.y += agent.vy;
+            
+            // 경계 처리
+            if (agent.x < 30) {
+                agent.x = 30;
+                agent.vx = Math.abs(agent.vx);
+            }
+            if (agent.x > this.containerWidth - 30) {
+                agent.x = this.containerWidth - 30;
+                agent.vx = -Math.abs(agent.vx);
+            }
+            if (agent.y < 30) {
+                agent.y = 30;
+                agent.vy = Math.abs(agent.vy);
+            }
+            if (agent.y > this.containerHeight - 30) {
+                agent.y = this.containerHeight - 30;
+                agent.vy = -Math.abs(agent.vy);
+            }
+            
+            // HTML 요소 위치 업데이트
+            this.agentElements[i].style.left = `${agent.x - 30}px`;
+            this.agentElements[i].style.top = `${agent.y - 30}px`;
+        });
+    }
+
+    checkInfections() {
+        const socialDistance = parseInt(document.getElementById('social-distance').value);
+        
+        this.agents.forEach((agent, i) => {
+            let nearbyInfected = false;
+            
+            if (agent.status === 'S') {
+                // 주변에 감염자가 있는지 체크
+                for (let other of this.agents) {
+                    if (other.status === 'I' && other.id !== agent.id) {
+                        const dx = agent.x - other.x;
+                        const dy = agent.y - other.y;
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+                        
+                        if (distance < socialDistance) {
+                            nearbyInfected = true;
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            // Vega 뷰에 알림
+            this.agentViews[i].signal('nearby_infected', nearbyInfected).runAsync();
+        });
+    }
+
+    updateVegaViews() {
+        this.agents.forEach((agent, i) => {
+            // 타이머 업데이트
+            const currentTimer = this.agentViews[i].signal('timer');
+            this.agentViews[i].signal('timer', currentTimer + 1);
+            
+            // 상태 업데이트
+            this.agentViews[i].signal('status', agent.status);
+            
+            // 감염/회복 타이머 업데이트
+            if (agent.status === 'I') {
+                agent.infection_timer++;
+                this.agentViews[i].signal('infection_timer', agent.infection_timer);
+                
+                // 회복 체크
+                if (agent.infection_timer >= 50) {
+                    agent.status = 'R';
+                    agent.recovery_timer = 1;
+                }
+            }
+            
+            if (agent.status === 'R') {
+                agent.recovery_timer++;
+                this.agentViews[i].signal('recovery_timer', agent.recovery_timer);
+            }
+            
+            // 새로운 감염 체크 - Vega에서 계산된 결과 확인
+            try {
+                const vegaData = this.agentViews[i].data('agent_data');
+                if (vegaData.length > 0 && vegaData[0].final_status === 'I' && agent.status === 'S') {
+                    agent.status = 'I';
+                    agent.infection_timer = 1;
+                }
+            } catch (error) {
+                // Vega 데이터 접근 오류 무시
+                console.warn(`Agent ${i} data access error:`, error);
+            }
+            
+            this.agentViews[i].runAsync();
+        });
+    }
+
+    updateStats() {
+        const counts = { S: 0, I: 0, R: 0 };
+        this.agents.forEach(agent => {
+            counts[agent.status]++;
+        });
+        
+        document.getElementById('s-count').textContent = counts.S;
+        document.getElementById('i-count').textContent = counts.I;
+        document.getElementById('r-count').textContent = counts.R;
+    }
+}
+
+// 시뮬레이션 시작
+document.addEventListener('DOMContentLoaded', () => {
+    new SIRSimulation();
+});
 
 </script>
 </body>
