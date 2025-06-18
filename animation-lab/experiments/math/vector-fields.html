@@ -678,7 +678,16 @@
                     button.addEventListener('click', () => {
                         this.setActiveField(button, buttons);
                         this.params.fieldType = button.dataset.field;
+                        
+                        // 즉시 벡터 필드 재생성 및 히스토그램 업데이트
+                        console.log(`벡터장 유형 변경: ${this.params.fieldType}`);
                         this.onFieldChange();
+                        
+                        // 추가로 강제 즉시 업데이트
+                        setTimeout(() => {
+                            this.updateFieldStatsChart();
+                            console.log('벡터장 변경 후 히스토그램 강제 업데이트 완료');
+                        }, 50);
                     });
                 });
             }
@@ -689,9 +698,17 @@
             }
             
             onFieldChange() {
+                console.log('벡터 필드 변경 시작...');
+                
+                // 벡터 필드 즉시 재생성
                 this.generateVectorField();
                 this.particleSystem?.initParticles(this.params.particleCount);
+                
+                // 히스토그램 즉시 업데이트 (두 번 호출로 확실히)
                 this.updateVegaCharts();
+                this.updateFieldStatsChart();
+                
+                console.log('벡터 필드 변경 완료');
             }
             
             getVectorAt(x, y) {
