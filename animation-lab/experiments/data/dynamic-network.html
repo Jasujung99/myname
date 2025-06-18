@@ -170,20 +170,20 @@
             <div class="card">
                 <h2 class="card-title">조작부</h2>
                 <div class="control-row">
-                    <label for="nbody">밀어내는 힘 <span id="nbody-value">-50</span></label>
-                    <input type="range" id="nbody" min="-200" max="0" step="5" value="-50">
+                    <label for="nbody">밀어내는 힘 <span id="nbody-value">-30</span></label>
+                    <input type="range" id="nbody" min="-100" max="0" step="5" value="-30">
                 </div>
                  <div class="control-row">
-                    <label for="link-dist">연결선 길이 <span id="link-dist-value">60</span></label>
-                    <input type="range" id="link-dist" min="10" max="200" step="5" value="60">
+                    <label for="link-dist">연결선 길이 <span id="link-dist-value">50</span></label>
+                    <input type="range" id="link-dist" min="10" max="150" step="5" value="50">
                 </div>
                 <div class="control-row">
-                    <label for="collide">충돌 반경 <span id="collide-value">20</span></label>
-                    <input type="range" id="collide" min="5" max="80" step="2" value="20">
+                    <label for="collide">충돌 반경 <span id="collide-value">15</span></label>
+                    <input type="range" id="collide" min="5" max="50" step="2" value="15">
                 </div>
                  <div class="control-row">
-                    <label for="center-force">중심 인력 <span id="center-force-value">0.3</span></label>
-                    <input type="range" id="center-force" min="0" max="2.0" step="0.05" value="0.3">
+                    <label for="center-force">중심 인력 <span id="center-force-value">0.1</span></label>
+                    <input type="range" id="center-force" min="0" max="5.0" step="0.1" value="0.1">
                 </div>
             </div>
             <div class="learning-points card">
@@ -202,18 +202,19 @@
         // 최소한의 Vega 네트워크 그래프 - 검증된 패턴 사용
         const spec = {
           "$schema": "https://vega.github.io/schema/vega/v5.json",
-          "width": 600,
-          "height": 500,
-          "padding": 10,
+          "width": 580,
+          "height": 580,
+          "padding": 20,
           "autosize": {"type": "fit", "contains": "padding"},
           
           "signals": [
-            {"name": "nbody_strength", "value": -50},
-            {"name": "link_distance", "value": 60},
-            {"name": "collide_radius", "value": 20},
-            {"name": "center_strength", "value": 0.3},
+            {"name": "nbody_strength", "value": -30},
+            {"name": "link_distance", "value": 50},
+            {"name": "collide_radius", "value": 15},
+            {"name": "center_strength", "value": 0.1},
             {"name": "dragged_node", "value": null},
-            {"name": "cursor_style", "value": "grab"}
+            {"name": "fix_x", "value": 0},
+            {"name": "fix_y", "value": 0}
           ],
           
           "data": [
@@ -249,8 +250,11 @@
                 {"id": "M", "group": 5}, {"id": "N", "group": 5}, {"id": "O", "group": 5}
               ],
               "on": [
-                {"trigger": "dragged_node", "modify": "dragged_node", 
-                 "values": "dragged_node ? {fx: x(), fy: y()} : {fx: null, fy: null}"}
+                {
+                  "trigger": "dragged_node && (fix_x !== x() || fix_y !== y())",
+                  "modify": "dragged_node",
+                  "values": "{fx: fix_x, fy: fix_y}"
+                }
               ],
               "transform": [
                 {
@@ -293,8 +297,18 @@
               "type": "symbol",
               "from": {"data": "nodes"},
               "on": [
-                {"events": "mousedown", "update": "dragged_node", "force": true},
-                {"events": "window:mouseup", "update": "dragged_node", "force": false}
+                {
+                  "events": "mousedown",
+                  "update": "[dragged_node = item(), fix_x = x(), fix_y = y()]"
+                },
+                {
+                  "events": "[@symbol:mousedown, window:mouseup] > window:mousemove!",
+                  "update": "[fix_x = x(), fix_y = y()]"
+                },
+                {
+                  "events": "window:mouseup",
+                  "update": "dragged_node = null"
+                }
               ],
               "encode": {
                 "enter": {
