@@ -287,12 +287,13 @@ const mainSpec = {
       "transform": [
         { 
           "type": "force",
-          "iterations": 3,
-          "static": false, 
+          "iterations": 1,
+          "static": false,
+          "restart": true,
           "forces": [
-            {"force": "center", "x": {"signal": "width/2"}, "y": {"signal": "height/2"}},
-            {"force": "collide", "radius": {"signal": "social_distancing"}, "strength": 0.8}, 
-            {"force": "nbody", "strength": -8, "theta": 0.9}
+            {"force": "center", "x": {"signal": "width/2"}, "y": {"signal": "height/2"}, "strength": 0.05},
+            {"force": "collide", "radius": {"signal": "social_distancing"}, "strength": 0.3}, 
+            {"force": "nbody", "strength": -2, "theta": 0.9}
           ]
         }
       ]
@@ -335,16 +336,36 @@ const controlsSpec = {
       const nodes = [];
       const width = 800;
       const height = 600;
+      const centerX = width / 2;
+      const centerY = height / 2;
+      const clusterRadius = Math.min(width, height) * 0.15; // 더 작은 클러스터
       
       for (let i = 0; i < popCount; i++) {
+        let x, y;
+        
+        if (i < 5) {
+          // 감염자들을 정중앙에 배치
+          const angle = (i / 5) * 2 * Math.PI;
+          const r = Math.random() * 30; // 중심에서 30px 반경 내로 줄임
+          x = centerX + r * Math.cos(angle);
+          y = centerY + r * Math.sin(angle);
+        } else {
+          // 나머지는 중앙 주변 원형으로 밀집 배치
+          const angle = Math.random() * 2 * Math.PI;
+          const r = Math.random() * clusterRadius;
+          x = centerX + r * Math.cos(angle);
+          y = centerY + r * Math.sin(angle);
+        }
+        
+        // 정확히 중앙에 위치하도록 조정
         nodes.push({
           id: i,
-          status: i < 3 ? 'I' : 'S', // 초기 감염자 3명으로 증가
-          infection_timer: i < 3 ? 1 : 0,
-          x: Math.random() * width,
-          y: Math.random() * height,
-          vx: (Math.random() - 0.5) * 4,
-          vy: (Math.random() - 0.5) * 4
+          status: i < 5 ? 'I' : 'S',
+          infection_timer: i < 5 ? 1 : 0,
+          x: x,
+          y: y,
+          vx: (Math.random() - 0.5) * 1, // 초기 속도 더 줄임
+          vy: (Math.random() - 0.5) * 1
         });
       }
       return nodes;
@@ -383,9 +404,19 @@ const controlsSpec = {
                 let newStatus = node.status;
                 let newTimer = node.infection_timer;
 
-                // 1. 랜덤 이동 로직
-                let newVx = node.vx + (Math.random() - 0.5) * 0.5;
-                let newVy = node.vy + (Math.random() - 0.5) * 0.5;
+                // 1. 개선된 중앙 집중 + 랜덤 이동 로직
+                const centerX = width / 2;
+                const centerY = height / 2;
+                const dx = centerX - (node.x || centerX);
+                const dy = centerY - (node.y || centerY);
+                const distanceFromCenter = Math.sqrt(dx * dx + dy * dy);
+                
+                // 중앙으로 향하는 힘 - 거리에 따라 조정
+                const maxDistance = Math.min(width, height) * 0.3;
+                const centerForce = distanceFromCenter > maxDistance ? 0.08 : 0.01;
+                
+                let newVx = (node.vx || 0) + dx * centerForce + (Math.random() - 0.5) * 0.8;
+                let newVy = (node.vy || 0) + dy * centerForce + (Math.random() - 0.5) * 0.8;
                 
                 // 속도 제한
                 const speed = Math.sqrt(newVx * newVx + newVy * newVy);
@@ -394,17 +425,25 @@ const controlsSpec = {
                     newVy = (newVy / speed) * movementSpeed;
                 }
 
-                let newX = node.x + newVx;
-                let newY = node.y + newVy;
+                let newX = (node.x || centerX) + newVx;
+                let newY = (node.y || centerY) + newVy;
 
-                // 경계 처리 (벽에 닿으면 반사)
-                if (newX <= 0 || newX >= width) {
-                    newVx = -newVx;
-                    newX = Math.max(0, Math.min(width, newX));
+                // 부드러운 경계 처리 (리플렉션)
+                const margin = 40;
+                if (newX <= margin) {
+                    newVx = Math.abs(newVx) * 0.7;
+                    newX = margin;
+                } else if (newX >= width - margin) {
+                    newVx = -Math.abs(newVx) * 0.7;
+                    newX = width - margin;
                 }
-                if (newY <= 0 || newY >= height) {
-                    newVy = -newVy;
-                    newY = Math.max(0, Math.min(height, newY));
+                
+                if (newY <= margin) {
+                    newVy = Math.abs(newVy) * 0.7;
+                    newY = margin;
+                } else if (newY >= height - margin) {
+                    newVy = -Math.abs(newVy) * 0.7;
+                    newY = height - margin;
                 }
 
                 // 2. 회복 로직
@@ -421,13 +460,13 @@ const controlsSpec = {
                 if (node.status === 'S') {
                     for (let other of currentNodes) {
                         if (other.status === 'I' && other.id !== node.id) {
-                            const dx = node.x - other.x;
-                            const dy = node.y - other.y;
+                            const dx = (node.x || 0) - (other.x || 0);
+                            const dy = (node.y || 0) - (other.y || 0);
                             const distance = Math.sqrt(dx * dx + dy * dy);
                             
                             // 감염자와 가까우면 감염 확률 계산
-                            if (distance < socialDistance * 2) {
-                                const infectionChance = infectionRate * (1 - distance / (socialDistance * 2));
+                            if (distance < socialDistance * 2.5) {
+                                const infectionChance = infectionRate * (1 - distance / (socialDistance * 2.5));
                                 if (Math.random() < infectionChance) {
                                     newStatus = 'I';
                                     newTimer = 1;
