@@ -25,10 +25,7 @@
         
         body {
             font-family: 'Noto Sans KR', sans-serif;
-            background: linear-gradient(135deg, var(--bg-color) 0%, #1a1a2e 50%,                    this.ctx.globalAlpha = finalAlpha;
-                    this.ctx.fillStyle = gradient;
-                    this.ctx.fillRect(0, 0, this.width, this.height);
-                    this.ctx.globalAlpha = 1; // 원래대로 복원3e 100%);
+            background: var(--bg-color);
             color: var(--text-color);
             overflow: hidden;
             height: 100vh;
@@ -334,7 +331,6 @@
     <div class="container">
         <div class="canvas-area">
             <div class="canvas-section">
-                <h3>🎨 색채 동역학 탐험</h3>
                 <canvas id="colorCanvas"></canvas>
             </div>
         </div>
@@ -386,7 +382,7 @@
             </div>
             
             <div class="harmony-types">
-                <h4>🎭 색채 조화</h4>
+                <h4>색채 조화</h4>
                 <button class="harmony-button active" data-harmony="complementary">보색 (180°)</button>
                 <button class="harmony-button" data-harmony="triadic">삼각색 (120°)</button>
                 <button class="harmony-button" data-harmony="tetradic">사각색 (90°)</button>
