@@ -38,6 +38,10 @@
             max-width: 100%;
             max-height: 100%;
         }
+        #simulation-view canvas {
+            width: 100% !important;
+            height: 100% !important;
+        }
         .side-panel {
             width: 300px;
             flex-shrink: 0;
@@ -221,7 +225,9 @@
 
 const mainSpec = {
   "$schema": "https://vega.github.io/schema/vega/v5.json",
-  "autosize": {"type": "fit", "resize": true},
+  "width": {"signal": "containerWidth"},
+  "height": {"signal": "containerHeight"},  
+  "autosize": {"type": "none"},
   "background": "#000",
 
   "data": [
@@ -231,6 +237,8 @@ const mainSpec = {
   ],
 
   "signals": [
+    { "name": "containerWidth", "value": 800 },
+    { "name": "containerHeight", "value": 600 },
     { "name": "timer", "value": 0 }, 
     { "name": "population", "value": 200 },
     { "name": "infection_rate", "value": 0.8 },
@@ -289,7 +297,7 @@ const mainSpec = {
           "static": false,
           "restart": true,
           "forces": [
-            {"force": "center", "x": {"signal": "width/2"}, "y": {"signal": "height/2"}, "strength": 0.05},
+            {"force": "center", "x": {"signal": "containerWidth/2"}, "y": {"signal": "containerHeight/2"}, "strength": 0.05},
             {"force": "collide", "radius": {"signal": "social_distancing"}, "strength": 0.3}, 
             {"force": "nbody", "strength": -2, "theta": 0.9}
           ]
@@ -324,18 +332,35 @@ const controlsSpec = {
     const controlsResult = await vegaEmbed('#controls-view', controlsSpec, {actions: false});
     controlsView = controlsResult.view;
     
+    // 컨테이너 크기 감지 및 설정
+    const simulationElement = document.getElementById('simulation-view');
+    const containerWidth = simulationElement.clientWidth || 800;
+    const containerHeight = simulationElement.clientHeight || 600;
+    
+    // 메인 스펙에 크기 설정
+    mainSpec.signals.find(s => s.name === 'containerWidth').value = containerWidth;
+    mainSpec.signals.find(s => s.name === 'containerHeight').value = containerHeight;
+    
     const mainResult = await vegaEmbed('#simulation-view', mainSpec, {actions: false});
     mainView = mainResult.view;
+    
+    // 리사이즈 이벤트 리스너 추가
+    window.addEventListener('resize', () => {
+      const newWidth = simulationElement.clientWidth || 800;
+      const newHeight = simulationElement.clientHeight || 600;
+      mainView.signal('containerWidth', newWidth)
+              .signal('containerHeight', newHeight)
+              .runAsync();
+    });
     
     const playPauseBtn = document.getElementById('play-pause-btn');
     const resetBtn = document.getElementById('reset-btn');
 
     function generateInitialData(popCount) {
       const nodes = [];
-      // 동적 캔버스 크기 가져오기
-      const simulationElement = document.getElementById('simulation-view');
-      const width = simulationElement ? simulationElement.clientWidth : 800;
-      const height = simulationElement ? simulationElement.clientHeight : 600;
+      // 현재 컨테이너 크기 또는 Vega 신호값 가져오기
+      const width = mainView ? mainView.signal('containerWidth') : 800;
+      const height = mainView ? mainView.signal('containerHeight') : 600;
       const centerX = width / 2;
       const centerY = height / 2;
       const clusterRadius = Math.min(width, height) * 0.12; // 더 작은 클러스터
@@ -396,10 +421,9 @@ const controlsSpec = {
             const movementSpeed = mainView.signal('movement_speed') || 2;
             const socialDistance = mainView.signal('social_distancing');
 
-            // 동적 캔버스 크기 가져오기
-            const simulationElement = document.getElementById('simulation-view');
-            const width = simulationElement ? simulationElement.clientWidth : 800;
-            const height = simulationElement ? simulationElement.clientHeight : 600;
+            // Vega 신호에서 동적 캔버스 크기 가져오기
+            const width = mainView.signal('containerWidth');
+            const height = mainView.signal('containerHeight');
 
             // 새로운 노드 상태 계산 (이동 + 감염 + 회복)
             const newNodes = currentNodes.map(node => {
