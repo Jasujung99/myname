@@ -172,6 +172,10 @@
                     <label>사회적 거리두기: <span id="social-distance-value">30</span></label>
                     <input type="range" id="social-distance" min="20" max="60" step="5" value="30">
                 </div>
+                <div style="margin-top: 10px;">
+                    <label>회복 속도: <span id="recovery-time-value">50</span></label>
+                    <input type="range" id="recovery-time" min="30" max="100" step="10" value="50">
+                </div>
                 
                 <div class="sim-controls">
                     <button id="play-pause-btn" class="play">시작</button>
@@ -182,8 +186,8 @@
             <div class="info-box">
                 <h3>📊 실시간 통계</h3>
                 <div id="live-stats">
-                    <div>감수성자: <span id="s-count">4</span></div>
-                    <div>감염자: <span id="i-count">6</span></div>
+                    <div>감수성자: <span id="s-count">25</span></div>
+                    <div>감염자: <span id="i-count">5</span></div>
                     <div>회복자: <span id="r-count">0</span></div>
                 </div>
             </div>
@@ -216,6 +220,7 @@ function createAgentSpec(agentId, initialX, initialY, initialStatus) {
             { "name": "velocity_x", "value": 0 },
             { "name": "velocity_y", "value": 0 },
             { "name": "infection_multiplier", "value": 0.3 },
+            { "name": "recovery_time", "value": 50 },
             { "name": "new_status", "value": initialStatus },
             { "name": "final_status", "value": initialStatus }
         ],
@@ -346,7 +351,7 @@ class SIRSimulation {
         this.agents = [];
         this.agentViews = [];
         this.agentElements = [];
-        this.population = 10;
+        this.population = 30;
         this.isRunning = false;
         this.timerId = null;
         this.containerWidth = 0;
@@ -374,14 +379,18 @@ class SIRSimulation {
         this.agentElements = [];
 
         for (let i = 0; i < this.population; i++) {
-            // 초기 위치 (중앙 클러스터)
+            // 초기 위치 (중앙 클러스터, 경계 안에서만)
             const angle = Math.random() * Math.PI * 2;
-            const radius = Math.random() * 100;
-            const x = this.containerWidth / 2 + radius * Math.cos(angle);
-            const y = this.containerHeight / 2 + radius * Math.sin(angle);
+            const radius = Math.random() * Math.min(100, Math.min(this.containerWidth, this.containerHeight) / 4);
+            let x = this.containerWidth / 2 + radius * Math.cos(angle);
+            let y = this.containerHeight / 2 + radius * Math.sin(angle);
             
-            // 처음 6명을 감염된 상태로 시작
-            const status = i < 6 ? 'I' : 'S';
+            // 경계 안에 위치하도록 보정
+            x = Math.max(60, Math.min(this.containerWidth - 60, x));
+            y = Math.max(60, Math.min(this.containerHeight - 60, y));
+            
+            // 처음 5명을 감염된 상태로 시작
+            const status = i < 5 ? 'I' : 'S';
             
             // 에이전트 데이터
             const agent = {
@@ -419,6 +428,7 @@ class SIRSimulation {
         const infectionRateSlider = document.getElementById('infection-rate');
         const infectionMultiplierSlider = document.getElementById('infection-multiplier');
         const socialDistanceSlider = document.getElementById('social-distance');
+        const recoveryTimeSlider = document.getElementById('recovery-time');
 
         playPauseBtn.addEventListener('click', () => {
             if (this.isRunning) {
@@ -453,6 +463,14 @@ class SIRSimulation {
             document.getElementById('social-distance-value').textContent = value;
             this.agentViews.forEach(view => {
                 view.signal('social_distance', value).runAsync();
+            });
+        });
+
+        recoveryTimeSlider.addEventListener('input', (e) => {
+            const value = parseInt(e.target.value);
+            document.getElementById('recovery-time-value').textContent = value;
+            this.agentViews.forEach(view => {
+                view.signal('recovery_time', value).runAsync();
             });
         });
     }
@@ -515,21 +533,21 @@ class SIRSimulation {
             agent.x += agent.vx;
             agent.y += agent.vy;
             
-            // 경계 처리
-            if (agent.x < 30) {
-                agent.x = 30;
+            // 경계 처리 (더 안전한 여백)
+            if (agent.x < 60) {
+                agent.x = 60;
                 agent.vx = Math.abs(agent.vx);
             }
-            if (agent.x > this.containerWidth - 30) {
-                agent.x = this.containerWidth - 30;
+            if (agent.x > this.containerWidth - 60) {
+                agent.x = this.containerWidth - 60;
                 agent.vx = -Math.abs(agent.vx);
             }
-            if (agent.y < 30) {
-                agent.y = 30;
+            if (agent.y < 60) {
+                agent.y = 60;
                 agent.vy = Math.abs(agent.vy);
             }
-            if (agent.y > this.containerHeight - 30) {
-                agent.y = this.containerHeight - 30;
+            if (agent.y > this.containerHeight - 60) {
+                agent.y = this.containerHeight - 60;
                 agent.vy = -Math.abs(agent.vy);
             }
             
@@ -588,8 +606,9 @@ class SIRSimulation {
                 agent.infection_timer++;
                 this.agentViews[i].signal('infection_timer', agent.infection_timer);
                 
-                // 회복 체크
-                if (agent.infection_timer >= 50) {
+                // 동적 회복 시간 사용
+                const recoveryTime = parseInt(document.getElementById('recovery-time').value);
+                if (agent.infection_timer >= recoveryTime) {
                     agent.status = 'R';
                     agent.recovery_timer = 1;
                 }
