@@ -448,18 +448,39 @@
             initCanvas() {
                 const resizeCanvas = () => {
                     const rect = this.canvas.getBoundingClientRect();
-                    const dpr = window.devicePixelRatio || 1;
                     
-                    this.canvas.width = rect.width * dpr;
-                    this.canvas.height = rect.height * dpr;
+                    // DPR 최적화: 2.5 이상일 때만 제한
+                    const dpr = window.devicePixelRatio > 2.5 ? 2.5 : window.devicePixelRatio || 1;
                     
+                    // 비율을 유지하면서 크기 최적화
+                    const aspectRatio = rect.width / rect.height;
+                    const maxDimension = 1600;
+                    let width = rect.width;
+                    let height = rect.height;
+                    
+                    if (width > height) {
+                        if (width > maxDimension) {
+                            width = maxDimension;
+                            height = width / aspectRatio;
+                        }
+                    } else {
+                        if (height > maxDimension) {
+                            height = maxDimension;
+                            width = height * aspectRatio;
+                        }
+                    }
+                    
+                    this.canvas.width = width * dpr;
+                    this.canvas.height = height * dpr;
+                    
+                    // 원래 컨테이너 크기로 CSS 크기 설정하여 레이아웃 유지
                     this.canvas.style.width = rect.width + 'px';
                     this.canvas.style.height = rect.height + 'px';
                     
                     this.ctx.scale(dpr, dpr);
                     
-                    this.width = rect.width;
-                    this.height = rect.height;
+                    this.width = width;
+                    this.height = height;
                     this.centerX = this.width / 2;
                     this.centerY = this.height / 2;
                 };
@@ -641,10 +662,7 @@
                     overlapCount: overlapCount // 중첩 횟수 저장
                 });
                 
-                // 최대 100개 그라디언트 유지
-                if (this.permanentCircles.length > 100) {
-                    this.permanentCircles.shift();
-                }
+                // 그라디언트 무제한 유지 (FIFO 제거 로직 삭제)
             }
             
             // 중첩 횟수 계산 함수 (더 정교한 계산)
@@ -878,9 +896,9 @@
                     gradient.addColorStop(1, circle.complementaryColor);
                     
                     // 중첩 횟수에 따라 투명도 증가 (0.15 기본 + 중첩당 0.15씩 증가)
-                    const baseAlpha = 0.15;
-                    const overlapBonus = circle.overlapCount * 0.15; // 더 강한 중첩 효과
-                    const finalAlpha = Math.min(baseAlpha + overlapBonus, 0.9); // 최대값도 0.9로
+                    const baseAlpha = 0.3;
+                    const overlapBonus = circle.overlapCount * 0.2; // 더 강한 중첩 효과
+                    const finalAlpha = Math.min(baseAlpha + overlapBonus, 3); // 최대값도 0.9로
                     
                     this.ctx.globalAlpha = finalAlpha;
                     this.ctx.fillStyle = gradient;
@@ -904,7 +922,7 @@
                 this.ctx.globalAlpha = 0.2;
                 this.ctx.fillStyle = currentGradient;
                 this.ctx.fillRect(0, 0, this.width, this.height);
-                this.ctx.globalAlpha = 1;
+                this.ctx.globalAlpha = 3;
             }
             
             draw() {
