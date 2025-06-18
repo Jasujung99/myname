@@ -216,13 +216,22 @@
             {"name": "collide_radius", "value": 15},
             {"name": "center_strength", "value": 0.1},
             {"name": "selected_node", "value": null},
-            // 드래그 관련 시그널 (올바른 Vega 방식)
-            {"name": "dragged_node", "value": null},
-            {"name": "drag_x", "value": 0},
-            {"name": "drag_y", "value": 0},
-            {"name": "is_dragging", "value": false},
-            {"name": "drag_start_x", "value": 0},
-            {"name": "drag_start_y", "value": 0}
+            {"name": "drag", "value": null,
+              "on": [
+                {
+                  "events": "@symbol:mousedown",
+                  "update": "{id: datum.id, x: x(), y: y(), fx: datum.x, fy: datum.y}"
+                },
+                {
+                  "events": "[@symbol:mousedown, window:mouseup] > window:mousemove",
+                  "update": "drag && {id: drag.id, x: x(), y: y(), fx: drag.fx + x() - drag.x, fy: drag.fy + y() - drag.y}"
+                },
+                {
+                  "events": "window:mouseup",
+                  "update": "null"
+                }
+              ]
+            }
           ],
           
           "data": [
@@ -303,8 +312,8 @@
                   "stroke": {"value": "#000"}
                 },
                 "update": {
-                  "x": {"field": "x"},
-                  "y": {"field": "y"},
+                  "x": {"signal": "drag && datum.id === drag.id ? drag.fx : datum.x"},
+                  "y": {"signal": "drag && datum.id === drag.id ? drag.fy : datum.y"},
                   "size": {"value": 500},
                   "strokeWidth": {"signal": "datum.id === selected_node ? 6 : 2"},
                   "stroke": {"signal": "datum.id === selected_node ? '#FFD700' : '#000'"},
@@ -316,22 +325,7 @@
                   "stroke": {"value": "#fff"},
                   "strokeWidth": {"value": 4}
                 }
-              },
-              // 올바른 Vega 드래그 이벤트 문법
-              "on": [
-                {
-                  "events": "mousedown",
-                  "update": "[dragged_node = datum.id, drag_start_x = datum.x, drag_start_y = datum.y, drag_x = datum.x, drag_y = datum.y, is_dragging = true]"
-                },
-                {
-                  "events": "[mousedown, window:mouseup] > window:mousemove!",
-                  "update": "[drag_x = event.x, drag_y = event.y]"
-                },
-                {
-                  "events": "window:mouseup",
-                  "update": "[is_dragging = false, dragged_node = null]"
-                }
-              ]
+              }
             }
           ]
         };
