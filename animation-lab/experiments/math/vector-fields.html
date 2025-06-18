@@ -62,7 +62,7 @@
             border-radius: 12px;
             padding: 15px;
             width: 280px;
-            height: 180px;
+            height: 160px;
         }
 
         .control-panel {
@@ -587,7 +587,6 @@
                 this.animationId = null;
                 this.vegaCharts = {
                     fieldStats: null,
-                    vectorField: null,
                     vectorArrows: null
                 };
                 
@@ -798,15 +797,6 @@
                     .then(result => {
                         this.vegaCharts[chartName] = result;
                         console.log(`${chartName} 차트 초기화 완료`);
-                        
-                        // 초기 빈 데이터 설정
-                        if (chartName === 'fieldStats') {
-                            result.view.insert('fieldData', []).run();
-                        } else if (chartName === 'vectorArrows') {
-                            result.view.insert('vectorData', []).run();
-                        }
-                        
-                        // 실제 데이터가 있으면 업데이트
                         if (this.vectorData?.length > 0) {
                             this.updateVegaCharts();
                         }
@@ -886,8 +876,7 @@
                                 "fill": {"value": CONFIG.COLORS.ARROW_HEAD},
                                 "stroke": {"value": CONFIG.COLORS.ARROW_HEAD},
                                 "strokeWidth": {"value": 0.5},
-                                "size": {"value": 25},
-                                "shape": {"value": "triangle-up"}
+                                "size": {"value": 25}
                             },
                             "update": {
                                 "x": {"signal": `datum.x + datum.vx * ${CONFIG.ARROW_SHAFT_LENGTH}`},
@@ -895,7 +884,8 @@
                                 "angle": {"signal": "atan2(datum.vy, datum.vx)"},
                                 "opacity": {"signal": "sqrt(datum.vx * datum.vx + datum.vy * datum.vy) > 0.05 ? 0.8 : 0"}
                             }
-                        }
+                        },
+                        "transform": [{"type": "symbol", "shape": "triangle-up"}]
                     }]
                 };
             }
