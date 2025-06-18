@@ -424,7 +424,6 @@
                     fieldType: 'gradient',
                     strength: 1.0,
                     density: 20,        // 고정값
-                    arrowSize: 1.0,     // 고정값
                     particleCount: 200,
                     flowSpeed: 0.1,
                     isAnimating: true
@@ -675,7 +674,7 @@
                 this.ctx.lineWidth = 1.5;
                 
                 this.vectorData.forEach(data => {
-                    const scale = 15 * this.params.arrowSize;
+                    const scale = 0; // 고정 길이로 변경
                     const dx = data.vx * scale;
                     const dy = data.vy * scale;
                     
