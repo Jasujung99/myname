@@ -721,6 +721,33 @@
                 }
             }
             
+            // 1단계: 안전한 데이터 생성
+            generateSafeFieldData() {
+                if (!this.vectorData || this.vectorData.length === 0) {
+                    console.log('벡터 데이터가 없어서 더미 데이터를 생성합니다.');
+                    return [{value: 0, magnitude: 0}]; // 더미 데이터
+                }
+                
+                const fieldData = [];
+                for (const vector of this.vectorData) {
+                    if (vector && typeof vector.magnitude === 'number' && 
+                        !isNaN(vector.magnitude) && isFinite(vector.magnitude)) {
+                        fieldData.push({
+                            value: vector.magnitude,
+                            magnitude: vector.magnitude
+                        });
+                    }
+                }
+                
+                // 유효한 데이터가 없으면 더미 데이터 반환
+                if (fieldData.length === 0) {
+                    console.log('유효한 벡터 데이터가 없어서 더미 데이터를 생성합니다.');
+                    return [{value: 0, magnitude: 0}];
+                }
+                
+                return fieldData;
+            }
+            
             drawVectorShafts() {
                 this.ctx.strokeStyle = CONFIG.COLORS.ARROW_SHAFT;
                 this.ctx.lineWidth = 1.5;
@@ -780,17 +807,17 @@
                         this.vegaCharts[chartName] = result;
                         console.log(`${chartName} 차트 초기화 완료`);
                         
-                        // 초기 빈 데이터 설정으로 null 에러 방지
+                        // 1단계: 안전한 더미 데이터로 초기화하여 null 에러 방지
                         if (chartName === 'fieldStats') {
-                            result.view.insert('fieldData', []).run();
+                            const dummyData = [{value: 0, magnitude: 0}];
+                            result.view.insert('fieldData', dummyData).run();
+                            console.log('fieldStats 차트에 더미 데이터 삽입 완료');
                         }
                         
-                        // 데이터가 준비되면 강제 업데이트
+                        // 실제 데이터가 준비되면 업데이트
                         setTimeout(() => {
-                            if (this.fieldData?.length > 0) {
-                                this.updateVegaCharts();
-                            }
-                        }, 200);
+                            this.updateVegaCharts();
+                        }, 300);
                     })
                     .catch(error => {
                         console.error(`${chartName} 차트 초기화 실패:`, error);
@@ -798,71 +825,51 @@
             }
             
             createFieldStatsSpec() {
+                // 2단계: 단순화된 Vega-Lite 스펙 (성공한 다른 파일들의 패턴 따름)
                 return {
-                    "$schema": "https://vega-lite.org/v4/schema/",
+                    "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
                     "width": 250,
                     "height": 120,
                     "title": {
                         "text": "벡터 강도 분포",
-                        "fontSize": 14,
-                        "color": "white",
-                        "fontWeight": "bold"
+                        "color": "white"
                     },
-                    "data": {"name": "fieldData", "values": []},
-                    "mark": {
-                        "type": "bar", 
-                        "color": "#3282B8",
-                        "opacity": 0.8,
-                        "cornerRadius": 2
-                    },
+                    "data": {"name": "fieldData"},
+                    "mark": "bar",
                     "encoding": {
                         "x": {
                             "bin": {"maxbins": 8},
-                            "field": "value",
+                            "field": "magnitude",
                             "type": "quantitative",
-                            "title": "벡터 강도",
-                            "axis": {"labelColor": "white", "titleColor": "white", "labelFontSize": 10}
+                            "title": "벡터 강도"
                         },
                         "y": {
                             "aggregate": "count",
                             "type": "quantitative",
-                            "title": "빈도",
-                            "axis": {"labelColor": "white", "titleColor": "white", "labelFontSize": 10}
+                            "title": "빈도"
                         }
                     },
-                    "config": this.getVegaBaseConfig()
-                };
-            }
-            
-            getVegaBaseConfig() {
-                return {
-                    "background": "transparent",
-                    "text": {"color": "white", "fontSize": 10},
-                    "axis": {
-                        "labelColor": "white", 
-                        "titleColor": "white", 
-                        "domainColor": "white",
-                        "gridColor": "rgba(255,255,255,0.1)"
-                    },
-                    "title": {"color": "white", "fontSize": 14}
+                    "config": {
+                        "background": "transparent",
+                        "view": {"stroke": null},
+                        "axis": {
+                            "labelColor": "white",
+                            "titleColor": "white",
+                            "domainColor": "white"
+                        },
+                        "title": {"color": "white"}
+                    }
                 };
             }
             
             updateVegaCharts() {
-                if (!this.vectorData?.length || !this.fieldData?.length) {
-                    console.log('벡터 데이터가 준비되지 않았습니다.');
-                    return;
-                }
+                // 1단계: 안전한 데이터 생성 사용
+                const safeFieldData = this.generateSafeFieldData();
+                
+                console.log('생성된 필드 데이터:', safeFieldData.length, '개 항목');
+                console.log('첫 번째 데이터 샘플:', safeFieldData[0]);
 
-                const cleanVectorData = this.filterValidData(this.vectorData, ['magnitude', 'angle']);
-                const cleanFieldData = this.filterValidData(this.fieldData, ['value']);
-
-                if (!cleanVectorData.length || !cleanFieldData.length) {
-                    console.log('유효한 데이터가 없습니다.');
-                    return;
-                }
-
-                this.updateVegaChart('fieldStats', 'fieldData', cleanFieldData);
+                this.updateVegaChart('fieldStats', 'fieldData', safeFieldData);
                 
                 this.updateFieldInfo();
             }
