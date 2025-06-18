@@ -797,9 +797,20 @@
                     .then(result => {
                         this.vegaCharts[chartName] = result;
                         console.log(`${chartName} 차트 초기화 완료`);
-                        if (this.vectorData?.length > 0) {
-                            this.updateVegaCharts();
+                        
+                        // 초기 빈 데이터 설정으로 null 에러 방지
+                        if (chartName === 'fieldStats') {
+                            result.view.insert('fieldData', []).run();
+                        } else if (chartName === 'vectorArrows') {
+                            result.view.insert('vectorData', []).run();
                         }
+                        
+                        // 데이터가 준비되면 강제 업데이트
+                        setTimeout(() => {
+                            if (this.fieldData?.length > 0 || this.vectorData?.length > 0) {
+                                this.updateVegaCharts();
+                            }
+                        }, 200);
                     })
                     .catch(error => {
                         console.error(`${chartName} 차트 초기화 실패:`, error);
@@ -817,44 +828,28 @@
                         "color": "white",
                         "fontWeight": "bold"
                     },
-                    "data": {"name": "fieldData"},
-                    "layer": [
-                        {
-                            "mark": {
-                                "type": "bar", 
-                                "color": "#3282B8",
-                                "opacity": 0.8,
-                                "cornerRadius": 2
-                            },
-                            "encoding": {
-                                "x": {
-                                    "bin": {"maxbins": 10},
-                                    "field": "value",
-                                    "title": "벡터 강도",
-                                    "axis": {"labelColor": "white", "titleColor": "white", "labelFontSize": 10}
-                                },
-                                "y": {
-                                    "aggregate": "count",
-                                    "title": "빈도",
-                                    "axis": {"labelColor": "white", "titleColor": "white", "labelFontSize": 10}
-                                }
-                            }
+                    "data": {"name": "fieldData", "values": []},
+                    "mark": {
+                        "type": "bar", 
+                        "color": "#3282B8",
+                        "opacity": 0.8,
+                        "cornerRadius": 2
+                    },
+                    "encoding": {
+                        "x": {
+                            "bin": {"maxbins": 8},
+                            "field": "value",
+                            "type": "quantitative",
+                            "title": "벡터 강도",
+                            "axis": {"labelColor": "white", "titleColor": "white", "labelFontSize": 10}
                         },
-                        {
-                            "mark": {
-                                "type": "rule",
-                                "color": "#FF6B6B",
-                                "size": 3,
-                                "strokeDash": [4, 4]
-                            },
-                            "encoding": {
-                                "x": {
-                                    "aggregate": "mean",
-                                    "field": "value"
-                                }
-                            }
+                        "y": {
+                            "aggregate": "count",
+                            "type": "quantitative",
+                            "title": "빈도",
+                            "axis": {"labelColor": "white", "titleColor": "white", "labelFontSize": 10}
                         }
-                    ],
+                    },
                     "config": this.getVegaBaseConfig()
                 };
             }
@@ -876,7 +871,8 @@
                                 "fill": {"value": CONFIG.COLORS.ARROW_HEAD},
                                 "stroke": {"value": CONFIG.COLORS.ARROW_HEAD},
                                 "strokeWidth": {"value": 0.5},
-                                "size": {"value": 25}
+                                "size": {"value": 25},
+                                "shape": {"value": "triangle-up"}
                             },
                             "update": {
                                 "x": {"signal": `datum.x + datum.vx * ${CONFIG.ARROW_SHAFT_LENGTH}`},
@@ -884,8 +880,7 @@
                                 "angle": {"signal": "atan2(datum.vy, datum.vx)"},
                                 "opacity": {"signal": "sqrt(datum.vx * datum.vx + datum.vy * datum.vy) > 0.05 ? 0.8 : 0"}
                             }
-                        },
-                        "transform": [{"type": "symbol", "shape": "triangle-up"}]
+                        }
                     }]
                 };
             }
