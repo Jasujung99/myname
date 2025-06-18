@@ -50,13 +50,13 @@
             pointer-events: none;
             background: rgba(0,0,0,0.8);
             border-radius: 12px;
-            padding: 25px;
+            padding: 20px 25px 40px 25px;
             width: 380px;
-            height: 240px;
+            height: 290px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.3);
             display: flex;
             flex-direction: column;
-            justify-content: center;
+            justify-content: flex-start;
             align-items: center;
         }
 
@@ -746,11 +746,12 @@
                 }
             }
             
-            // 1단계: 안전한 데이터 생성
+            // 개선된 안전한 데이터 생성 (더미 데이터 최소화)
             generateSafeFieldData() {
+                // 벡터 데이터가 없을 때만 더미 데이터 사용 (최초 초기화 시에만)
                 if (!this.vectorData || this.vectorData.length === 0) {
-                    console.log('벡터 데이터가 없어서 더미 데이터를 생성합니다.');
-                    return [{value: 0, magnitude: 0}]; // 더미 데이터
+                    console.log('벡터 데이터가 아직 생성되지 않았습니다.');
+                    return [{value: 0, magnitude: 0}]; // 최초에만 더미 데이터
                 }
                 
                 const fieldData = [];
@@ -758,18 +759,21 @@
                     if (vector && typeof vector.magnitude === 'number' && 
                         !isNaN(vector.magnitude) && isFinite(vector.magnitude)) {
                         fieldData.push({
-                            value: vector.magnitude,
-                            magnitude: vector.magnitude
+                            magnitude: vector.magnitude // 중복 제거, magnitude만 사용
                         });
                     }
                 }
                 
-                // 유효한 데이터가 없으면 더미 데이터 반환
-                if (fieldData.length === 0) {
-                    console.log('유효한 벡터 데이터가 없어서 더미 데이터를 생성합니다.');
-                    return [{value: 0, magnitude: 0}];
+                // 실제 벡터 데이터가 있으면 반드시 사용 (더미 데이터 사용 안함)
+                if (fieldData.length === 0 && this.vectorData.length > 0) {
+                    console.log('벡터 데이터는 있지만 유효하지 않음. 기본값으로 처리');
+                    // 실제 벡터 데이터에서 강제로 추출
+                    return this.vectorData.map(v => ({
+                        magnitude: Math.sqrt((v.vx || 0) * (v.vx || 0) + (v.vy || 0) * (v.vy || 0))
+                    }));
                 }
                 
+                console.log(`실제 필드 데이터 ${fieldData.length}개 생성됨`);
                 return fieldData;
             }
             
@@ -826,7 +830,7 @@
                 this.initFieldStatsChartSafe('#vegaFieldStats', spec);
             }
             
-            // 3단계: 안전한 초기화 순서 보장
+            // 개선된 초기화 - 더미 데이터 의존성 최소화
             async initFieldStatsChartSafe(selector, spec) {
                 try {
                     console.log('fieldStats 차트 초기화 시작...');
@@ -836,15 +840,20 @@
                     
                     console.log('fieldStats 차트 초기화 완료');
                     
-                    // 빈 데이터로 초기화하여 null 에러 방지
-                    this.vegaCharts.fieldStats.data('fieldData', []).run();
-                    console.log('fieldStats 차트에 빈 데이터 초기화 완료');
-                    
-                    // 100ms 후 실제 데이터 업데이트
-                    setTimeout(() => {
-                        console.log('실제 데이터로 업데이트 시도...');
+                    // 즉시 실제 데이터로 업데이트 시도 (더미 데이터 건너뛰기)
+                    if (this.vectorData && this.vectorData.length > 0) {
+                        console.log('실제 벡터 데이터가 이미 준비됨. 즉시 업데이트');
                         this.updateFieldStatsChart();
-                    }, 100);
+                    } else {
+                        // 벡터 데이터가 없을 때만 빈 데이터로 초기화
+                        this.vegaCharts.fieldStats.data('fieldData', []).run();
+                        console.log('벡터 데이터 준비 대기 중...');
+                        
+                        // 50ms 후 재시도 (빠른 반응)
+                        setTimeout(() => {
+                            this.updateFieldStatsChart();
+                        }, 50);
+                    }
                     
                 } catch (error) {
                     console.error('fieldStats 차트 초기화 실패:', error);
@@ -877,6 +886,7 @@
                     "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
                     "width": 330,
                     "height": 160,
+                    "padding": {"left": 10, "top": 10, "right": 10, "bottom": 15},
                     "title": {
                         "text": "벡터 강도 분포",
                         "color": "white",
@@ -891,7 +901,7 @@
                             "bin": {"maxbins": 8},
                             "field": "magnitude",
                             "type": "quantitative",
-                            "title": "벡터 강도",
+                            "title": " ",
                             "axis": {
                                 "labelColor": "white",
                                 "titleColor": "white",
