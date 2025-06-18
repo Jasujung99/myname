@@ -42,16 +42,6 @@
             z-index: 1;
         }
 
-        #vegaVectorArrows {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 2;
-            pointer-events: none;
-        }
-
         #vegaFieldStats {
             position: absolute;
             bottom: 20px;
@@ -299,7 +289,6 @@
     <div class="container">
         <div class="canvas-area">
             <canvas id="mainCanvas"></canvas>
-            <div id="vegaVectorArrows"></div>
             <div id="vegaFieldStats"></div>
         </div>
         
@@ -586,8 +575,7 @@
                 this.time = 0;
                 this.animationId = null;
                 this.vegaCharts = {
-                    fieldStats: null,
-                    vectorArrows: null
+                    fieldStats: null
                 };
                 
                 this.particleSystem = null;
@@ -779,17 +767,11 @@
             
             initVegaCharts() {
                 this.initFieldStatsChart();
-                this.initVectorArrowsChart();
             }
             
             initFieldStatsChart() {
                 const spec = this.createFieldStatsSpec();
                 this.embedVegaChart('#vegaFieldStats', spec, 'fieldStats');
-            }
-            
-            initVectorArrowsChart() {
-                const spec = this.createVectorArrowsSpec();
-                this.embedVegaChart('#vegaVectorArrows', spec, 'vectorArrows');
             }
             
             embedVegaChart(selector, spec, chartName) {
@@ -801,13 +783,11 @@
                         // 초기 빈 데이터 설정으로 null 에러 방지
                         if (chartName === 'fieldStats') {
                             result.view.insert('fieldData', []).run();
-                        } else if (chartName === 'vectorArrows') {
-                            result.view.insert('vectorData', []).run();
                         }
                         
                         // 데이터가 준비되면 강제 업데이트
                         setTimeout(() => {
-                            if (this.fieldData?.length > 0 || this.vectorData?.length > 0) {
+                            if (this.fieldData?.length > 0) {
                                 this.updateVegaCharts();
                             }
                         }, 200);
@@ -854,37 +834,6 @@
                 };
             }
             
-            createVectorArrowsSpec() {
-                return {
-                    "$schema": "https://vega.github.io/schema/vega/v5.json",
-                    "width": {"signal": "containerSize()[0]"},
-                    "height": {"signal": "containerSize()[1]"},
-                    "padding": 0,
-                    "autosize": "none",
-                    "background": "transparent",
-                    "data": [{"name": "vectorData"}],
-                    "marks": [{
-                        "type": "symbol",
-                        "from": {"data": "vectorData"},
-                        "encode": {
-                            "enter": {
-                                "fill": {"value": CONFIG.COLORS.ARROW_HEAD},
-                                "stroke": {"value": CONFIG.COLORS.ARROW_HEAD},
-                                "strokeWidth": {"value": 0.5},
-                                "size": {"value": 25},
-                                "shape": {"value": "triangle-up"}
-                            },
-                            "update": {
-                                "x": {"signal": `datum.x + datum.vx * ${CONFIG.ARROW_SHAFT_LENGTH}`},
-                                "y": {"signal": `datum.y + datum.vy * ${CONFIG.ARROW_SHAFT_LENGTH}`},
-                                "angle": {"signal": "atan2(datum.vy, datum.vx)"},
-                                "opacity": {"signal": "sqrt(datum.vx * datum.vx + datum.vy * datum.vy) > 0.05 ? 0.8 : 0"}
-                            }
-                        }
-                    }]
-                };
-            }
-            
             getVegaBaseConfig() {
                 return {
                     "background": "transparent",
@@ -914,7 +863,6 @@
                 }
 
                 this.updateVegaChart('fieldStats', 'fieldData', cleanFieldData);
-                this.updateVegaChart('vectorArrows', 'vectorData', cleanVectorData);
                 
                 this.updateFieldInfo();
             }
