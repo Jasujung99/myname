@@ -67,7 +67,7 @@
             width: 100%;
             flex: 1;
             min-height: 200px;
-            background: var(--primary-color);
+            background:#000;
             border-radius: 8px;
             border: 1px solid var(--grid-color);
             cursor: crosshair;
@@ -84,11 +84,9 @@
         
         .nav-header {
             display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 25px;
-            padding-bottom: 15px;
-            border-bottom: 1px solid rgba(255,255,255,0.2);
+            flex-direction: column;
+            margin-bottom: 20px;
+            padding-bottom: 5px;
         }
 
         .back-button {
@@ -96,25 +94,23 @@
             border: 1px solid rgba(255,255,255,0.2);
             color: white;
             padding: 8px 16px;
-            border-radius: 6px;
+            border-radius: 20px;
             cursor: pointer;
             font-size: 14px;
             transition: all 0.3s ease;
             text-decoration: none;
-            display: flex;
-            align-items: center;
-            gap: 5px;
         }
 
         .back-button:hover {
             background: rgba(255,255,255,0.2);
-            border-color: rgba(255,255,255,0.3);
+            transform: translateY(-1px);
         }
 
         .control-header h1 {
             font-size: 1.5rem;
             color: var(--accent-color);
             margin-bottom: 5px;
+            margin-top: 0;
         }
         
         .control-header p {
@@ -337,9 +333,10 @@
         
         <div class="controls">
             <div class="nav-header">
-                <a href="../../index.html" class="back-button">
-                    ← 돌아가기
-                </a>
+                <div style="margin-bottom: 15px;">
+                    <a href="../../index.html" class="back-button">← 돌아가기</a>
+                </div>
+                <div style="border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 15px; margin-bottom: 15px;"></div>
                 <div class="control-header">
                     <h1>색채 동역학</h1>
                     <p>색공간을 여행하며 발견하는 색의 무한한 가능성</p>
