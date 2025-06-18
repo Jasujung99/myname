@@ -173,7 +173,7 @@
                     <input type="range" id="social-distance" min="20" max="60" step="5" value="30">
                 </div>
                 <div style="margin-top: 10px;">
-                    <label>회복 속도: <span id="recovery-time-value">50</span></label>
+                    <label>회복 기간: <span id="recovery-time-value">50</span></label>
                     <input type="range" id="recovery-time" min="30" max="100" step="10" value="50">
                 </div>
                 
@@ -381,13 +381,14 @@ class SIRSimulation {
         for (let i = 0; i < this.population; i++) {
             // 초기 위치 (중앙 클러스터, 경계 안에서만)
             const angle = Math.random() * Math.PI * 2;
-            const radius = Math.random() * Math.min(100, Math.min(this.containerWidth, this.containerHeight) / 4);
+            const radius = Math.random() * Math.min(80, Math.min(this.containerWidth, this.containerHeight) / 5);
             let x = this.containerWidth / 2 + radius * Math.cos(angle);
             let y = this.containerHeight / 2 + radius * Math.sin(angle);
             
-            // 경계 안에 위치하도록 보정
-            x = Math.max(60, Math.min(this.containerWidth - 60, x));
-            y = Math.max(60, Math.min(this.containerHeight - 60, y));
+            // 경계 안에 위치하도록 보정 (더 안전한 여백)
+            const margin = 35;
+            x = Math.max(margin, Math.min(this.containerWidth - margin, x));
+            y = Math.max(margin, Math.min(this.containerHeight - margin, y));
             
             // 처음 5명을 감염된 상태로 시작
             const status = i < 5 ? 'I' : 'S';
@@ -517,6 +518,11 @@ class SIRSimulation {
     }
 
     updatePositions() {
+        // 컨테이너 크기 실시간 업데이트
+        const container = document.getElementById('simulation-container');
+        this.containerWidth = container.clientWidth;
+        this.containerHeight = container.clientHeight;
+        
         this.agents.forEach((agent, i) => {
             // 랜덤 이동
             agent.vx += (Math.random() - 0.5) * 0.5;
@@ -533,22 +539,24 @@ class SIRSimulation {
             agent.x += agent.vx;
             agent.y += agent.vy;
             
-            // 경계 처리 (더 안전한 여백)
-            if (agent.x < 60) {
-                agent.x = 60;
-                agent.vx = Math.abs(agent.vx);
+            // 강화된 경계 처리
+            const margin = 35; // 더 안전한 여백
+            
+            if (agent.x < margin) {
+                agent.x = margin;
+                agent.vx = Math.abs(agent.vx) * 0.8; // 반발 시 속도 감소
             }
-            if (agent.x > this.containerWidth - 60) {
-                agent.x = this.containerWidth - 60;
-                agent.vx = -Math.abs(agent.vx);
+            if (agent.x > this.containerWidth - margin) {
+                agent.x = this.containerWidth - margin;
+                agent.vx = -Math.abs(agent.vx) * 0.8;
             }
-            if (agent.y < 60) {
-                agent.y = 60;
-                agent.vy = Math.abs(agent.vy);
+            if (agent.y < margin) {
+                agent.y = margin;
+                agent.vy = Math.abs(agent.vy) * 0.8;
             }
-            if (agent.y > this.containerHeight - 60) {
-                agent.y = this.containerHeight - 60;
-                agent.vy = -Math.abs(agent.vy);
+            if (agent.y > this.containerHeight - margin) {
+                agent.y = this.containerHeight - margin;
+                agent.vy = -Math.abs(agent.vy) * 0.8;
             }
             
             // HTML 요소 위치 업데이트
