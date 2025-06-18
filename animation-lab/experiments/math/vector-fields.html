@@ -42,6 +42,16 @@
             z-index: 1;
         }
 
+        #vegaVectorArrows {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 2;
+            pointer-events: none;
+        }
+
         #vegaVectorField {
             position: absolute;
             top: 20px;
@@ -302,6 +312,7 @@
     <div class="container">
         <div class="canvas-area">
             <canvas id="mainCanvas"></canvas>
+            <div id="vegaVectorArrows"></div>
             <div id="vegaVectorField"></div>
             <div id="vegaFieldStats"></div>
         </div>
@@ -444,6 +455,7 @@
                 this.animationId = null;
                 this.vegaFieldStats = null;
                 this.vegaVectorField = null;
+                this.vegaVectorArrows = null;
                 
                 this.initCanvas();
                 this.setupControls();
@@ -911,6 +923,70 @@
                     .catch(error => {
                         console.error('Vector field 차트 초기화 실패:', error);
                     });
+
+                // 벡터 화살표 차트 (메인 시각화)
+                const arrowsSpec = {
+                    "$schema": "https://vega.github.io/schema/vega/v5.json",
+                    "width": {"signal": "containerSize()[0]"},
+                    "height": {"signal": "containerSize()[1]"},
+                    "padding": 0,
+                    "autosize": "none",
+                    "background": "transparent",
+                    "data": [
+                        {"name": "vectorData"}
+                    ],
+                    "marks": [
+                        {
+                            "type": "rule",
+                            "from": {"data": "vectorData"},
+                            "encode": {
+                                "enter": {
+                                    "stroke": {"value": "rgba(50, 130, 184, 0.7)"},
+                                    "strokeWidth": {"value": 1.5}
+                                },
+                                "update": {
+                                    "x": {"field": "x"},
+                                    "y": {"field": "y"},
+                                    "x2": {"signal": "datum.x + datum.vx * 15"},
+                                    "y2": {"signal": "datum.y + datum.vy * 15"},
+                                    "opacity": {"signal": "sqrt(datum.vx * datum.vx + datum.vy * datum.vy) > 0.05 ? 0.7 : 0"}
+                                }
+                            }
+                        },
+                        {
+                            "type": "symbol",
+                            "from": {"data": "vectorData"},
+                            "encode": {
+                                "enter": {
+                                    "fill": {"value": "rgba(50, 130, 184, 0.8)"},
+                                    "size": {"value": 20}
+                                },
+                                "update": {
+                                    "x": {"signal": "datum.x + datum.vx * 15"},
+                                    "y": {"signal": "datum.y + datum.vy * 15"},
+                                    "angle": {"signal": "atan2(datum.vy, datum.vx)"},
+                                    "opacity": {"signal": "sqrt(datum.vx * datum.vx + datum.vy * datum.vy) > 0.05 ? 0.8 : 0"}
+                                }
+                            },
+                            "transform": [
+                                {"type": "symbol", "shape": "triangle-up"}
+                            ]
+                        }
+                    ]
+                };
+
+                vegaEmbed('#vegaVectorArrows', arrowsSpec, {actions: false})
+                    .then(result => {
+                        this.vegaVectorArrows = result;
+                        console.log('Vector arrows 차트 초기화 완료');
+                        // 초기 데이터가 있으면 업데이트
+                        if (this.vectorData && this.vectorData.length > 0) {
+                            this.updateVegaCharts();
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Vector arrows 차트 초기화 실패:', error);
+                    });
             }
             
             updateVegaCharts() {
@@ -956,6 +1032,17 @@
                             .run();
                     } catch (error) {
                         console.warn('Vector field 차트 업데이트 실패:', error);
+                    }
+                }
+
+                if (this.vegaVectorArrows) {
+                    try {
+                        this.vegaVectorArrows.view
+                            .remove('vectorData', () => true)
+                            .insert('vectorData', cleanVectorData)
+                            .run();
+                    } catch (error) {
+                        console.warn('Vector arrows 차트 업데이트 실패:', error);
                     }
                 }
                 
@@ -1008,10 +1095,10 @@
                 
                 this.ctx.clearRect(0, 0, this.width, this.height);
                 
-                // 벡터장 그리기
-                this.drawVectorField();
+                // 벡터장 그리기는 이제 Vega가 담당
+                // this.drawVectorField(); // 비활성화
                 
-                // 입자 업데이트 및 그리기
+                // 입자 업데이트 및 그리기 (Canvas로 유지)
                 this.updateParticles();
                 this.drawParticles();
                 
