@@ -170,20 +170,20 @@
             <div class="card">
                 <h2 class="card-title">조작부</h2>
                 <div class="control-row">
-                    <label for="nbody">밀어내는 힘 <span id="nbody-value">-30</span></label>
-                    <input type="range" id="nbody" min="-100" max="10" step="1" value="-30">
+                    <label for="nbody">밀어내는 힘 <span id="nbody-value">-50</span></label>
+                    <input type="range" id="nbody" min="-200" max="0" step="5" value="-50">
                 </div>
                  <div class="control-row">
-                    <label for="link-dist">연결선 길이 <span id="link-dist-value">40</span></label>
-                    <input type="range" id="link-dist" min="5" max="150" step="1" value="40">
+                    <label for="link-dist">연결선 길이 <span id="link-dist-value">60</span></label>
+                    <input type="range" id="link-dist" min="10" max="200" step="5" value="60">
                 </div>
                 <div class="control-row">
-                    <label for="collide">충돌 반경 <span id="collide-value">12</span></label>
-                    <input type="range" id="collide" min="1" max="30" step="1" value="12">
+                    <label for="collide">충돌 반경 <span id="collide-value">20</span></label>
+                    <input type="range" id="collide" min="5" max="80" step="2" value="20">
                 </div>
                  <div class="control-row">
-                    <label for="center-force">중심 인력 <span id="center-force-value">0.05</span></label>
-                    <input type="range" id="center-force" min="0" max="0.2" step="0.01" value="0.05">
+                    <label for="center-force">중심 인력 <span id="center-force-value">0.3</span></label>
+                    <input type="range" id="center-force" min="0" max="2.0" step="0.05" value="0.3">
                 </div>
             </div>
             <div class="learning-points card">
@@ -208,20 +208,35 @@
           "autosize": {"type": "fit", "contains": "padding"},
           
           "signals": [
-            {"name": "nbody_strength", "value": -30},
-            {"name": "link_distance", "value": 40},
-            {"name": "collide_radius", "value": 12},
-            {"name": "center_strength", "value": 0.05}
+            {"name": "nbody_strength", "value": -50},
+            {"name": "link_distance", "value": 60},
+            {"name": "collide_radius", "value": 20},
+            {"name": "center_strength", "value": 0.3},
+            {"name": "dragged_node", "value": null},
+            {"name": "cursor_style", "value": "grab"}
           ],
           
           "data": [
             {
               "name": "link-data",
               "values": [
+                // 기본 삼각형 그룹들
                 {"source": "A", "target": "B"}, {"source": "B", "target": "C"}, {"source": "C", "target": "A"},
                 {"source": "D", "target": "E"}, {"source": "E", "target": "F"}, {"source": "F", "target": "D"},
                 {"source": "G", "target": "H"}, {"source": "H", "target": "I"}, {"source": "I", "target": "G"},
-                {"source": "A", "target": "D"}, {"source": "D", "target": "G"}, {"source": "A", "target": "G"}
+                {"source": "J", "target": "K"}, {"source": "K", "target": "L"}, {"source": "L", "target": "J"},
+                {"source": "M", "target": "N"}, {"source": "N", "target": "O"}, {"source": "O", "target": "M"},
+                // 그룹 간 연결
+                {"source": "A", "target": "D"}, {"source": "D", "target": "G"}, {"source": "G", "target": "J"},
+                {"source": "J", "target": "M"}, {"source": "M", "target": "A"},
+                // 추가 복잡한 연결
+                {"source": "B", "target": "E"}, {"source": "E", "target": "H"}, {"source": "H", "target": "K"},
+                {"source": "K", "target": "N"}, {"source": "N", "target": "B"},
+                {"source": "C", "target": "F"}, {"source": "F", "target": "I"}, {"source": "I", "target": "L"},
+                {"source": "L", "target": "O"}, {"source": "O", "target": "C"},
+                // 중심 연결
+                {"source": "A", "target": "G"}, {"source": "C", "target": "I"}, {"source": "E", "target": "K"},
+                {"source": "G", "target": "M"}, {"source": "I", "target": "O"}
               ]
             },
             {
@@ -229,7 +244,13 @@
               "values": [
                 {"id": "A", "group": 1}, {"id": "B", "group": 1}, {"id": "C", "group": 1},
                 {"id": "D", "group": 2}, {"id": "E", "group": 2}, {"id": "F", "group": 2},
-                {"id": "G", "group": 3}, {"id": "H", "group": 3}, {"id": "I", "group": 3}
+                {"id": "G", "group": 3}, {"id": "H", "group": 3}, {"id": "I", "group": 3},
+                {"id": "J", "group": 4}, {"id": "K", "group": 4}, {"id": "L", "group": 4},
+                {"id": "M", "group": 5}, {"id": "N", "group": 5}, {"id": "O", "group": 5}
+              ],
+              "on": [
+                {"trigger": "dragged_node", "modify": "dragged_node", 
+                 "values": "dragged_node ? {fx: x(), fy: y()} : {fx: null, fy: null}"}
               ],
               "transform": [
                 {
@@ -260,6 +281,7 @@
                 "update": {
                   "stroke": {"value": "#666"},
                   "strokeWidth": {"value": 2},
+                  "opacity": {"value": 0.6},
                   "x": {"signal": "datum.source.x || 300"},
                   "y": {"signal": "datum.source.y || 250"},
                   "x2": {"signal": "datum.target.x || 300"},
@@ -270,6 +292,10 @@
             {
               "type": "symbol",
               "from": {"data": "nodes"},
+              "on": [
+                {"events": "mousedown", "update": "dragged_node", "force": true},
+                {"events": "window:mouseup", "update": "dragged_node", "force": false}
+              ],
               "encode": {
                 "enter": {
                   "fill": {"scale": "color", "field": "group"},
@@ -278,15 +304,15 @@
                 "update": {
                   "x": {"field": "x"},
                   "y": {"field": "y"},
-                  "size": {"value": 300},
+                  "size": {"value": 500},
                   "strokeWidth": {"value": 2},
-                  "cursor": {"value": "pointer"},
+                  "cursor": {"signal": "dragged_node ? 'grabbing' : 'grab'"},
                   "tooltip": {"signal": "'Node: ' + datum.id + ', Group: ' + datum.group"}
                 },
                 "hover": {
-                  "size": {"value": 400},
+                  "size": {"value": 700},
                   "stroke": {"value": "#fff"},
-                  "strokeWidth": {"value": 3}
+                  "strokeWidth": {"value": 4}
                 }
               }
             }
