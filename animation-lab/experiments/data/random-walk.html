@@ -193,7 +193,7 @@
                         <option value="wrap">순환 (Wrap)</option>
                         <option value="bounce">반사 (Bounce)</option>
                         <option value="none">무제한 (None)</option>
-                        <option value="split">분할 (Split)</option>
+                        <option value="teleport">분산 (Teleport)</option>
                     </select>
                 </div>
                 <div class="button-group">
@@ -272,8 +272,8 @@
                 { "type": "formula", "as": "next_x", "expr": "datum.x + datum.dx + datum.pull_x" },
                 { "type": "formula", "as": "next_y", "expr": "datum.y + datum.dy + datum.pull_y" },
                 { "type": "formula", "as": "hit_boundary", "expr": "datum.next_x < 0 || datum.next_x > width || datum.next_y < 0 || datum.next_y > height" },
-                { "type": "formula", "as": "x", "expr": "is_running ? (boundary_rule === 'wrap' ? (datum.next_x + width) % width : boundary_rule === 'bounce' ? (datum.hit_boundary ? datum.x - datum.dx : datum.next_x) : boundary_rule === 'split' ? (datum.hit_boundary ? width/2 + random() * 100 - 50 : datum.next_x) : datum.next_x) : datum.x" },
-                { "type": "formula", "as": "y", "expr": "is_running ? (boundary_rule === 'wrap' ? (datum.next_y + height) % height : boundary_rule === 'bounce' ? (datum.hit_boundary ? datum.y - datum.dy : datum.next_y) : boundary_rule === 'split' ? (datum.hit_boundary ? height/2 + random() * 100 - 50 : datum.next_y) : datum.next_y) : datum.y" }
+                { "type": "formula", "as": "x", "expr": "is_running ? (boundary_rule === 'wrap' ? (datum.next_x + width) % width : boundary_rule === 'bounce' ? (datum.hit_boundary ? datum.x - datum.dx : datum.next_x) : boundary_rule === 'teleport' ? (datum.hit_boundary ? width/2 + random() * 100 - 50 : datum.next_x) : datum.next_x) : datum.x" },
+                { "type": "formula", "as": "y", "expr": "is_running ? (boundary_rule === 'wrap' ? (datum.next_y + height) % height : boundary_rule === 'bounce' ? (datum.hit_boundary ? datum.y - datum.dy : datum.next_y) : boundary_rule === 'teleport' ? (datum.hit_boundary ? height/2 + random() * 100 - 50 : datum.next_y) : datum.next_y) : datum.y" }
               ]
             }
           ],
@@ -366,7 +366,7 @@
                     const randomStepSize = Math.random() * 8 + 0.5; // 0.5-8.5
                     const randomOpacity = Math.random() * 0.8 + 0.2; // 0.2-1.0
                     const randomGravity = Math.random() * 0.06 - 0.03; // -0.03 to 0.03
-                    const boundaries = ['wrap', 'bounce', 'none', 'split'];
+                    const boundaries = ['wrap', 'bounce', 'none', 'teleport'];
                     const randomBoundary = boundaries[Math.floor(Math.random() * boundaries.length)];
                     
                     console.log('Selected boundary:', randomBoundary);
