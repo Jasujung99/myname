@@ -798,30 +798,52 @@
             
             initFieldStatsChart() {
                 const spec = this.createFieldStatsSpec();
-                this.embedVegaChart('#vegaFieldStats', spec, 'fieldStats');
+                this.initFieldStatsChartSafe('#vegaFieldStats', spec);
             }
             
-            embedVegaChart(selector, spec, chartName) {
-                vegaEmbed(selector, spec, { actions: false })
-                    .then(result => {
-                        this.vegaCharts[chartName] = result;
-                        console.log(`${chartName} 차트 초기화 완료`);
-                        
-                        // 1단계: 안전한 더미 데이터로 초기화하여 null 에러 방지
-                        if (chartName === 'fieldStats') {
-                            const dummyData = [{value: 0, magnitude: 0}];
-                            result.view.insert('fieldData', dummyData).run();
-                            console.log('fieldStats 차트에 더미 데이터 삽입 완료');
-                        }
-                        
-                        // 실제 데이터가 준비되면 업데이트
-                        setTimeout(() => {
-                            this.updateVegaCharts();
-                        }, 300);
-                    })
-                    .catch(error => {
-                        console.error(`${chartName} 차트 초기화 실패:`, error);
-                    });
+            // 3단계: 안전한 초기화 순서 보장
+            async initFieldStatsChartSafe(selector, spec) {
+                try {
+                    console.log('fieldStats 차트 초기화 시작...');
+                    
+                    const result = await vegaEmbed(selector, spec, {actions: false});
+                    this.vegaCharts.fieldStats = result.view;
+                    
+                    console.log('fieldStats 차트 초기화 완료');
+                    
+                    // 빈 데이터로 초기화하여 null 에러 방지
+                    this.vegaCharts.fieldStats.data('fieldData', []).run();
+                    console.log('fieldStats 차트에 빈 데이터 초기화 완료');
+                    
+                    // 100ms 후 실제 데이터 업데이트
+                    setTimeout(() => {
+                        console.log('실제 데이터로 업데이트 시도...');
+                        this.updateFieldStatsChart();
+                    }, 100);
+                    
+                } catch (error) {
+                    console.error('fieldStats 차트 초기화 실패:', error);
+                }
+            }
+            
+            // 3단계: 필드 스탯 차트만을 위한 안전한 업데이트
+            updateFieldStatsChart() {
+                if (!this.vegaCharts.fieldStats) {
+                    console.log('fieldStats 차트가 아직 초기화되지 않았습니다.');
+                    return;
+                }
+                
+                const safeData = this.generateSafeFieldData();
+                console.log('fieldStats 차트 업데이트:', safeData.length, '개 데이터 포인트');
+                
+                try {
+                    this.vegaCharts.fieldStats
+                        .data('fieldData', safeData)
+                        .run();
+                    console.log('fieldStats 차트 업데이트 성공');
+                } catch (error) {
+                    console.error('fieldStats 차트 업데이트 실패:', error);
+                }
             }
             
             createFieldStatsSpec() {
@@ -863,36 +885,9 @@
             }
             
             updateVegaCharts() {
-                // 1단계: 안전한 데이터 생성 사용
-                const safeFieldData = this.generateSafeFieldData();
-                
-                console.log('생성된 필드 데이터:', safeFieldData.length, '개 항목');
-                console.log('첫 번째 데이터 샘플:', safeFieldData[0]);
-
-                this.updateVegaChart('fieldStats', 'fieldData', safeFieldData);
-                
+                // 3단계: 안전한 초기화 순서 보장 - 새로운 업데이트 방식 사용
+                this.updateFieldStatsChart();
                 this.updateFieldInfo();
-            }
-            
-            filterValidData(data, fields) {
-                return data.filter(d => {
-                    if (!d) return false;
-                    return fields.every(field => !isNaN(d[field]) && isFinite(d[field]));
-                });
-            }
-            
-            updateVegaChart(chartName, dataName, data) {
-                const chart = this.vegaCharts[chartName];
-                if (!chart) return;
-                
-                try {
-                    chart.view
-                        .remove(dataName, () => true)
-                        .insert(dataName, data)
-                        .run();
-                } catch (error) {
-                    console.warn(`${chartName} 차트 업데이트 실패:`, error);
-                }
             }
             
             updateFieldInfo() {
