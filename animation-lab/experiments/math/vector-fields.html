@@ -941,7 +941,7 @@
                             "from": {"data": "vectorData"},
                             "encode": {
                                 "enter": {
-                                    "stroke": {"value": "rgba(50, 130, 184, 0.8)"},
+                                    "stroke": {"value": "rgba(50, 130, 184, 0.5)"},
                                     "strokeWidth": {"value": 1.5}
                                 },
                                 "update": {
@@ -949,7 +949,7 @@
                                     "y": {"field": "y"},
                                     "x2": {"signal": "datum.x + datum.vx * 15"},
                                     "y2": {"signal": "datum.y + datum.vy * 15"},
-                                    "opacity": {"signal": "sqrt(datum.vx * datum.vx + datum.vy * datum.vy) > 0.05 ? 0.8 : 0"}
+                                    "opacity": {"signal": "sqrt(datum.vx * datum.vx + datum.vy * datum.vy) > 0.05 ? 0.5 : 0"}
                                 }
                             }
                         },
