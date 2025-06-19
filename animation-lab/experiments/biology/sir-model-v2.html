@@ -421,9 +421,9 @@
 const CONFIG = {
     // 에이전트 관련
     agent: {
-        size: 50,                    // 에이전트 크기 (px)
-        radius: 25,                  // 에이전트 반경 (px)
-        initialVelocity: 2,          // 초기 속도 범위
+        size: 40,                    // 에이전트 크기 (px) - 50에서 40으로 축소
+        radius: 20,                  // 에이전트 반경 (px) - 25에서 20으로 축소
+        initialVelocity: 1.5,        // 초기 속도 범위 - 2에서 1.5로 축소
         colors: {
             susceptible: "#0ea5e9",  // 감수성자 색상
             infected: "#ef4444",     // 감염자 색상
@@ -442,8 +442,8 @@ const CONFIG = {
     physics: {
         borderMargin: 30,            // 화면 경계 여백 (px)
         bounceDamping: 0.9,          // 충돌시 속도 감쇠 계수
-        velocityJitter: 0.3,         // 속도 변동 정도
-        cardAvoidForce: 0.5          // 카드 회피 힘
+        velocityJitter: 0.2,         // 속도 변동 정도 - 0.3에서 0.2로 축소
+        cardAvoidForce: 0.3          // 카드 회피 힘 - 0.5에서 0.3으로 축소
     },
 
     // UI 관련
@@ -455,10 +455,10 @@ const CONFIG = {
 
     // 가상 경계 마진(에이전트 활동 영역 오프셋)
     virtualMargin: {
-        left: 100,
-        top: 100,
-        right: 100,
-        bottom: 100
+        left: 250,
+        top: 200,
+        right: 250,
+        bottom: 200
     }
 };
 
@@ -553,7 +553,7 @@ class PhysicsSystem {
      * @param {Object} agent - 에이전트 객체
      */
     handleBoundaryCollision(agent) {
-        const { borderMargin, bounceDamping } = this.config.physics;
+        const { bounceDamping } = this.config.physics;
         const { size } = this.config.agent;
         const containerWidth = this.sim.containerWidth;
         const containerHeight = this.sim.containerHeight;
@@ -753,10 +753,31 @@ class SIRSimulationV2 {
     }
     
     async init() {
+        // 디버깅: 컨테이너 크기 확인
+        this.debugContainerSize();
         this.setupEventListeners();
         await this.createAgents();
         this.updateStats();
         this.setupCardToggles();
+    }
+    
+    // 컨테이너 크기 디버깅 메서드
+    debugContainerSize() {
+        const container = document.getElementById('simulation-area');
+        const rect = container.getBoundingClientRect();
+        const margin = this.config.virtualMargin;
+        
+        console.log('=== 컨테이너 크기 디버깅 ===');
+        console.log('실제 컨테이너 크기:', rect.width, 'x', rect.height);
+        console.log('내부 containerWidth/Height:', this.containerWidth, 'x', this.containerHeight);
+        console.log('가상 마진:', margin);
+        console.log('가상 캔버스 크기:', 
+            this.containerWidth - margin.left - margin.right, 'x',
+            this.containerHeight - margin.top - margin.bottom);
+        console.log('에이전트 생성 가능 영역:', 
+            (this.containerWidth - CONFIG.agent.size - margin.left - margin.right), 'x',
+            (this.containerHeight - CONFIG.agent.size - margin.top - margin.bottom));
+        console.log('========================');
     }
     
     async createAgents() {
@@ -800,27 +821,29 @@ class SIRSimulationV2 {
             // 왼쪽 상단 (컨트롤 카드)과 오른쪽 상단(통계 카드) 영역 피하기
             const { controlCardWidth, statsCardWidth, cardHeight } = this.config.ui;
             
-            if (y < cardHeight) {
-                if (x < controlCardWidth) {
+            if (y < cardHeight + margin.top) {
+                if (x < controlCardWidth + margin.left) {
                     // 왼쪽 상단 영역이면 아래로 이동
-                    y += cardHeight;
-                } else if (x > this.containerWidth - statsCardWidth) {
+                    y = Math.max(y + cardHeight, margin.top);
+                } else if (x > this.containerWidth - statsCardWidth - margin.right) {
                     // 오른쪽 상단 영역이면 아래로 이동
-                    y += cardHeight;
+                    y = Math.max(y + cardHeight, margin.top);
                 }
             }
             
-            // 경계 체크
-            x = Math.max(0, Math.min(this.containerWidth - AGENT_SIZE, x));
-            y = Math.max(0, Math.min(this.containerHeight - AGENT_SIZE, y));
+            // 가상 마진 기반 경계 체크 (최종 안전장치)
+            const maxX = this.containerWidth - AGENT_SIZE - margin.right;
+            const maxY = this.containerHeight - AGENT_SIZE - margin.bottom;
+            x = Math.max(margin.left, Math.min(maxX, x));
+            y = Math.max(margin.top, Math.min(maxY, y));
             
             // 에이전트 데이터
             const agent = {
                 id: i,
                 x: x,
                 y: y,
-                vx: (Math.random() - 0.5) * 2,
-                vy: (Math.random() - 0.5) * 2,
+                vx: (Math.random() - 0.5) * this.config.agent.initialVelocity,
+                vy: (Math.random() - 0.5) * this.config.agent.initialVelocity,
                 status: status,
                 infection_timer: status === 'I' ? 1 : 0,
                 recovery_timer: 0
