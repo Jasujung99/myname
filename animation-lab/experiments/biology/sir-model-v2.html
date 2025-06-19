@@ -451,6 +451,14 @@ const CONFIG = {
         cardHeight: 400,             // 카드 높이 추정값 (px)
         controlCardWidth: 320,       // 컨트롤 카드 너비 (px)
         statsCardWidth: 280          // 통계 카드 너비 (px)
+    },
+
+    // 가상 경계 마진(에이전트 활동 영역 오프셋)
+    virtualMargin: {
+        left: 30,
+        top: 30,
+        right: 30,
+        bottom: 30
     }
 };
 
@@ -549,28 +557,37 @@ class PhysicsSystem {
         const { size } = this.config.agent;
         const containerWidth = this.sim.containerWidth;
         const containerHeight = this.sim.containerHeight;
-        
+        const margin = this.config.virtualMargin;
+        // 가상 경계 계산
+        const minX = margin.left;
+        const minY = margin.top;
+        const maxX = containerWidth - size - margin.right;
+        const maxY = containerHeight - size - margin.bottom;
         // 좌우 경계 충돌 검사 및 처리
-        if (agent.x < borderMargin) {
-            agent.x = borderMargin;
+        if (agent.x < minX) {
+            agent.x = minX;
             agent.vx = Math.abs(agent.vx) * bounceDamping;
-        } else if (agent.x > containerWidth - size - borderMargin) {
-            agent.x = containerWidth - size - borderMargin;
+        } else if (agent.x > maxX) {
+            agent.x = maxX;
             agent.vx = -Math.abs(agent.vx) * bounceDamping;
         }
-        
         // 상하 경계 충돌 검사 및 처리
-        if (agent.y < borderMargin) {
-            agent.y = borderMargin;
+        if (agent.y < minY) {
+            agent.y = minY;
             agent.vy = Math.abs(agent.vy) * bounceDamping;
-        } else if (agent.y > containerHeight - size - borderMargin) {
-            agent.y = containerHeight - size - borderMargin;
+        } else if (agent.y > maxY) {
+            agent.y = maxY;
             agent.vy = -Math.abs(agent.vy) * bounceDamping;
         }
-        
-        // 안전망: 화면 밖으로 나가지 않도록 최종 위치 제한
-        agent.x = Math.max(0, Math.min(containerWidth - size, agent.x));
-        agent.y = Math.max(0, Math.min(containerHeight - size, agent.y));
+        // 최종 안전장치: 절대로 경계를 벗어날 수 없도록 보장
+        agent.x = Math.max(minX, Math.min(maxX, agent.x));
+        agent.y = Math.max(minY, Math.min(maxY, agent.y));
+        // 시각 요소 위치 강제 업데이트
+        const element = document.getElementById(`agent-${agent.id}`);
+        if (element) {
+            element.style.left = agent.x + 'px';
+            element.style.top = agent.y + 'px';
+        }
     }
     
     /**
@@ -775,12 +792,10 @@ class SIRSimulationV2 {
         for (let i = 0; i < population; i++) {
             let x, y;
             const status = statuses[i];
-            
-            // 모든 에이전트를 화면 전체에 균등하게 분포
-            const margin = this.config.physics.borderMargin;
-            x = margin + Math.random() * (this.containerWidth - AGENT_SIZE - 2 * margin);
-            y = margin + Math.random() * (this.containerHeight - AGENT_SIZE - 2 * margin);
-            
+            // 가상 마진 적용
+            const margin = this.config.virtualMargin;
+            x = margin.left + Math.random() * (this.containerWidth - AGENT_SIZE - margin.left - margin.right);
+            y = margin.top + Math.random() * (this.containerHeight - AGENT_SIZE - margin.top - margin.bottom);
             // UI 영역을 피하기 위한 추가 로직
             // 왼쪽 상단 (컨트롤 카드)과 오른쪽 상단(통계 카드) 영역 피하기
             const { controlCardWidth, statsCardWidth, cardHeight } = this.config.ui;
@@ -1156,6 +1171,21 @@ window.addEventListener('load', () => {
     if (typeof vega !== 'undefined' && typeof vegaEmbed !== 'undefined') {
         new SIRSimulationV2();
         makeDraggable(); // 드래그 기능 활성화
+        // 디버그용 경계선 추가
+        const simArea = document.getElementById('simulation-area');
+        if (simArea) {
+            const border = document.createElement('div');
+            border.style.position = 'absolute';
+            border.style.left = '0';
+            border.style.top = '0';
+            border.style.width = '100%';
+            border.style.height = '100%';
+            border.style.border = '2px dashed #ff4444';
+            border.style.boxSizing = 'border-box';
+            border.style.pointerEvents = 'none';
+            border.style.zIndex = '10000';
+            simArea.appendChild(border);
+        }
     } else {
         console.error('Vega 라이브러리 로딩 실패');
         document.body.innerHTML = '<h3 style="color:red; text-align:center; padding-top: 50px;">Vega 라이브러리를 로드할 수 없습니다. 페이지를 새로고침해주세요.</h3>';
