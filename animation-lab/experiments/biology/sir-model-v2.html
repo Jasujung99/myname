@@ -421,9 +421,9 @@
 const CONFIG = {
     // 에이전트 관련
     agent: {
-        size: 40,                    // 에이전트 크기 (px) - 50에서 40으로 축소
-        radius: 20,                  // 에이전트 반경 (px) - 25에서 20으로 축소
-        initialVelocity: 1.5,        // 초기 속도 범위 - 2에서 1.5로 축소
+        size: 25,                    // 에이전트 크기 (px) - 40에서 25로 대폭 축소
+        radius: 12,                  // 에이전트 반경 (px) - 20에서 12로 대폭 축소
+        initialVelocity: 1.0,        // 초기 속도 범위 - 1.5에서 1.0으로 축소
         colors: {
             susceptible: "#0ea5e9",  // 감수성자 색상
             infected: "#ef4444",     // 감염자 색상
@@ -440,10 +440,10 @@ const CONFIG = {
 
     // 물리 시스템 관련
     physics: {
-        borderMargin: 30,            // 화면 경계 여백 (px)
-        bounceDamping: 0.9,          // 충돌시 속도 감쇠 계수
-        velocityJitter: 0.2,         // 속도 변동 정도 - 0.3에서 0.2로 축소
-        cardAvoidForce: 0.3          // 카드 회피 힘 - 0.5에서 0.3으로 축소
+        borderMargin: 15,            // 화면 경계 여백 (px) - 30에서 15로 축소
+        bounceDamping: 0.8,          // 충돌시 속도 감쇠 계수 - 0.9에서 0.8로 축소
+        velocityJitter: 0.1,         // 속도 변동 정도 - 0.2에서 0.1로 과감하게 축소
+        cardAvoidForce: 0.1          // 카드 회피 힘 - 0.3에서 0.1로 과감하게 축소
     },
 
     // UI 관련
@@ -457,7 +457,7 @@ const CONFIG = {
     virtualMargin: {
         left: 250,
         top: 200,
-        right: 850,    // 250 → 850으로 대폭 증가 (가로 영역 축소)
+        right: 1150,   // 850 → 1150으로 추가 300px 증가 (가로 영역 더 축소)
         bottom: 200
     }
 };
@@ -670,7 +670,7 @@ function createAgentSpec(agentId, initialStatus) {
                 "name": "size_scale",
                 "type": "ordinal",
                 "domain": ["S", "I", "R"],
-                "range": [400, 500, 350]
+                "range": [200, 250, 180]  // 에이전트 크기 축소에 맞춰 사이즈 축소 (400,500,350 → 200,250,180)
             }
         ],
 
