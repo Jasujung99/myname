@@ -523,8 +523,6 @@ class SIRSimulationV2 {
         this.containerWidth = window.innerWidth;
         this.containerHeight = window.innerHeight;
         
-        this.centerForce = 0.0001; // 중앙 인력 (약함)
-        
         this.init();
     }
     
@@ -549,23 +547,45 @@ class SIRSimulationV2 {
         const centerX = this.containerWidth / 2;
         const centerY = this.containerHeight / 2;
         
+        // 감염자 비율 설정 (10%)
+        const infectionRatio = 0.1;
+        const initialInfectedCount = Math.max(1, Math.round(population * infectionRatio));
+        
+        // 모든 에이전트의 상태를 미리 결정 (무작위로 섞기 위해)
+        const statuses = [];
         for (let i = 0; i < population; i++) {
-            let x, y, status;
+            statuses.push(i < initialInfectedCount ? 'I' : 'S');
+        }
+        
+        // Fisher-Yates 알고리즘으로 상태 배열 섞기
+        for (let i = statuses.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [statuses[i], statuses[j]] = [statuses[j], statuses[i]];
+        }
+        
+        for (let i = 0; i < population; i++) {
+            let x, y;
+            const status = statuses[i];
             
-            if (i < 5) {
-                // 처음 5명은 감염자로 중앙에 배치
-                const angle = (i / 5) * Math.PI * 2;
-                const radius = 50 + Math.random() * 30;
-                x = centerX + radius * Math.cos(angle) - AGENT_RADIUS;
-                y = centerY + radius * Math.sin(angle) - AGENT_RADIUS;
-                status = 'I';
-            } else {
-                // 나머지는 감수성자로 주변에 배치
-                const angle = Math.random() * Math.PI * 2;
-                const radius = 150 + Math.random() * Math.min(centerX, centerY) * 0.5;
-                x = centerX + radius * Math.cos(angle) - AGENT_RADIUS;
-                y = centerY + radius * Math.sin(angle) - AGENT_RADIUS;
-                status = 'S';
+            // 모든 에이전트를 화면 전체에 균등하게 분포
+            const margin = 50; // 화면 가장자리 여백
+            x = margin + Math.random() * (this.containerWidth - 2 * margin);
+            y = margin + Math.random() * (this.containerHeight - 2 * margin);
+            
+            // UI 영역을 피하기 위한 추가 로직
+            // 왼쪽 상단 (컨트롤 카드)과 오른쪽 상단(통계 카드) 영역 피하기
+            const controlCardWidth = 320;
+            const statsCardWidth = 280;
+            const cardHeight = 400;
+            
+            if (y < cardHeight) {
+                if (x < controlCardWidth) {
+                    // 왼쪽 상단 영역이면 아래로 이동
+                    y += cardHeight;
+                } else if (x > this.containerWidth - statsCardWidth) {
+                    // 오른쪽 상단 영역이면 아래로 이동
+                    y += cardHeight;
+                }
             }
             
             // 경계 체크
@@ -747,12 +767,6 @@ class SIRSimulationV2 {
             // 랜덤 이동
             agent.vx += (Math.random() - 0.5) * 0.3;
             agent.vy += (Math.random() - 0.5) * 0.3;
-            
-            // 중앙 인력 (매우 약하게)
-            const centerX = this.containerWidth / 2;
-            const centerY = this.containerHeight / 2;
-            agent.vx += (centerX - agent.x - AGENT_RADIUS) * this.centerForce;
-            agent.vy += (centerY - agent.y - AGENT_RADIUS) * this.centerForce;
             
             // 속도 제한
             const speed = Math.sqrt(agent.vx * agent.vx + agent.vy * agent.vy);
