@@ -33,8 +33,8 @@
         /* 개별 에이전트 컨테이너 */
         .agent {
             position: absolute;
-            width: 50px;
-            height: 50px;
+            width: 15px;   /* 50px → 25px (CONFIG.agent.size와 일치)  */
+            height: 15px;  /* 50px → 25px (CONFIG.agent.size와 일치) */
             pointer-events: none;
             transition: none;
         }
@@ -456,9 +456,9 @@ const CONFIG = {
     // 가상 경계 마진(에이전트 활동 영역 오프셋)
     virtualMargin: {
         left: 250,
-        top: 50,       // 200 → 50 (1/4로 축소)
-        right: 1150,
-        bottom: 50     // 200 → 50 (1/4로 축소)
+        top: 50,
+        right: 650,    // 가상 캔버스 가로를 500px만 증가시키도록 조정
+        bottom: 50
     }
 };
 
@@ -670,7 +670,7 @@ function createAgentSpec(agentId, initialStatus) {
                 "name": "size_scale",
                 "type": "ordinal",
                 "domain": ["S", "I", "R"],
-                "range": [40, 50, 36]  // 지금의 20%로 축소 (200,250,180 → 40,50,36)
+                "range": [200, 250, 180]  // 원래대로 복구 (40,50,36 → 200,250,180)
             }
         ],
 
@@ -817,20 +817,6 @@ class SIRSimulationV2 {
             const margin = this.config.virtualMargin;
             x = margin.left + Math.random() * (this.containerWidth - AGENT_SIZE - margin.left - margin.right);
             y = margin.top + Math.random() * (this.containerHeight - AGENT_SIZE - margin.top - margin.bottom);
-            // UI 영역을 피하기 위한 추가 로직
-            // 왼쪽 상단 (컨트롤 카드)과 오른쪽 상단(통계 카드) 영역 피하기
-            const { controlCardWidth, statsCardWidth, cardHeight } = this.config.ui;
-            
-            if (y < cardHeight + margin.top) {
-                if (x < controlCardWidth + margin.left) {
-                    // 왼쪽 상단 영역이면 아래로 이동
-                    y = Math.max(y + cardHeight, margin.top);
-                } else if (x > this.containerWidth - statsCardWidth - margin.right) {
-                    // 오른쪽 상단 영역이면 아래로 이동
-                    y = Math.max(y + cardHeight, margin.top);
-                }
-            }
-            
             // 가상 마진 기반 경계 체크 (최종 안전장치)
             const maxX = this.containerWidth - AGENT_SIZE - margin.right;
             const maxY = this.containerHeight - AGENT_SIZE - margin.bottom;
