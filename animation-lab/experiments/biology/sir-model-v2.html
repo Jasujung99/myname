@@ -417,9 +417,46 @@
 
 <script type="text/javascript">
 
-// ========== 상수 정의 ==========
-const AGENT_SIZE = 50;
-const AGENT_RADIUS = 25;
+// ========== 글로벌 설정 및 상수 ==========
+const CONFIG = {
+    // 에이전트 관련
+    agent: {
+        size: 50,                    // 에이전트 크기 (px)
+        radius: 25,                  // 에이전트 반경 (px)
+        initialVelocity: 2,          // 초기 속도 범위
+        colors: {
+            susceptible: "#0ea5e9",  // 감수성자 색상
+            infected: "#ef4444",     // 감염자 색상
+            recovered: "#22c55e"     // 회복자 색상
+        }
+    },
+
+    // 시뮬레이션 관련
+    simulation: {
+        initialInfectedRatio: 0.1,   // 초기 감염자 비율
+        frameDelay: 50,              // 프레임 지연 (ms)
+        timeScale: 3                 // 시간 스케일 (n프레임당 1 카운트)
+    },
+
+    // 물리 시스템 관련
+    physics: {
+        borderMargin: 30,            // 화면 경계 여백 (px)
+        bounceDamping: 0.9,          // 충돌시 속도 감쇠 계수
+        velocityJitter: 0.3,         // 속도 변동 정도
+        cardAvoidForce: 0.5          // 카드 회피 힘
+    },
+
+    // UI 관련
+    ui: {
+        cardHeight: 400,             // 카드 높이 추정값 (px)
+        controlCardWidth: 320,       // 컨트롤 카드 너비 (px)
+        statsCardWidth: 280          // 통계 카드 너비 (px)
+    }
+};
+
+// 이전 코드와의 호환성 유지를 위한 상수
+const AGENT_SIZE = CONFIG.agent.size;
+const AGENT_RADIUS = CONFIG.agent.radius;
 
 // ========== 개별 에이전트 Vega 스펙 ==========
 function createAgentSpec(agentId, initialStatus) {
@@ -449,7 +486,7 @@ function createAgentSpec(agentId, initialStatus) {
                 "name": "color_scale",
                 "type": "ordinal",
                 "domain": ["S", "I", "R"],
-                "range": ["#0ea5e9", "#ef4444", "#22c55e"]
+                "range": [CONFIG.agent.colors.susceptible, CONFIG.agent.colors.infected, CONFIG.agent.colors.recovered]
             },
             {
                 "name": "size_scale",
@@ -512,17 +549,25 @@ function createAgentSpec(agentId, initialStatus) {
 // ========== SIR 시뮬레이션 클래스 ==========
 class SIRSimulationV2 {
     constructor() {
+        // 상태 및 에이전트 관리
         this.agents = [];
         this.agentViews = [];
         this.agentElements = [];
+        
+        // 애니메이션 상태
         this.isRunning = false;
         this.animationId = null;
         this.frameCount = 0;
         this.animationFrame = 0;
         
+        // 컨테이너 크기
         this.containerWidth = window.innerWidth;
         this.containerHeight = window.innerHeight;
         
+        // 설정 참조
+        this.config = CONFIG;
+        
+        // 시뮬레이션 초기화
         this.init();
     }
     
@@ -547,8 +592,8 @@ class SIRSimulationV2 {
         const centerX = this.containerWidth / 2;
         const centerY = this.containerHeight / 2;
         
-        // 감염자 비율 설정 (10%)
-        const infectionRatio = 0.1;
+        // 감염자 비율 설정
+        const infectionRatio = this.config.simulation.initialInfectedRatio;
         const initialInfectedCount = Math.max(1, Math.round(population * infectionRatio));
         
         // 모든 에이전트의 상태를 미리 결정 (무작위로 섞기 위해)
@@ -568,15 +613,13 @@ class SIRSimulationV2 {
             const status = statuses[i];
             
             // 모든 에이전트를 화면 전체에 균등하게 분포
-            const margin = 50; // 화면 가장자리 여백
-            x = margin + Math.random() * (this.containerWidth - 2 * margin);
-            y = margin + Math.random() * (this.containerHeight - 2 * margin);
+            const margin = this.config.physics.borderMargin;
+            x = margin + Math.random() * (this.containerWidth - AGENT_SIZE - 2 * margin);
+            y = margin + Math.random() * (this.containerHeight - AGENT_SIZE - 2 * margin);
             
             // UI 영역을 피하기 위한 추가 로직
             // 왼쪽 상단 (컨트롤 카드)과 오른쪽 상단(통계 카드) 영역 피하기
-            const controlCardWidth = 320;
-            const statsCardWidth = 280;
-            const cardHeight = 400;
+            const { controlCardWidth, statsCardWidth, cardHeight } = this.config.ui;
             
             if (y < cardHeight) {
                 if (x < controlCardWidth) {
@@ -741,19 +784,20 @@ class SIRSimulationV2 {
     animate() {
         if (!this.isRunning) return;
         
-        // 더 천천히 흐르는 시간 (3프레임마다 1번 카운팅)
-        if (this.animationFrame % 3 === 0) {
+        // 시간 스케일에 따라 카운팅
+        if (this.animationFrame % this.config.simulation.timeScale === 0) {
             this.frameCount++;
         }
         this.animationFrame = (this.animationFrame || 0) + 1;
         
+        // 시뮬레이션 및 통계 업데이트
         this.updateSimulation();
         this.updateStats();
         
-        // 느린 애니메이션을 위해 setTimeout 사용
+        // 설정된 지연 시간으로 애니메이션 속도 제어
         this.animationId = setTimeout(() => {
             requestAnimationFrame(() => this.animate());
-        }, 50); // 50ms 딜레이 추가
+        }, this.config.simulation.frameDelay);
     }
     
     updateSimulation() {
@@ -764,9 +808,9 @@ class SIRSimulationV2 {
         
         // 위치 업데이트
         this.agents.forEach((agent, i) => {
-            // 랜덤 이동
-            agent.vx += (Math.random() - 0.5) * 0.3;
-            agent.vy += (Math.random() - 0.5) * 0.3;
+            // 랜덤 이동 (설정에서 무작위화 강도 가져옴)
+            agent.vx += (Math.random() - 0.5) * this.config.physics.velocityJitter;
+            agent.vy += (Math.random() - 0.5) * this.config.physics.velocityJitter;
             
             // 속도 제한
             const speed = Math.sqrt(agent.vx * agent.vx + agent.vy * agent.vy);
@@ -779,23 +823,8 @@ class SIRSimulationV2 {
             agent.x += agent.vx;
             agent.y += agent.vy;
             
-            // 화면 edge 경계 처리 (극단적인 경우만)
-            const margin = 10;
-            if (agent.x < -margin) {
-                agent.x = -margin;
-                agent.vx = Math.abs(agent.vx);
-            } else if (agent.x > this.containerWidth - AGENT_SIZE + margin) {
-                agent.x = this.containerWidth - AGENT_SIZE + margin;
-                agent.vx = -Math.abs(agent.vx);
-            }
-            
-            if (agent.y < -margin) {
-                agent.y = -margin;
-                agent.vy = Math.abs(agent.vy);
-            } else if (agent.y > this.containerHeight - AGENT_SIZE + margin) {
-                agent.y = this.containerHeight - AGENT_SIZE + margin;
-                agent.vy = -Math.abs(agent.vy);
-            }
+            // 개선된 경계 처리
+            this.handleBoundaryCollision(agent);
             
             // UI 요소와의 충돌 방지 (모달 카드 영역 피하기)
             this.avoidOverlappingCards(agent);
@@ -841,22 +870,63 @@ class SIRSimulationV2 {
     }
     
     // UI 모달 카드와의 충돌 방지
+    /**
+     * 에이전트의 화면 경계 충돌 처리
+     * @param {Object} agent - 에이전트 객체
+     */
+    handleBoundaryCollision(agent) {
+        const { borderMargin, bounceDamping } = this.config.physics;
+        const { size } = this.config.agent;
+        
+        // 왼쪽 경계
+        if (agent.x < borderMargin) {
+            agent.x = borderMargin;
+            agent.vx = Math.abs(agent.vx) * bounceDamping;
+        }
+        // 오른쪽 경계
+        else if (agent.x > this.containerWidth - size - borderMargin) {
+            agent.x = this.containerWidth - size - borderMargin;
+            agent.vx = -Math.abs(agent.vx) * bounceDamping;
+        }
+        
+        // 위쪽 경계
+        if (agent.y < borderMargin) {
+            agent.y = borderMargin;
+            agent.vy = Math.abs(agent.vy) * bounceDamping;
+        }
+        // 아래쪽 경계
+        else if (agent.y > this.containerHeight - size - borderMargin) {
+            agent.y = this.containerHeight - size - borderMargin;
+            agent.vy = -Math.abs(agent.vy) * bounceDamping;
+        }
+        
+        // 안전망: 절대 화면 밖으로 나가지 못하도록 추가 제한
+        agent.x = Math.max(0, Math.min(this.containerWidth - size, agent.x));
+        agent.y = Math.max(0, Math.min(this.containerHeight - size, agent.y));
+    }
+    
+    /**
+     * UI 카드와 겹치지 않도록 에이전트 회피 처리
+     * @param {Object} agent - 에이전트 객체 
+     */
     avoidOverlappingCards(agent) {
         const cards = [
             document.getElementById('controls-card'),
             document.getElementById('stats-card')
         ];
         
+        const { radius } = this.config.agent;
+        const { cardAvoidForce } = this.config.physics;
+        
         for (const card of cards) {
             if (!card) continue;
             
             const cardRect = card.getBoundingClientRect();
-            // 카드 주변 여유 공간
-            const buffer = 10;
+            const buffer = this.config.physics.borderMargin; // 더 넓은 버퍼 사용
             
             // 에이전트 중심점
-            const agentCenterX = agent.x + AGENT_RADIUS;
-            const agentCenterY = agent.y + AGENT_RADIUS;
+            const agentCenterX = agent.x + radius;
+            const agentCenterY = agent.y + radius;
             
             // 카드 영역 + 버퍼
             if (agentCenterX > cardRect.left - buffer && 
@@ -875,10 +945,9 @@ class SIRSimulationV2 {
                 // 벡터 정규화
                 const length = Math.sqrt(dx * dx + dy * dy);
                 if (length > 0) {
-                    // 카드로부터 멀어지는 방향으로 속도 설정
-                    const repelStrength = 0.5;
-                    agent.vx += dx / length * repelStrength;
-                    agent.vy += dy / length * repelStrength;
+                    // 카드로부터 멀어지는 방향으로 속도 설정 (설정 기반)
+                    agent.vx += dx / length * cardAvoidForce;
+                    agent.vy += dy / length * cardAvoidForce;
                 }
             }
         }
