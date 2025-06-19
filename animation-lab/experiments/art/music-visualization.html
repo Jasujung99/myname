@@ -1,0 +1,987 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>음악 시각화 - 소리를 색과 형태로 번역하는 시청각 경험</title>
+    <script src="https://cdn.jsdelivr.net/npm/vega@5.22.1/build/vega.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vega-lite@5.6.0/build/vega-lite.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vega-embed@6.21.0/build/vega-embed.min.js"></script>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            background: #000;
+            color: #fff;
+            font-family: 'Arial', sans-serif;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        .main-container {
+            display: flex;
+            height: 100vh;
+        }
+
+        /* 캔버스 영역 */
+        .canvas-container {
+            flex: 1;
+            position: relative;
+            background: radial-gradient(circle at center, #0a0a1a 0%, #000 100%);
+        }
+
+        #musicCanvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        /* Vega 오버레이 */
+        .vega-overlay {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 300px;
+            height: 200px;
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 10px;
+            padding: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        /* 컨트롤 패널 */
+        .control-panel {
+            width: 320px;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            padding: 20px;
+            overflow-y: auto;
+            box-shadow: -5px 0 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .control-section {
+            margin-bottom: 25px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .control-section h3 {
+            margin: 0 0 15px 0;
+            color: #4fc3f7;
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .control-group {
+            margin-bottom: 15px;
+        }
+
+        .control-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 0.9rem;
+            color: #b0bec5;
+        }
+
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        input[type="range"] {
+            flex: 1;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+            outline: none;
+            cursor: pointer;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            background: #4fc3f7;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+        }
+
+        .value-display {
+            min-width: 40px;
+            text-align: center;
+            color: #4fc3f7;
+            font-weight: bold;
+            font-size: 0.85rem;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            flex: 1;
+            min-width: 80px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, #4fc3f7, #29b6f6);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(79, 195, 247, 0.4);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(45deg, #66bb6a, #4caf50);
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 187, 106, 0.4);
+        }
+
+        .btn-danger {
+            background: linear-gradient(45deg, #ef5350, #f44336);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(239, 83, 80, 0.4);
+        }
+
+        /* 상태 표시 */
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+            margin-bottom: 10px;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #f44336;
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.active {
+            background: #4caf50;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* 파형 선택 버튼 */
+        .waveform-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .waveform-btn {
+            padding: 6px 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+            color: #b0bec5;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.8rem;
+        }
+
+        .waveform-btn.active {
+            background: rgba(79, 195, 247, 0.3);
+            border-color: #4fc3f7;
+            color: #4fc3f7;
+        }
+
+        /* 색상 모드 선택 */
+        .color-mode-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .color-mode-btn {
+            padding: 8px 12px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+            color: #b0bec5;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.8rem;
+            text-align: center;
+        }
+
+        .color-mode-btn.active {
+            background: rgba(79, 195, 247, 0.3);
+            border-color: #4fc3f7;
+            color: #4fc3f7;
+        }
+
+        /* 주파수 밴드 표시 */
+        .frequency-bands {
+            display: flex;
+            gap: 2px;
+            height: 80px;
+            align-items: flex-end;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 5px;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+
+        .frequency-bar {
+            flex: 1;
+            background: linear-gradient(to top, #4fc3f7, #29b6f6);
+            border-radius: 1px;
+            min-height: 2px;
+            transition: height 0.1s ease;
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <!-- 캔버스 영역 -->
+        <div class="canvas-container">
+            <canvas id="musicCanvas"></canvas>
+            
+            <!-- Vega 오버레이 - 실시간 주파수 스펙트럼 -->
+            <div class="vega-overlay">
+                <div id="frequency-spectrum"></div>
+            </div>
+        </div>
+
+        <!-- 컨트롤 패널 -->
+        <div class="control-panel">
+            <!-- 오디오 제어 -->
+            <div class="control-section">
+                <h3>🎵 오디오 제어</h3>
+                
+                <div class="status-indicator">
+                    <div class="status-dot" id="audioStatus"></div>
+                    <span id="audioStatusText">마이크 꺼짐</span>
+                </div>
+
+                <div class="button-group">
+                    <button class="btn btn-primary" id="toggleMic">마이크 시작</button>
+                    <button class="btn btn-secondary" id="loadAudio">파일 로드</button>
+                </div>
+                
+                <input type="file" id="audioFile" accept="audio/*" style="display: none;">
+                
+                <div class="control-group">
+                    <label>전체 볼륨</label>
+                    <div class="slider-container">
+                        <input type="range" id="masterVolume" min="0" max="100" value="50">
+                        <div class="value-display" id="masterVolumeValue">50</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 시각화 모드 -->
+            <div class="control-section">
+                <h3>🎨 시각화 모드</h3>
+                
+                <div class="control-group">
+                    <label>시각화 타입</label>
+                    <div class="waveform-grid">
+                        <button class="waveform-btn active" data-mode="spectrum">스펙트럼</button>
+                        <button class="waveform-btn" data-mode="waveform">파형</button>
+                        <button class="waveform-btn" data-mode="circular">원형</button>
+                        <button class="waveform-btn" data-mode="particle">파티클</button>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>색상 모드</label>
+                    <div class="color-mode-grid">
+                        <button class="color-mode-btn active" data-color="rainbow">무지개</button>
+                        <button class="color-mode-btn" data-color="fire">불꽃</button>
+                        <button class="color-mode-btn" data-color="ocean">바다</button>
+                        <button class="color-mode-btn" data-color="neon">네온</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- FFT 설정 -->
+            <div class="control-section">
+                <h3>🔬 FFT 분석</h3>
+                
+                <div class="control-group">
+                    <label>FFT 크기</label>
+                    <div class="slider-container">
+                        <input type="range" id="fftSize" min="128" max="2048" step="128" value="1024">
+                        <div class="value-display" id="fftSizeValue">1024</div>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>스무딩 시간</label>
+                    <div class="slider-container">
+                        <input type="range" id="smoothingTime" min="0" max="0.9" step="0.1" value="0.8">
+                        <div class="value-display" id="smoothingTimeValue">0.8</div>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>감도</label>
+                    <div class="slider-container">
+                        <input type="range" id="sensitivity" min="1" max="10" step="0.5" value="5">
+                        <div class="value-display" id="sensitivityValue">5</div>
+                    </div>
+                </div>
+
+                <!-- 실시간 주파수 밴드 표시 -->
+                <div class="frequency-bands" id="frequencyBands"></div>
+            </div>
+
+            <!-- 비주얼 이펙트 -->
+            <div class="control-section">
+                <h3>✨ 비주얼 이펙트</h3>
+                
+                <div class="control-group">
+                    <label>반응 강도</label>
+                    <div class="slider-container">
+                        <input type="range" id="reactivity" min="0.1" max="5" step="0.1" value="2">
+                        <div class="value-display" id="reactivityValue">2</div>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>잔향 효과</label>
+                    <div class="slider-container">
+                        <input type="range" id="decay" min="0" max="0.95" step="0.05" value="0.8">
+                        <div class="value-display" id="decayValue">0.8</div>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>입자 수</label>
+                    <div class="slider-container">
+                        <input type="range" id="particleCount" min="50" max="500" step="25" value="200">
+                        <div class="value-display" id="particleCountValue">200</div>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>회전 속도</label>
+                    <div class="slider-container">
+                        <input type="range" id="rotationSpeed" min="0" max="5" step="0.1" value="1">
+                        <div class="value-display" id="rotationSpeedValue">1</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 내보내기 -->
+            <div class="control-section">
+                <h3>💾 내보내기</h3>
+                <div class="button-group">
+                    <button class="btn btn-secondary" id="saveImage">이미지 저장</button>
+                    <button class="btn btn-danger" id="toggleRecord">녹화 시작</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<script>
+// ========== 전역 변수 및 상태 ==========
+class MusicVisualizer {
+    constructor() {
+        // 캔버스 및 컨텍스트
+        this.canvas = document.getElementById('musicCanvas');
+        this.ctx = this.canvas.getContext('2d');
+        
+        // 오디오 컨텍스트 및 분석기
+        this.audioContext = null;
+        this.analyser = null;
+        this.microphone = null;
+        this.audioSource = null;
+        this.dataArray = null;
+        this.frequencyData = null;
+        
+        // 시각화 설정
+        this.config = {
+            fftSize: 1024,
+            smoothingTimeConstant: 0.8,
+            sensitivity: 5,
+            reactivity: 2,
+            decay: 0.8,
+            particleCount: 200,
+            rotationSpeed: 1,
+            masterVolume: 0.5
+        };
+        
+        // 시각화 모드
+        this.visualMode = 'spectrum';
+        this.colorMode = 'rainbow';
+        
+        // 애니메이션 상태
+        this.animationId = null;
+        this.isPlaying = false;
+        
+        // 입자 시스템
+        this.particles = [];
+        this.rotation = 0;
+        
+        // Vega 차트
+        this.vegaView = null;
+        
+        this.init();
+    }
+    
+    async init() {
+        this.setupCanvas();
+        this.setupEventListeners();
+        this.setupParticles();
+        await this.setupVegaChart();
+        this.setupFrequencyBands();
+        this.animate();
+    }
+    
+    setupCanvas() {
+        const updateCanvasSize = () => {
+            const rect = this.canvas.getBoundingClientRect();
+            this.canvas.width = rect.width * devicePixelRatio;
+            this.canvas.height = rect.height * devicePixelRatio;
+            this.ctx.scale(devicePixelRatio, devicePixelRatio);
+            this.canvas.style.width = rect.width + 'px';
+            this.canvas.style.height = rect.height + 'px';
+        };
+        
+        updateCanvasSize();
+        window.addEventListener('resize', updateCanvasSize);
+    }
+    
+    setupEventListeners() {
+        // 마이크 토글
+        document.getElementById('toggleMic').addEventListener('click', () => {
+            if (this.isPlaying && this.microphone) {
+                this.stopMicrophone();
+            } else {
+                this.startMicrophone();
+            }
+        });
+        
+        // 오디오 파일 로드
+        document.getElementById('loadAudio').addEventListener('click', () => {
+            document.getElementById('audioFile').click();
+        });
+        
+        document.getElementById('audioFile').addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                this.loadAudioFile(e.target.files[0]);
+            }
+        });
+        
+        // 시각화 모드 선택
+        document.querySelectorAll('.waveform-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.waveform-btn').forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+                this.visualMode = e.target.dataset.mode;
+            });
+        });
+        
+        // 색상 모드 선택
+        document.querySelectorAll('.color-mode-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.color-mode-btn').forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+                this.colorMode = e.target.dataset.color;
+            });
+        });
+        
+        // 슬라이더 이벤트
+        this.setupSliderListeners();
+        
+        // 저장 및 녹화
+        document.getElementById('saveImage').addEventListener('click', () => this.saveImage());
+        document.getElementById('toggleRecord').addEventListener('click', () => this.toggleRecording());
+    }
+    
+    setupSliderListeners() {
+        const sliders = [
+            'masterVolume', 'fftSize', 'smoothingTime', 'sensitivity',
+            'reactivity', 'decay', 'particleCount', 'rotationSpeed'
+        ];
+        
+        sliders.forEach(sliderId => {
+            const slider = document.getElementById(sliderId);
+            const valueDisplay = document.getElementById(sliderId + 'Value');
+            
+            slider.addEventListener('input', (e) => {
+                const value = parseFloat(e.target.value);
+                valueDisplay.textContent = value;
+                
+                switch(sliderId) {
+                    case 'masterVolume':
+                        this.config.masterVolume = value / 100;
+                        break;
+                    case 'fftSize':
+                        this.config.fftSize = parseInt(value);
+                        this.updateAnalyserSettings();
+                        break;
+                    case 'smoothingTime':
+                        this.config.smoothingTimeConstant = value;
+                        this.updateAnalyserSettings();
+                        break;
+                    case 'sensitivity':
+                        this.config.sensitivity = value;
+                        break;
+                    case 'reactivity':
+                        this.config.reactivity = value;
+                        break;
+                    case 'decay':
+                        this.config.decay = value;
+                        break;
+                    case 'particleCount':
+                        this.config.particleCount = parseInt(value);
+                        this.setupParticles();
+                        break;
+                    case 'rotationSpeed':
+                        this.config.rotationSpeed = value;
+                        break;
+                }
+            });
+        });
+    }
+    
+    async startMicrophone() {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            
+            if (!this.audioContext) {
+                this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            
+            this.microphone = this.audioContext.createMediaStreamSource(stream);
+            this.setupAnalyser();
+            this.microphone.connect(this.analyser);
+            
+            this.isPlaying = true;
+            this.updateAudioStatus(true);
+            document.getElementById('toggleMic').textContent = '마이크 중지';
+            
+        } catch (error) {
+            console.error('마이크 접근 실패:', error);
+            alert('마이크에 접근할 수 없습니다. 권한을 확인해주세요.');
+        }
+    }
+    
+    stopMicrophone() {
+        if (this.microphone) {
+            this.microphone.disconnect();
+            this.microphone = null;
+        }
+        
+        this.isPlaying = false;
+        this.updateAudioStatus(false);
+        document.getElementById('toggleMic').textContent = '마이크 시작';
+    }
+    
+    async loadAudioFile(file) {
+        try {
+            if (!this.audioContext) {
+                this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            
+            const arrayBuffer = await file.arrayBuffer();
+            const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
+            
+            if (this.audioSource) {
+                this.audioSource.disconnect();
+            }
+            
+            this.audioSource = this.audioContext.createBufferSource();
+            this.audioSource.buffer = audioBuffer;
+            this.audioSource.loop = true;
+            
+            this.setupAnalyser();
+            this.audioSource.connect(this.analyser);
+            this.audioSource.connect(this.audioContext.destination);
+            this.audioSource.start();
+            
+            this.isPlaying = true;
+            this.updateAudioStatus(true);
+            
+        } catch (error) {
+            console.error('오디오 파일 로드 실패:', error);
+            alert('오디오 파일을 로드할 수 없습니다.');
+        }
+    }
+    
+    setupAnalyser() {
+        if (!this.audioContext) return;
+        
+        this.analyser = this.audioContext.createAnalyser();
+        this.updateAnalyserSettings();
+    }
+    
+    updateAnalyserSettings() {
+        if (!this.analyser) return;
+        
+        this.analyser.fftSize = this.config.fftSize;
+        this.analyser.smoothingTimeConstant = this.config.smoothingTimeConstant;
+        
+        const bufferLength = this.analyser.frequencyBinCount;
+        this.dataArray = new Uint8Array(bufferLength);
+        this.frequencyData = new Uint8Array(bufferLength);
+    }
+    
+    updateAudioStatus(isActive) {
+        const statusDot = document.getElementById('audioStatus');
+        const statusText = document.getElementById('audioStatusText');
+        
+        if (isActive) {
+            statusDot.classList.add('active');
+            statusText.textContent = '오디오 활성';
+        } else {
+            statusDot.classList.remove('active');
+            statusText.textContent = '오디오 비활성';
+        }
+    }
+    
+    setupParticles() {
+        this.particles = [];
+        for (let i = 0; i < this.config.particleCount; i++) {
+            this.particles.push({
+                x: Math.random() * this.canvas.width,
+                y: Math.random() * this.canvas.height,
+                vx: (Math.random() - 0.5) * 2,
+                vy: (Math.random() - 0.5) * 2,
+                life: Math.random(),
+                size: Math.random() * 3 + 1
+            });
+        }
+    }
+    
+    getColorForFrequency(frequency, intensity) {
+        const colors = {
+            rainbow: (freq, int) => {
+                const hue = (freq * 360) % 360;
+                return `hsl(${hue}, 80%, ${50 + int * 30}%)`;
+            },
+            fire: (freq, int) => {
+                const r = Math.min(255, 150 + int * 105);
+                const g = Math.min(255, int * 150);
+                const b = Math.min(100, int * 50);
+                return `rgb(${r}, ${g}, ${b})`;
+            },
+            ocean: (freq, int) => {
+                const r = Math.min(100, int * 50);
+                const g = Math.min(255, 100 + int * 155);
+                const b = Math.min(255, 150 + int * 105);
+                return `rgb(${r}, ${g}, ${b})`;
+            },
+            neon: (freq, int) => {
+                const colors = ['#ff00ff', '#00ffff', '#ffff00', '#ff0080'];
+                const index = Math.floor(freq * colors.length);
+                return colors[index % colors.length];
+            }
+        };
+        
+        return colors[this.colorMode](frequency, intensity);
+    }
+    
+    animate() {
+        this.animationId = requestAnimationFrame(() => this.animate());
+        
+        if (!this.isPlaying || !this.analyser) {
+            this.drawStatic();
+            return;
+        }
+        
+        // 오디오 데이터 가져오기
+        this.analyser.getByteFrequencyData(this.dataArray);
+        this.analyser.getByteTimeDomainData(this.frequencyData);
+        
+        // 캔버스 지우기 (잔향 효과 적용)
+        this.ctx.fillStyle = `rgba(0, 0, 0, ${1 - this.config.decay})`;
+        this.ctx.fillRect(0, 0, this.canvas.width / devicePixelRatio, this.canvas.height / devicePixelRatio);
+        
+        // 시각화 모드에 따른 렌더링
+        switch (this.visualMode) {
+            case 'spectrum':
+                this.drawSpectrum();
+                break;
+            case 'waveform':
+                this.drawWaveform();
+                break;
+            case 'circular':
+                this.drawCircular();
+                break;
+            case 'particle':
+                this.drawParticles();
+                break;
+        }
+        
+        // 회전 업데이트
+        this.rotation += this.config.rotationSpeed * 0.01;
+        
+        // Vega 차트 업데이트
+        this.updateVegaChart();
+        this.updateFrequencyBands();
+    }
+    
+    drawStatic() {
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+        this.ctx.fillRect(0, 0, this.canvas.width / devicePixelRatio, this.canvas.height / devicePixelRatio);
+        
+        // 정적 패턴 그리기
+        const centerX = this.canvas.width / devicePixelRatio / 2;
+        const centerY = this.canvas.height / devicePixelRatio / 2;
+        
+        this.ctx.strokeStyle = 'rgba(79, 195, 247, 0.3)';
+        this.ctx.lineWidth = 1;
+        this.ctx.beginPath();
+        this.ctx.arc(centerX, centerY, 50, 0, Math.PI * 2);
+        this.ctx.stroke();
+        
+        this.ctx.fillStyle = 'rgba(79, 195, 247, 0.1)';
+        this.ctx.font = '16px Arial';
+        this.ctx.textAlign = 'center';
+        this.ctx.fillText('오디오를 시작해주세요', centerX, centerY);
+    }
+    
+    drawSpectrum() {
+        const width = this.canvas.width / devicePixelRatio;
+        const height = this.canvas.height / devicePixelRatio;
+        const barWidth = width / this.dataArray.length;
+        
+        for (let i = 0; i < this.dataArray.length; i++) {
+            const barHeight = (this.dataArray[i] / 255) * height * this.config.reactivity;
+            const x = i * barWidth;
+            const y = height - barHeight;
+            
+            const frequency = i / this.dataArray.length;
+            const intensity = this.dataArray[i] / 255;
+            
+            this.ctx.fillStyle = this.getColorForFrequency(frequency, intensity);
+            this.ctx.fillRect(x, y, barWidth - 1, barHeight);
+        }
+    }
+    
+    drawWaveform() {
+        const width = this.canvas.width / devicePixelRatio;
+        const height = this.canvas.height / devicePixelRatio;
+        const centerY = height / 2;
+        
+        this.ctx.strokeStyle = this.getColorForFrequency(0.5, 0.8);
+        this.ctx.lineWidth = 2;
+        this.ctx.beginPath();
+        
+        for (let i = 0; i < this.frequencyData.length; i++) {
+            const x = (i / this.frequencyData.length) * width;
+            const y = centerY + ((this.frequencyData[i] - 128) / 128) * centerY * this.config.reactivity;
+            
+            if (i === 0) {
+                this.ctx.moveTo(x, y);
+            } else {
+                this.ctx.lineTo(x, y);
+            }
+        }
+        
+        this.ctx.stroke();
+    }
+    
+    drawCircular() {
+        const width = this.canvas.width / devicePixelRatio;
+        const height = this.canvas.height / devicePixelRatio;
+        const centerX = width / 2;
+        const centerY = height / 2;
+        const radius = Math.min(centerX, centerY) * 0.8;
+        
+        this.ctx.save();
+        this.ctx.translate(centerX, centerY);
+        this.ctx.rotate(this.rotation);
+        
+        for (let i = 0; i < this.dataArray.length; i++) {
+            const angle = (i / this.dataArray.length) * Math.PI * 2;
+            const amplitude = (this.dataArray[i] / 255) * radius * this.config.reactivity;
+            
+            const x1 = Math.cos(angle) * radius;
+            const y1 = Math.sin(angle) * radius;
+            const x2 = Math.cos(angle) * (radius + amplitude);
+            const y2 = Math.sin(angle) * (radius + amplitude);
+            
+            const frequency = i / this.dataArray.length;
+            const intensity = this.dataArray[i] / 255;
+            
+            this.ctx.strokeStyle = this.getColorForFrequency(frequency, intensity);
+            this.ctx.lineWidth = 2;
+            this.ctx.beginPath();
+            this.ctx.moveTo(x1, y1);
+            this.ctx.lineTo(x2, y2);
+            this.ctx.stroke();
+        }
+        
+        this.ctx.restore();
+    }
+    
+    drawParticles() {
+        const width = this.canvas.width / devicePixelRatio;
+        const height = this.canvas.height / devicePixelRatio;
+        
+        // 평균 볼륨 계산
+        const avgVolume = this.dataArray.reduce((sum, val) => sum + val, 0) / this.dataArray.length / 255;
+        
+        this.particles.forEach((particle, index) => {
+            const frequencyIndex = Math.floor((index / this.particles.length) * this.dataArray.length);
+            const intensity = this.dataArray[frequencyIndex] / 255;
+            
+            // 입자 위치 업데이트
+            particle.x += particle.vx * (1 + intensity * this.config.reactivity);
+            particle.y += particle.vy * (1 + intensity * this.config.reactivity);
+            
+            // 경계 처리
+            if (particle.x < 0 || particle.x > width) particle.vx *= -1;
+            if (particle.y < 0 || particle.y > height) particle.vy *= -1;
+            
+            particle.x = Math.max(0, Math.min(width, particle.x));
+            particle.y = Math.max(0, Math.min(height, particle.y));
+            
+            // 입자 그리기
+            const size = particle.size * (1 + intensity * 2);
+            const frequency = index / this.particles.length;
+            
+            this.ctx.fillStyle = this.getColorForFrequency(frequency, intensity);
+            this.ctx.beginPath();
+            this.ctx.arc(particle.x, particle.y, size, 0, Math.PI * 2);
+            this.ctx.fill();
+        });
+    }
+    
+    async setupVegaChart() {
+        const spec = {
+            "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+            "title": "실시간 주파수 스펙트럼",
+            "width": 280,
+            "height": 150,
+            "background": "transparent",
+            "data": {"name": "frequency"},
+            "mark": {
+                "type": "area",
+                "color": {"gradient": "linear", "stops": [
+                    {"offset": 0, "color": "#4fc3f7"},
+                    {"offset": 1, "color": "#29b6f6"}
+                ]},
+                "opacity": 0.8
+            },
+            "encoding": {
+                "x": {
+                    "field": "frequency",
+                    "type": "quantitative",
+                    "scale": {"range": [0, 280]},
+                    "axis": {"title": "주파수 (Hz)", "titleColor": "#fff", "labelColor": "#fff"}
+                },
+                "y": {
+                    "field": "amplitude",
+                    "type": "quantitative",
+                    "scale": {"range": [150, 0]},
+                    "axis": {"title": "크기", "titleColor": "#fff", "labelColor": "#fff"}
+                }
+            }
+        };
+        
+        const result = await vegaEmbed('#frequency-spectrum', spec, {
+            actions: false,
+            theme: 'dark'
+        });
+        
+        this.vegaView = result.view;
+    }
+    
+    updateVegaChart() {
+        if (!this.vegaView || !this.dataArray) return;
+        
+        const sampleRate = this.audioContext.sampleRate;
+        const frequencyData = [];
+        
+        // 주파수 데이터를 Vega 차트용으로 변환
+        for (let i = 0; i < Math.min(64, this.dataArray.length); i++) {
+            const frequency = (i * sampleRate) / (2 * this.dataArray.length);
+            const amplitude = this.dataArray[i] / 255;
+            
+            frequencyData.push({
+                frequency: frequency,
+                amplitude: amplitude
+            });
+        }
+        
+        this.vegaView.change('frequency', vega.changeset().remove(() => true).insert(frequencyData)).run();
+    }
+    
+    setupFrequencyBands() {
+        const container = document.getElementById('frequencyBands');
+        container.innerHTML = '';
+        
+        // 8개의 주파수 밴드 생성
+        for (let i = 0; i < 8; i++) {
+            const bar = document.createElement('div');
+            bar.className = 'frequency-bar';
+            container.appendChild(bar);
+        }
+    }
+    
+    updateFrequencyBands() {
+        if (!this.dataArray) return;
+        
+        const bars = document.querySelectorAll('.frequency-bar');
+        const bandsPerBar = Math.floor(this.dataArray.length / bars.length);
+        
+        bars.forEach((bar, index) => {
+            let sum = 0;
+            for (let i = 0; i < bandsPerBar; i++) {
+                sum += this.dataArray[index * bandsPerBar + i];
+            }
+            const average = sum / bandsPerBar / 255;
+            const height = Math.max(2, average * 75);
+            
+            bar.style.height = height + 'px';
+        });
+    }
+    
+    saveImage() {
+        const link = document.createElement('a');
+        link.download = `music-visualization-${Date.now()}.png`;
+        link.href = this.canvas.toDataURL();
+        link.click();
+    }
+    
+    toggleRecording() {
+        // 녹화 기능은 추후 구현
+        console.log('녹화 기능은 개발 중입니다.');
+        alert('녹화 기능은 개발 중입니다.');
+    }
+}
+
+// 앱 시작
+window.addEventListener('load', () => {
+    new MusicVisualizer();
+});
+</script>
+</body>
+</html>
