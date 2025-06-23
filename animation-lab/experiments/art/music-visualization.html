@@ -877,78 +877,134 @@ class MusicVisualizer {
     drawMesh() {
         const width = this.canvas.width / devicePixelRatio;
         const height = this.canvas.height / devicePixelRatio;
+        const centerX = width / 2;
+        const centerY = height / 2;
         
-        // 그리드 설정
-        const gridX = 20; // 수평 그리드 개수
-        const gridY = 15; // 수직 그리드 개수
-        const cellWidth = width / gridX;
-        const cellHeight = height / gridY;
+        // 3D 메시 설정
+        const gridX = 25; // 수평 그리드 개수
+        const gridY = 20; // 수직 그리드 개수
+        const gridSize = 400; // 3D 그리드 크기
+        const halfGridSize = gridSize / 2;
         
-        // 메시 정점 데이터 생성
+        // 투영 설정
+        const fov = 250; // 시야각 효과
+        const viewZ = -500; // 시점 거리
+        
+        // 회전 각도 계산
+        const rotX = this.rotation * 0.2; // X축 회전
+        const rotY = this.rotation * 0.3; // Y축 회전
+        const rotZ = this.rotation * 0.1; // Z축 회전
+        
+        // 메시 정점 데이터 생성 (3D)
         const vertices = [];
         for (let y = 0; y <= gridY; y++) {
             for (let x = 0; x <= gridX; x++) {
-                // 기본 위치 계산
-                const xPos = x * cellWidth;
-                const yPos = y * cellHeight;
+                // 3D 공간의 위치 계산 (-1 ~ 1 범위)
+                const xPos = (x / gridX) * 2 - 1;
+                const yPos = (y / gridY) * 2 - 1;
                 
-                // 주파수 데이터로 위치 변형
-                const frequencyIndex = Math.floor(((x + y * gridX) / (gridX * gridY)) * this.dataArray.length);
-                const amplitude = this.dataArray[frequencyIndex] / 255;
-                const displacement = amplitude * 50 * this.config.reactivity;
+                // 주파수 데이터로 Z 위치 변형
+                const freqIndex = Math.floor(((x + y * gridX) / (gridX * gridY)) * this.dataArray.length);
+                const amplitude = this.dataArray[freqIndex] / 255;
+                const zPos = amplitude * this.config.reactivity;
                 
-                // 사인파를 이용한 추가 변형
-                const waveOffset = Math.sin(this.rotation + x * 0.3 + y * 0.2) * 10;
+                // 3D 공간에서의 좌표
+                let point3D = {
+                    x: xPos * halfGridSize,
+                    y: yPos * halfGridSize,
+                    z: zPos * 100
+                };
                 
-                // 변형된 정점 저장
+                // 3D 회전 적용
+                point3D = this.rotate3D(point3D, rotX, rotY, rotZ);
+                
+                // 3D -> 2D 투영
+                const point2D = this.project3D(point3D, fov, viewZ);
+                
+                // 중앙으로 이동
+                point2D.x += centerX;
+                point2D.y += centerY;
+                
                 vertices.push({
-                    x: xPos,
-                    y: yPos + displacement + waveOffset,
+                    x: point2D.x,
+                    y: point2D.y,
+                    z: point3D.z,
                     amplitude: amplitude
                 });
             }
         }
         
-        // 메시 그리기 - 삼각형으로 구성
-        for (let y = 0; y < gridY; y++) {
-            for (let x = 0; x < gridX; x++) {
+        // 선 스타일 설정 (파형 모드와 비슷한 단색 선)
+        this.ctx.strokeStyle = this.getColorForFrequency(0.5, 0.8); // 단색 사용
+        this.ctx.lineWidth = 1;
+        
+        // X축 라인 그리기
+        for (let y = 0; y <= gridY; y++) {
+            this.ctx.beginPath();
+            for (let x = 0; x <= gridX; x++) {
                 const idx = x + y * (gridX + 1);
-                const v0 = vertices[idx];
-                const v1 = vertices[idx + 1];
-                const v2 = vertices[idx + gridX + 2];
-                const v3 = vertices[idx + gridX + 1];
+                const vertex = vertices[idx];
                 
-                // 각 정점의 진폭 평균으로 색상 결정
-                const avgAmplitude = (v0.amplitude + v1.amplitude + v2.amplitude + v3.amplitude) / 4;
-                const color = this.getColorForFrequency((x + y) / (gridX + gridY), avgAmplitude);
-                
-                // 첫 번째 삼각형 (v0, v1, v2)
-                this.ctx.beginPath();
-                this.ctx.moveTo(v0.x, v0.y);
-                this.ctx.lineTo(v1.x, v1.y);
-                this.ctx.lineTo(v2.x, v2.y);
-                this.ctx.closePath();
-                
-                this.ctx.fillStyle = color;
-                this.ctx.fill();
-                
-                // 와이어프레임 효과
-                this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
-                this.ctx.lineWidth = 0.5;
-                this.ctx.stroke();
-                
-                // 두 번째 삼각형 (v0, v2, v3)
-                this.ctx.beginPath();
-                this.ctx.moveTo(v0.x, v0.y);
-                this.ctx.lineTo(v2.x, v2.y);
-                this.ctx.lineTo(v3.x, v3.y);
-                this.ctx.closePath();
-                
-                this.ctx.fillStyle = color;
-                this.ctx.fill();
-                this.ctx.stroke();
+                if (x === 0) {
+                    this.ctx.moveTo(vertex.x, vertex.y);
+                } else {
+                    this.ctx.lineTo(vertex.x, vertex.y);
+                }
             }
+            this.ctx.stroke();
         }
+        
+        // Y축 라인 그리기
+        for (let x = 0; x <= gridX; x++) {
+            this.ctx.beginPath();
+            for (let y = 0; y <= gridY; y++) {
+                const idx = x + y * (gridX + 1);
+                const vertex = vertices[idx];
+                
+                if (y === 0) {
+                    this.ctx.moveTo(vertex.x, vertex.y);
+                } else {
+                    this.ctx.lineTo(vertex.x, vertex.y);
+                }
+            }
+            this.ctx.stroke();
+        }
+    }
+    
+    // 3D 회전 함수 추가
+    rotate3D(point, rotX, rotY, rotZ) {
+        let x = point.x;
+        let y = point.y;
+        let z = point.z;
+        
+        // X축 회전
+        let y1 = y * Math.cos(rotX) - z * Math.sin(rotX);
+        let z1 = y * Math.sin(rotX) + z * Math.cos(rotX);
+        y = y1;
+        z = z1;
+        
+        // Y축 회전
+        let x2 = x * Math.cos(rotY) + z * Math.sin(rotY);
+        let z2 = -x * Math.sin(rotY) + z * Math.cos(rotY);
+        x = x2;
+        z = z2;
+        
+        // Z축 회전
+        let x3 = x * Math.cos(rotZ) - y * Math.sin(rotZ);
+        let y3 = x * Math.sin(rotZ) + y * Math.cos(rotZ);
+        x = x3;
+        y = y3;
+        
+        return { x, y, z };
+    }
+    
+    // 3D -> 2D 투영 함수 추가
+    project3D(point, fov, viewZ) {
+        const factor = fov / (viewZ + point.z);
+        return {
+            x: point.x * factor,
+            y: point.y * factor
+        };
     }
     
     async setupVegaChart() {
