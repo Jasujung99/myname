@@ -311,7 +311,7 @@
                         <button class="waveform-btn active" data-mode="spectrum">스펙트럼</button>
                         <button class="waveform-btn" data-mode="waveform">파형</button>
                         <button class="waveform-btn" data-mode="circular">원형</button>
-                        <button class="waveform-btn" data-mode="particle">파티클</button>
+                        <button class="waveform-btn" data-mode="mesh">메시</button>
                     </div>
                 </div>
 
@@ -733,8 +733,8 @@ class MusicVisualizer {
             case 'circular':
                 this.drawCircular();
                 break;
-            case 'particle':
-                this.drawParticles();
+            case 'mesh':
+                this.drawMesh();
                 break;
         }
         
@@ -872,6 +872,83 @@ class MusicVisualizer {
             this.ctx.arc(particle.x, particle.y, size, 0, Math.PI * 2);
             this.ctx.fill();
         });
+    }
+    
+    drawMesh() {
+        const width = this.canvas.width / devicePixelRatio;
+        const height = this.canvas.height / devicePixelRatio;
+        
+        // 그리드 설정
+        const gridX = 20; // 수평 그리드 개수
+        const gridY = 15; // 수직 그리드 개수
+        const cellWidth = width / gridX;
+        const cellHeight = height / gridY;
+        
+        // 메시 정점 데이터 생성
+        const vertices = [];
+        for (let y = 0; y <= gridY; y++) {
+            for (let x = 0; x <= gridX; x++) {
+                // 기본 위치 계산
+                const xPos = x * cellWidth;
+                const yPos = y * cellHeight;
+                
+                // 주파수 데이터로 위치 변형
+                const frequencyIndex = Math.floor(((x + y * gridX) / (gridX * gridY)) * this.dataArray.length);
+                const amplitude = this.dataArray[frequencyIndex] / 255;
+                const displacement = amplitude * 50 * this.config.reactivity;
+                
+                // 사인파를 이용한 추가 변형
+                const waveOffset = Math.sin(this.rotation + x * 0.3 + y * 0.2) * 10;
+                
+                // 변형된 정점 저장
+                vertices.push({
+                    x: xPos,
+                    y: yPos + displacement + waveOffset,
+                    amplitude: amplitude
+                });
+            }
+        }
+        
+        // 메시 그리기 - 삼각형으로 구성
+        for (let y = 0; y < gridY; y++) {
+            for (let x = 0; x < gridX; x++) {
+                const idx = x + y * (gridX + 1);
+                const v0 = vertices[idx];
+                const v1 = vertices[idx + 1];
+                const v2 = vertices[idx + gridX + 2];
+                const v3 = vertices[idx + gridX + 1];
+                
+                // 각 정점의 진폭 평균으로 색상 결정
+                const avgAmplitude = (v0.amplitude + v1.amplitude + v2.amplitude + v3.amplitude) / 4;
+                const color = this.getColorForFrequency((x + y) / (gridX + gridY), avgAmplitude);
+                
+                // 첫 번째 삼각형 (v0, v1, v2)
+                this.ctx.beginPath();
+                this.ctx.moveTo(v0.x, v0.y);
+                this.ctx.lineTo(v1.x, v1.y);
+                this.ctx.lineTo(v2.x, v2.y);
+                this.ctx.closePath();
+                
+                this.ctx.fillStyle = color;
+                this.ctx.fill();
+                
+                // 와이어프레임 효과
+                this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+                this.ctx.lineWidth = 0.5;
+                this.ctx.stroke();
+                
+                // 두 번째 삼각형 (v0, v2, v3)
+                this.ctx.beginPath();
+                this.ctx.moveTo(v0.x, v0.y);
+                this.ctx.lineTo(v2.x, v2.y);
+                this.ctx.lineTo(v3.x, v3.y);
+                this.ctx.closePath();
+                
+                this.ctx.fillStyle = color;
+                this.ctx.fill();
+                this.ctx.stroke();
+            }
+        }
     }
     
     async setupVegaChart() {
