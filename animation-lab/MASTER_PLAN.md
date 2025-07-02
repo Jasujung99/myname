@@ -14,7 +14,7 @@ animation-lab/
 │   │   ├── fractal-generator.html
 │   │   ├── fourier-transform.html
 │   │   ├── vector-fields.html
-│   │   └── geometric-transforms.html
+│   │   └── geometric-transforms.html ✅
 │   ├── physics/
 │   │   ├── particle-system.html
 │   │   ├── wave-mechanics.html
@@ -81,7 +81,7 @@ animation-lab/
 
 5. **벡터장 시각화**: 그래디언트, 발산, 회전 등 벡터 필드를 캔버스에 그리고, Vega로 벡터의 크기/방향을 바꾸며 흐름의 변화를 관찰합니다.
 
-6. **기하학적 변환**: 회전, 크기 조절, 전단 등 행렬 변환을 캔버스 도형에 적용하고, 변환 과정을 연속적인 애니메이션으로 보여줍니다.
+6. **기하학적 변환**: 5가지 도형(삼각형, 사각형, 오각형, 별, 화살표)을 4가지 행렬 변환(회전, 크기조절, 전단, 반사)으로 실시간 변환합니다. 변환 큐 시스템으로 복잡한 합성 변환을 만들고, 실시간 행렬 시각화와 기저 벡터 표시로 수학적 개념을 직관적으로 이해할 수 있습니다. 애니메이션 효과와 파티클 시스템으로 시각적 피드백을 제공합니다. ✅
 
 ### ⚛️ 물리적 실험들 (7개)
 
