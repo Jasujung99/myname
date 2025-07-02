@@ -454,16 +454,20 @@
 
         .step-indicator {
             position: absolute;
-            top: 50%;
+            top: 20px;
             left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: 24px;
+            transform: translateX(-50%);
+            font-size: 18px;
             color: white;
-            background: rgba(0,0,0,0.7);
+            background: rgba(0,0,0,0.8);
+            backdrop-filter: blur(10px);
             padding: 10px 20px;
-            border-radius: 20px;
+            border-radius: 15px;
+            border: 1px solid rgba(255,255,255,0.2);
             opacity: 0;
             transition: opacity 0.5s;
+            z-index: 3;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
 
         .step-indicator.visible {
@@ -508,8 +512,8 @@
                 </div>
             </div>
 
-            <!-- 애니메이션 상태 표시기 -->
-            <div class="step-indicator" id="stepIndicator">1/4</div>
+            <!-- 단계 표시기 -->
+            <div class="step-indicator" id="stepIndicator">0/0 - 기본 도형</div>
             
             <!-- 도형 선택기 -->
             <div class="shape-selector">
@@ -1090,9 +1094,25 @@
             
             // 이벤트 리스너 설정
             setupEventListeners() {
-                document.getElementById('playPauseBtn').addEventListener('click', () => this.togglePlayPause());
+                document.getElementById('playPauseBtn').addEventListener('click', () => {
+                    this.setTotalSteps(this.getTransformQueueLength());
+                    this.togglePlayPause();
+                });
                 document.getElementById('resetBtn').addEventListener('click', () => this.reset());
-                document.getElementById('stepBtn').addEventListener('click', () => this.nextStep());
+                document.getElementById('stepBtn').addEventListener('click', () => {
+                    this.setTotalSteps(this.getTransformQueueLength());
+                    this.nextStep();
+                });
+            }
+            
+            // 변환 큐 길이 가져오기 (외부에서 설정)
+            getTransformQueueLength() {
+                return this.transformQueueLength || 0;
+            }
+            
+            // 변환 큐 길이 설정
+            setTransformQueueLength(length) {
+                this.transformQueueLength = length;
             }
             
             // 재생/일시정지 토글
@@ -1103,6 +1123,8 @@
                 if (this.isPlaying) {
                     button.textContent = '⏸ 일시정지';
                     button.classList.add('active');
+                    // 재생 시 항상 0단계부터 시작
+                    this.currentStep = 0;
                     this.playAnimation();
                 } else {
                     button.textContent = '▶ 재생';
@@ -1115,6 +1137,11 @@
             playAnimation() {
                 if (this.totalSteps === 0) return;
                 
+                // 0단계부터 시작하도록 콜백 호출
+                if (this.onStepCallback) {
+                    this.onStepCallback(this.currentStep);
+                }
+                
                 this.clearTimer();
                 this.animationTimer = setInterval(() => {
                     this.nextStep();
@@ -1122,7 +1149,6 @@
                     if (this.currentStep >= this.totalSteps) {
                         this.pauseAnimation();
                         this.currentStep = 0;
-                        this.updateStepIndicator();
                     }
                 }, this.animationSpeed);
             }
@@ -1147,19 +1173,13 @@
             nextStep() {
                 if (this.currentStep < this.totalSteps) {
                     this.currentStep++;
-                    this.updateStepIndicator();
-                    
-                    if (this.onStepCallback) {
-                        this.onStepCallback(this.currentStep);
-                    }
                 } else {
-                    // 마지막 단계에서 처음으로 돌아가기
-                    this.currentStep = 1;
-                    this.updateStepIndicator();
-                    
-                    if (this.onStepCallback) {
-                        this.onStepCallback(this.currentStep);
-                    }
+                    // 마지막 단계에서 0단계(기본 도형)로 돌아가기
+                    this.currentStep = 0;
+                }
+                
+                if (this.onStepCallback) {
+                    this.onStepCallback(this.currentStep);
                 }
             }
             
@@ -1175,15 +1195,26 @@
             }
             
             // 단계 표시기 업데이트
-            updateStepIndicator() {
+            updateStepIndicator(transformQueue = null) {
                 if (this.totalSteps > 0) {
-                    this.stepIndicator.textContent = `${this.currentStep}/${this.totalSteps}`;
+                    let stepText = `${this.currentStep}/${this.totalSteps}`;
+                    
+                    if (this.currentStep === 0) {
+                        stepText += ' - 기본 도형';
+                    } else if (transformQueue && this.currentStep > 0) {
+                        const currentTransform = transformQueue.getAt(this.currentStep - 1);
+                        if (currentTransform) {
+                            stepText += ` - ${currentTransform.getDescription()}`;
+                        }
+                    }
+                    
+                    this.stepIndicator.textContent = stepText;
                     this.stepIndicator.classList.add('visible');
                     
                     // 잠시 후 표시기 숨김
                     setTimeout(() => {
                         this.stepIndicator.classList.remove('visible');
-                    }, 1500);
+                    }, 2000);
                 } else {
                     this.stepIndicator.classList.remove('visible');
                 }
@@ -1317,8 +1348,6 @@
                     this.currentRotation = 0;
                     document.getElementById('rotationSlider').value = 0;
                     document.getElementById('rotationValue').textContent = '0°';
-                    
-                    this.animationController.setTotalSteps(this.transformQueue.length);
                 }
             }
             
@@ -1338,8 +1367,6 @@
                     document.getElementById('scaleYSlider').value = 1;
                     document.getElementById('scaleXValue').textContent = '1.0';
                     document.getElementById('scaleYValue').textContent = '1.0';
-                    
-                    this.animationController.setTotalSteps(this.transformQueue.length);
                 }
             }
             
@@ -1359,8 +1386,6 @@
                     document.getElementById('shearYSlider').value = 0;
                     document.getElementById('shearXValue').textContent = '0.0';
                     document.getElementById('shearYValue').textContent = '0.0';
-                    
-                    this.animationController.setTotalSteps(this.transformQueue.length);
                 }
             }
             
@@ -1368,16 +1393,12 @@
             addReflectXTransform() {
                 const transform = new Transform('reflectX');
                 this.transformQueue.add(transform);
-                
-                this.animationController.setTotalSteps(this.transformQueue.length);
             }
             
             // Y축 반사 변환 추가
             addReflectYTransform() {
                 const transform = new Transform('reflectY');
                 this.transformQueue.add(transform);
-                
-                this.animationController.setTotalSteps(this.transformQueue.length);
             }
             
             // 변환 모두 지우기
@@ -1393,6 +1414,9 @@
                 const compositeMatrix = this.transformQueue.calculateCompositeMatrix();
                 this.shape.setTransformMatrix(compositeMatrix);
                 this.matrixVisualization.update(compositeMatrix);
+                
+                // 애니메이션 컨트롤러에 변환 큐 길이 설정
+                this.animationController.setTransformQueueLength(this.transformQueue.length);
             }
             
             // 실시간 미리보기 업데이트
@@ -1435,8 +1459,13 @@
             }
             
             // 특정 단계까지 애니메이션
+            // 특정 단계까지 애니메이션
             animateStep(step) {
+                // 단계 표시기 업데이트 (재생/단계별 버튼에서만 표시)
+                this.animationController.updateStepIndicator(this.transformQueue);
+                
                 if (step <= 0 || this.transformQueue.length === 0) {
+                    // 0단계: 기본 도형 표시
                     this.shape.setTransformMatrix(MathUtil.identityMatrix());
                     this.matrixVisualization.update(MathUtil.identityMatrix());
                     return;
