@@ -261,43 +261,7 @@
             transition: height 0.1s ease;
         }
 
-        /* 비트 감지 */
-        .beat-indicator {
-            width: 100%;
-            height: 40px;
-            background: rgba(0, 0, 0, 0.3);
-            border-radius: 20px;
-            position: relative;
-            overflow: hidden;
-            margin-top: 10px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
 
-        .beat-pulse {
-            width: 30px;
-            height: 30px;
-            background: radial-gradient(circle, #ff4444, #cc0000);
-            border-radius: 50%;
-            position: absolute;
-            top: 50%;
-            left: 10px;
-            transform: translateY(-50%);
-            opacity: 0.3;
-            transition: all 0.1s ease;
-        }
-
-        .beat-pulse.active {
-            opacity: 1;
-            transform: translateY(-50%) scale(1.3);
-            box-shadow: 0 0 20px #ff4444;
-        }
-
-        /* BPM 표시 */
-        #bpmDisplay {
-            color: #4fc3f7;
-            font-weight: bold;
-            font-size: 1.2rem;
-        }
     </style>
 </head>
 <body>
@@ -314,6 +278,12 @@
 
         <!-- 컨트롤 패널 -->
         <div class="control-panel">
+            <!-- 돌아가기 버튼 -->
+            <div style="margin-bottom: 15px;">
+                <a href="../../index.html" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 8px 16px; border-radius: 20px; text-decoration: none; display: inline-block; font-size: 14px;">← 돌아가기</a>
+            </div>
+            <div style="border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 15px; margin-bottom: 15px;"></div>
+            
             <!-- 오디오 제어 -->
             <div class="control-section">
                 <h3>🎵 오디오 제어</h3>
@@ -423,55 +393,57 @@
                         <div class="value-display" id="particleCountValue">200</div>
                     </div>
                 </div>
-
-                <div class="control-group">
-                    <label>회전 속도</label>
-                    <div class="slider-container">
-                        <input type="range" id="rotationSpeed" min="0" max="5" step="0.1" value="1">
-                        <div class="value-display" id="rotationSpeedValue">1</div>
-                    </div>
-                </div>
             </div>
 
-            <!-- 비트 감지 -->
-            <div class="control-section">
-                <h3>🥁 비트 감지</h3>
-                
-                <div class="status-indicator">
-                    <div class="status-dot" id="beatStatus"></div>
-                    <span id="beatStatusText">비트 대기중</span>
-                </div>
-                
-                <div class="control-group">
-                    <label>비트 감도</label>
-                    <div class="slider-container">
-                        <input type="range" id="beatSensitivity" min="1" max="20" step="1" value="8">
-                        <div class="value-display" id="beatSensitivityValue">8</div>
-                    </div>
-                </div>
 
-                <div class="control-group">
-                    <label>비트 임계값</label>
-                    <div class="slider-container">
-                        <input type="range" id="beatThreshold" min="0.1" max="2.0" step="0.1" value="1.2">
-                        <div class="value-display" id="beatThresholdValue">1.2</div>
-                    </div>
-                </div>
-
-                <div class="control-group">
-                    <label>BPM: <span id="bpmDisplay">0</span></label>
-                    <div class="beat-indicator" id="beatIndicator">
-                        <div class="beat-pulse"></div>
-                    </div>
-                </div>
-            </div>
 
             <!-- 내보내기 -->
             <div class="control-section">
                 <h3>💾 내보내기</h3>
                 <div class="button-group">
                     <button class="btn btn-secondary" id="saveImage">이미지 저장</button>
-                    <button class="btn btn-danger" id="toggleRecord">녹화 시작</button>
+                </div>
+            </div>
+            
+            <!-- 학습 가이드 -->
+            <div class="control-section">
+                <h3>📚 학습 가이드</h3>
+                <p style="font-size: 0.9rem; color: #b0bec5; margin-bottom: 10px;">
+                    음악 시각화는 소리의 특성을 시각적 요소로 변환하는 실험입니다.
+                </p>
+                
+                <div style="margin: 15px 0;">
+                    <p style="font-size: 0.9rem; color: #b0bec5; margin-bottom: 5px;">
+                        <strong>FFT (고속 푸리에 변환)</strong>: 시간 영역의 소리를 주파수 영역으로 변환하는 알고리즘입니다.
+                    </p>
+                    <ul style="font-size: 0.85rem; color: #b0bec5; padding-left: 20px; margin: 5px 0 15px 0;">
+                        <li><strong>FFT 크기</strong>: 주파수 분석의 해상도를 결정합니다. 큰 값일수록 더 세밀한 주파수 분석이 가능하지만 더 많은 처리 능력이 필요합니다.</li>
+                        <li><strong>스무딩 시간</strong>: 값이 클수록 변화가 부드럽게 나타나며, 작을수록 즉각적으로 반응합니다.</li>
+                        <li><strong>감도</strong>: 입력 소리의 세기에 대한 전반적인 감도를 조절합니다.</li>
+                    </ul>
+                </div>
+                
+                <div style="margin: 15px 0;">
+                    <p style="font-size: 0.9rem; color: #b0bec5; margin-bottom: 5px;">
+                        <strong>비주얼 이펙트</strong>: 소리의 시각적 표현을 조절하는 설정입니다.
+                    </p>
+                    <ul style="font-size: 0.85rem; color: #b0bec5; padding-left: 20px; margin: 5px 0 15px 0;">
+                        <li><strong>반응 강도</strong>: 소리에 대한 시각적 요소의 크기 변화 정도를 결정합니다.</li>
+                        <li><strong>잔향 효과</strong>: 이전 프레임이 화면에 남아있는 정도를 조절합니다. 값이 클수록 잔상이 오래 지속됩니다.</li>
+                        <li><strong>입자 수</strong>: 파티클 모드에서 화면에 표시되는 입자의 개수를 설정합니다.</li>
+                    </ul>
+                </div>
+                
+                <div style="margin: 15px 0;">
+                    <p style="font-size: 0.9rem; color: #b0bec5; margin-bottom: 5px;">
+                        <strong>시각화 모드</strong>: 다양한 방식으로 소리를 시각화합니다.
+                    </p>
+                    <ul style="font-size: 0.85rem; color: #b0bec5; padding-left: 20px; margin: 5px 0;">
+                        <li><strong>스펙트럼</strong>: 주파수 별 크기를 막대 그래프로 표현합니다.</li>
+                        <li><strong>파형</strong>: 오디오 신호의 시간에 따른 파형을 보여줍니다.</li>
+                        <li><strong>원형</strong>: 주파수를 원을 중심으로 방사형으로 표현합니다.</li>
+                        <li><strong>파티클</strong>: 소리에 반응하는 움직이는 입자들로 표현합니다.</li>
+                    </ul>
                 </div>
             </div>
         </div>
@@ -501,20 +473,8 @@ class MusicVisualizer {
             reactivity: 2,
             decay: 0.8,
             particleCount: 200,
-            rotationSpeed: 1,
-            masterVolume: 0.5,
-            // 비트 감지 설정
-            beatSensitivity: 8,
-            beatThreshold: 1.2,
-            beatDetection: {
-                enabled: true,
-                sensitivity: 0.5,
-                minBPM: 60,
-                maxBPM: 180,
-                energyThreshold: 1.3,
-                historySize: 43,  // ~1초 간격 (assuming 43fps)
-                varianceThreshold: 0.05
-            }
+            rotationSpeed: 1, // 내부적으로 사용
+            masterVolume: 0.5
         };
         
         // 시각화 모드
@@ -528,17 +488,7 @@ class MusicVisualizer {
         // 입자 시스템
         this.particles = [];
         
-        // 비트 감지 시스템
-        this.beatDetector = {
-            energyHistory: [],
-            lastBeat: 0,
-            bpm: 0,
-            beatTimes: [],
-            variance: 0,
-            localEnergy: 0,
-            averageEnergy: 0,
-            isBeating: false
-        };
+        // 회전 관련
         this.rotation = 0;
         
         // Vega 차트
@@ -612,15 +562,14 @@ class MusicVisualizer {
         // 슬라이더 이벤트
         this.setupSliderListeners();
         
-        // 저장 및 녹화
+        // 저장 버튼
         document.getElementById('saveImage').addEventListener('click', () => this.saveImage());
-        document.getElementById('toggleRecord').addEventListener('click', () => this.toggleRecording());
     }
     
     setupSliderListeners() {
         const sliders = [
             'masterVolume', 'fftSize', 'smoothingTime', 'sensitivity',
-            'reactivity', 'decay', 'particleCount', 'rotationSpeed'
+            'reactivity', 'decay', 'particleCount'
         ];
         
         sliders.forEach(sliderId => {
@@ -655,9 +604,6 @@ class MusicVisualizer {
                     case 'particleCount':
                         this.config.particleCount = parseInt(value);
                         this.setupParticles();
-                        break;
-                    case 'rotationSpeed':
-                        this.config.rotationSpeed = value;
                         break;
                 }
             });
@@ -800,6 +746,8 @@ class MusicVisualizer {
         
         return colors[this.colorMode](frequency, intensity);
     }
+    
+
     
     animate() {
         this.animationId = requestAnimationFrame(() => this.animate());
@@ -1064,12 +1012,6 @@ class MusicVisualizer {
         link.download = `music-visualization-${Date.now()}.png`;
         link.href = this.canvas.toDataURL();
         link.click();
-    }
-    
-    toggleRecording() {
-        // 녹화 기능은 추후 구현
-        console.log('녹화 기능은 개발 중입니다.');
-        alert('녹화 기능은 개발 중입니다.');
     }
 }
 
