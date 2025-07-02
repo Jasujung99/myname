@@ -260,6 +260,44 @@
             min-height: 2px;
             transition: height 0.1s ease;
         }
+
+        /* 비트 감지 */
+        .beat-indicator {
+            width: 100%;
+            height: 40px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 20px;
+            position: relative;
+            overflow: hidden;
+            margin-top: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .beat-pulse {
+            width: 30px;
+            height: 30px;
+            background: radial-gradient(circle, #ff4444, #cc0000);
+            border-radius: 50%;
+            position: absolute;
+            top: 50%;
+            left: 10px;
+            transform: translateY(-50%);
+            opacity: 0.3;
+            transition: all 0.1s ease;
+        }
+
+        .beat-pulse.active {
+            opacity: 1;
+            transform: translateY(-50%) scale(1.3);
+            box-shadow: 0 0 20px #ff4444;
+        }
+
+        /* BPM 표시 */
+        #bpmDisplay {
+            color: #4fc3f7;
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
     </style>
 </head>
 <body>
@@ -311,7 +349,7 @@
                         <button class="waveform-btn active" data-mode="spectrum">스펙트럼</button>
                         <button class="waveform-btn" data-mode="waveform">파형</button>
                         <button class="waveform-btn" data-mode="circular">원형</button>
-                        <button class="waveform-btn" data-mode="mesh">메시</button>
+                        <button class="waveform-btn" data-mode="particle">파티클</button>
                     </div>
                 </div>
 
@@ -395,6 +433,39 @@
                 </div>
             </div>
 
+            <!-- 비트 감지 -->
+            <div class="control-section">
+                <h3>🥁 비트 감지</h3>
+                
+                <div class="status-indicator">
+                    <div class="status-dot" id="beatStatus"></div>
+                    <span id="beatStatusText">비트 대기중</span>
+                </div>
+                
+                <div class="control-group">
+                    <label>비트 감도</label>
+                    <div class="slider-container">
+                        <input type="range" id="beatSensitivity" min="1" max="20" step="1" value="8">
+                        <div class="value-display" id="beatSensitivityValue">8</div>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>비트 임계값</label>
+                    <div class="slider-container">
+                        <input type="range" id="beatThreshold" min="0.1" max="2.0" step="0.1" value="1.2">
+                        <div class="value-display" id="beatThresholdValue">1.2</div>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>BPM: <span id="bpmDisplay">0</span></label>
+                    <div class="beat-indicator" id="beatIndicator">
+                        <div class="beat-pulse"></div>
+                    </div>
+                </div>
+            </div>
+
             <!-- 내보내기 -->
             <div class="control-section">
                 <h3>💾 내보내기</h3>
@@ -431,7 +502,19 @@ class MusicVisualizer {
             decay: 0.8,
             particleCount: 200,
             rotationSpeed: 1,
-            masterVolume: 0.5
+            masterVolume: 0.5,
+            // 비트 감지 설정
+            beatSensitivity: 8,
+            beatThreshold: 1.2,
+            beatDetection: {
+                enabled: true,
+                sensitivity: 0.5,
+                minBPM: 60,
+                maxBPM: 180,
+                energyThreshold: 1.3,
+                historySize: 43,  // ~1초 간격 (assuming 43fps)
+                varianceThreshold: 0.05
+            }
         };
         
         // 시각화 모드
@@ -444,6 +527,18 @@ class MusicVisualizer {
         
         // 입자 시스템
         this.particles = [];
+        
+        // 비트 감지 시스템
+        this.beatDetector = {
+            energyHistory: [],
+            lastBeat: 0,
+            bpm: 0,
+            beatTimes: [],
+            variance: 0,
+            localEnergy: 0,
+            averageEnergy: 0,
+            isBeating: false
+        };
         this.rotation = 0;
         
         // Vega 차트
@@ -733,8 +828,8 @@ class MusicVisualizer {
             case 'circular':
                 this.drawCircular();
                 break;
-            case 'mesh':
-                this.drawMesh();
+            case 'particle':
+                this.drawParticles();
                 break;
         }
         
@@ -872,139 +967,6 @@ class MusicVisualizer {
             this.ctx.arc(particle.x, particle.y, size, 0, Math.PI * 2);
             this.ctx.fill();
         });
-    }
-    
-    drawMesh() {
-        const width = this.canvas.width / devicePixelRatio;
-        const height = this.canvas.height / devicePixelRatio;
-        const centerX = width / 2;
-        const centerY = height / 2;
-        
-        // 3D 메시 설정
-        const gridX = 25; // 수평 그리드 개수
-        const gridY = 20; // 수직 그리드 개수
-        const gridSize = 400; // 3D 그리드 크기
-        const halfGridSize = gridSize / 2;
-        
-        // 투영 설정
-        const fov = 250; // 시야각 효과
-        const viewZ = -500; // 시점 거리
-        
-        // 회전 각도 계산
-        const rotX = this.rotation * 0.2; // X축 회전
-        const rotY = this.rotation * 0.3; // Y축 회전
-        const rotZ = this.rotation * 0.1; // Z축 회전
-        
-        // 메시 정점 데이터 생성 (3D)
-        const vertices = [];
-        for (let y = 0; y <= gridY; y++) {
-            for (let x = 0; x <= gridX; x++) {
-                // 3D 공간의 위치 계산 (-1 ~ 1 범위)
-                const xPos = (x / gridX) * 2 - 1;
-                const yPos = (y / gridY) * 2 - 1;
-                
-                // 주파수 데이터로 Z 위치 변형
-                const freqIndex = Math.floor(((x + y * gridX) / (gridX * gridY)) * this.dataArray.length);
-                const amplitude = this.dataArray[freqIndex] / 255;
-                const zPos = amplitude * this.config.reactivity;
-                
-                // 3D 공간에서의 좌표
-                let point3D = {
-                    x: xPos * halfGridSize,
-                    y: yPos * halfGridSize,
-                    z: zPos * 100
-                };
-                
-                // 3D 회전 적용
-                point3D = this.rotate3D(point3D, rotX, rotY, rotZ);
-                
-                // 3D -> 2D 투영
-                const point2D = this.project3D(point3D, fov, viewZ);
-                
-                // 중앙으로 이동
-                point2D.x += centerX;
-                point2D.y += centerY;
-                
-                vertices.push({
-                    x: point2D.x,
-                    y: point2D.y,
-                    z: point3D.z,
-                    amplitude: amplitude
-                });
-            }
-        }
-        
-        // 선 스타일 설정 (파형 모드와 비슷한 단색 선)
-        this.ctx.strokeStyle = this.getColorForFrequency(0.5, 0.8); // 단색 사용
-        this.ctx.lineWidth = 1;
-        
-        // X축 라인 그리기
-        for (let y = 0; y <= gridY; y++) {
-            this.ctx.beginPath();
-            for (let x = 0; x <= gridX; x++) {
-                const idx = x + y * (gridX + 1);
-                const vertex = vertices[idx];
-                
-                if (x === 0) {
-                    this.ctx.moveTo(vertex.x, vertex.y);
-                } else {
-                    this.ctx.lineTo(vertex.x, vertex.y);
-                }
-            }
-            this.ctx.stroke();
-        }
-        
-        // Y축 라인 그리기
-        for (let x = 0; x <= gridX; x++) {
-            this.ctx.beginPath();
-            for (let y = 0; y <= gridY; y++) {
-                const idx = x + y * (gridX + 1);
-                const vertex = vertices[idx];
-                
-                if (y === 0) {
-                    this.ctx.moveTo(vertex.x, vertex.y);
-                } else {
-                    this.ctx.lineTo(vertex.x, vertex.y);
-                }
-            }
-            this.ctx.stroke();
-        }
-    }
-    
-    // 3D 회전 함수 추가
-    rotate3D(point, rotX, rotY, rotZ) {
-        let x = point.x;
-        let y = point.y;
-        let z = point.z;
-        
-        // X축 회전
-        let y1 = y * Math.cos(rotX) - z * Math.sin(rotX);
-        let z1 = y * Math.sin(rotX) + z * Math.cos(rotX);
-        y = y1;
-        z = z1;
-        
-        // Y축 회전
-        let x2 = x * Math.cos(rotY) + z * Math.sin(rotY);
-        let z2 = -x * Math.sin(rotY) + z * Math.cos(rotY);
-        x = x2;
-        z = z2;
-        
-        // Z축 회전
-        let x3 = x * Math.cos(rotZ) - y * Math.sin(rotZ);
-        let y3 = x * Math.sin(rotZ) + y * Math.cos(rotZ);
-        x = x3;
-        y = y3;
-        
-        return { x, y, z };
-    }
-    
-    // 3D -> 2D 투영 함수 추가
-    project3D(point, fov, viewZ) {
-        const factor = fov / (viewZ + point.z);
-        return {
-            x: point.x * factor,
-            y: point.y * factor
-        };
     }
     
     async setupVegaChart() {
