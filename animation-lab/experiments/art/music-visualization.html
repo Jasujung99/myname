@@ -319,7 +319,7 @@
                         <button class="waveform-btn active" data-mode="spectrum">스펙트럼</button>
                         <button class="waveform-btn" data-mode="waveform">파형</button>
                         <button class="waveform-btn" data-mode="circular">원형</button>
-                        <button class="waveform-btn" data-mode="particle">파티클</button>
+                        <button class="waveform-btn" data-mode="mesh">매시</button>
                     </div>
                 </div>
 
@@ -387,10 +387,10 @@
                 </div>
 
                 <div class="control-group">
-                    <label>입자 수</label>
+                    <label>매시 밀도</label>
                     <div class="slider-container">
-                        <input type="range" id="particleCount" min="50" max="500" step="25" value="200">
-                        <div class="value-display" id="particleCountValue">200</div>
+                        <input type="range" id="meshDensity" min="5" max="30" step="5" value="15">
+                        <div class="value-display" id="meshDensityValue">15</div>
                     </div>
                 </div>
             </div>
@@ -430,7 +430,7 @@
                     <ul style="font-size: 0.85rem; color: #b0bec5; padding-left: 20px; margin: 5px 0 15px 0;">
                         <li><strong>반응 강도</strong>: 소리에 대한 시각적 요소의 크기 변화 정도를 결정합니다.</li>
                         <li><strong>잔향 효과</strong>: 이전 프레임이 화면에 남아있는 정도를 조절합니다. 값이 클수록 잔상이 오래 지속됩니다.</li>
-                        <li><strong>입자 수</strong>: 파티클 모드에서 화면에 표시되는 입자의 개수를 설정합니다.</li>
+                        <li><strong>매시 밀도</strong>: 매시 모드에서 그물망의 밀도를 조절합니다. 값이 클수록 더 세밀한 그물망이 형성됩니다.</li>
                     </ul>
                 </div>
                 
@@ -442,7 +442,7 @@
                         <li><strong>스펙트럼</strong>: 주파수 별 크기를 막대 그래프로 표현합니다.</li>
                         <li><strong>파형</strong>: 오디오 신호의 시간에 따른 파형을 보여줍니다.</li>
                         <li><strong>원형</strong>: 주파수를 원을 중심으로 방사형으로 표현합니다.</li>
-                        <li><strong>파티클</strong>: 소리에 반응하는 움직이는 입자들로 표현합니다.</li>
+                        <li><strong>매시</strong>: 소리에 반응하는 그물망 구조로 표현합니다.</li>
                     </ul>
                 </div>
             </div>
@@ -472,7 +472,7 @@ class MusicVisualizer {
             sensitivity: 5,
             reactivity: 2,
             decay: 0.8,
-            particleCount: 200,
+            meshDensity: 15,
             rotationSpeed: 1, // 내부적으로 사용
             masterVolume: 0.5
         };
@@ -484,9 +484,6 @@ class MusicVisualizer {
         // 애니메이션 상태
         this.animationId = null;
         this.isPlaying = false;
-        
-        // 입자 시스템
-        this.particles = [];
         
         // 회전 관련
         this.rotation = 0;
@@ -500,7 +497,7 @@ class MusicVisualizer {
     async init() {
         this.setupCanvas();
         this.setupEventListeners();
-        this.setupParticles();
+
         await this.setupVegaChart();
         this.setupFrequencyBands();
         this.animate();
@@ -569,7 +566,7 @@ class MusicVisualizer {
     setupSliderListeners() {
         const sliders = [
             'masterVolume', 'fftSize', 'smoothingTime', 'sensitivity',
-            'reactivity', 'decay', 'particleCount'
+            'reactivity', 'decay', 'meshDensity'
         ];
         
         sliders.forEach(sliderId => {
@@ -601,9 +598,8 @@ class MusicVisualizer {
                     case 'decay':
                         this.config.decay = value;
                         break;
-                    case 'particleCount':
-                        this.config.particleCount = parseInt(value);
-                        this.setupParticles();
+                    case 'meshDensity':
+                        this.config.meshDensity = parseInt(value);
                         break;
                 }
             });
@@ -705,19 +701,7 @@ class MusicVisualizer {
         }
     }
     
-    setupParticles() {
-        this.particles = [];
-        for (let i = 0; i < this.config.particleCount; i++) {
-            this.particles.push({
-                x: Math.random() * this.canvas.width,
-                y: Math.random() * this.canvas.height,
-                vx: (Math.random() - 0.5) * 2,
-                vy: (Math.random() - 0.5) * 2,
-                life: Math.random(),
-                size: Math.random() * 3 + 1
-            });
-        }
-    }
+
     
     getColorForFrequency(frequency, intensity) {
         const colors = {
@@ -776,8 +760,8 @@ class MusicVisualizer {
             case 'circular':
                 this.drawCircular();
                 break;
-            case 'particle':
-                this.drawParticles();
+            case 'mesh':
+                this.drawMesh();
                 break;
         }
         
@@ -884,37 +868,106 @@ class MusicVisualizer {
         this.ctx.restore();
     }
     
-    drawParticles() {
+    drawMesh() {
         const width = this.canvas.width / devicePixelRatio;
         const height = this.canvas.height / devicePixelRatio;
         
         // 평균 볼륨 계산
         const avgVolume = this.dataArray.reduce((sum, val) => sum + val, 0) / this.dataArray.length / 255;
         
-        this.particles.forEach((particle, index) => {
-            const frequencyIndex = Math.floor((index / this.particles.length) * this.dataArray.length);
-            const intensity = this.dataArray[frequencyIndex] / 255;
-            
-            // 입자 위치 업데이트
-            particle.x += particle.vx * (1 + intensity * this.config.reactivity);
-            particle.y += particle.vy * (1 + intensity * this.config.reactivity);
-            
-            // 경계 처리
-            if (particle.x < 0 || particle.x > width) particle.vx *= -1;
-            if (particle.y < 0 || particle.y > height) particle.vy *= -1;
-            
-            particle.x = Math.max(0, Math.min(width, particle.x));
-            particle.y = Math.max(0, Math.min(height, particle.y));
-            
-            // 입자 그리기
-            const size = particle.size * (1 + intensity * 2);
-            const frequency = index / this.particles.length;
-            
-            this.ctx.fillStyle = this.getColorForFrequency(frequency, intensity);
+        // 메시를 그리기 위한 설정
+        const cols = this.config.meshDensity;
+        const rows = Math.floor(this.config.meshDensity * 0.75);
+        const cellWidth = width / cols;
+        const cellHeight = height / rows;
+        
+        // 메시 포인트 생성
+        const points = [];
+        for (let y = 0; y <= rows; y++) {
+            const row = [];
+            for (let x = 0; x <= cols; x++) {
+                // 기본 포인트 위치 계산
+                const pointX = x * cellWidth;
+                const pointY = y * cellHeight;
+                
+                // 주파수 데이터를 기반으로 높이 조정
+                const freqIndex = Math.floor((x / cols) * this.dataArray.length);
+                const intensity = this.dataArray[freqIndex] / 255;
+                
+                // 파형 왜곡 계산 - 위치에 따라 다른 주파수 영향 받음
+                const distortion = intensity * this.config.reactivity * 30;
+                
+                row.push({
+                    x: pointX,
+                    y: pointY + distortion,
+                    intensity: intensity
+                });
+            }
+            points.push(row);
+        }
+        
+        // 그물망 그리기 (선)
+        this.ctx.lineWidth = 1;
+        
+        // 수평선 그리기
+        for (let y = 0; y <= rows; y++) {
             this.ctx.beginPath();
-            this.ctx.arc(particle.x, particle.y, size, 0, Math.PI * 2);
-            this.ctx.fill();
-        });
+            for (let x = 0; x <= cols; x++) {
+                const point = points[y][x];
+                const intensity = point.intensity;
+                const alpha = 0.3 + intensity * 0.7; // 음량에 따른 투명도
+                
+                if (x === 0) {
+                    this.ctx.moveTo(point.x, point.y);
+                } else {
+                    this.ctx.lineTo(point.x, point.y);
+                }
+                
+                // 포인트에 색상 적용
+                const frequency = x / cols;
+                this.ctx.strokeStyle = this.getColorForFrequency(frequency, intensity);
+            }
+            this.ctx.stroke();
+        }
+        
+        // 수직선 그리기
+        for (let x = 0; x <= cols; x++) {
+            this.ctx.beginPath();
+            for (let y = 0; y <= rows; y++) {
+                const point = points[y][x];
+                const intensity = point.intensity;
+                
+                if (y === 0) {
+                    this.ctx.moveTo(point.x, point.y);
+                } else {
+                    this.ctx.lineTo(point.x, point.y);
+                }
+                
+                // 포인트에 색상 적용
+                const frequency = y / rows;
+                this.ctx.strokeStyle = this.getColorForFrequency(frequency, intensity);
+            }
+            this.ctx.stroke();
+        }
+        
+        // 교차점에 작은 원 추가 (파형 강조)
+        for (let y = 0; y <= rows; y++) {
+            for (let x = 0; x <= cols; x++) {
+                const point = points[y][x];
+                const intensity = point.intensity;
+                
+                // 주파수에 따라 색상 결정
+                const frequency = (x / cols + y / rows) / 2;
+                this.ctx.fillStyle = this.getColorForFrequency(frequency, intensity);
+                
+                // 원 크기는 볼륨에 따라 조정
+                const dotSize = 2 + intensity * 3;
+                
+                this.ctx.beginPath();
+                this.ctx.arc(point.x, point.y, dotSize, 0, Math.PI * 2);
+                this.ctx.fill();
+            }
+        }
     }
     
     async setupVegaChart() {
