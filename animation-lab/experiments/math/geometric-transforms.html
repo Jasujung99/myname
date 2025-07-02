@@ -1,0 +1,1610 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>기하학적 변환 - 행렬의 마법 - Animation Lab</title>
+    <script src="https://cdn.jsdelivr.net/npm/vega@5.22.1"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vega-lite@5.6.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vega-embed@6.21.0"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            overflow: hidden;
+        }
+
+        .container {
+            display: flex;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        .canvas-area {
+            flex: 1;
+            position: relative;
+            background: radial-gradient(circle at center, rgba(255,255,255,0.05) 0%, rgba(0,0,0,0.3) 100%);
+        }
+
+        #mainCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+
+        #matrixVisualization {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(10px);
+            border-radius: 10px;
+            padding: 15px;
+            width: 300px;
+            z-index: 2;
+            border: 1px solid rgba(255,255,255,0.2);
+            font-family: 'Courier New', monospace;
+        }
+
+        .matrix-title {
+            font-size: 14px;
+            margin-bottom: 10px;
+            color: #4FC3F7;
+            text-align: center;
+        }
+
+        .matrix-container {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 5px;
+            margin-bottom: 15px;
+        }
+
+        .matrix-cell {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 4px;
+            padding: 8px;
+            text-align: center;
+            font-size: 14px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .matrix-highlight {
+            background: rgba(79, 195, 247, 0.3);
+            border-color: #4FC3F7;
+            box-shadow: 0 0 10px rgba(79, 195, 247, 0.5);
+        }
+
+        .basis-vectors {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 15px;
+        }
+
+        .basis-vector {
+            text-align: center;
+            background: rgba(255,255,255,0.1);
+            border-radius: 5px;
+            padding: 8px;
+            width: 45%;
+        }
+
+        .basis-label {
+            color: #4FC3F7;
+            margin-bottom: 5px;
+            font-size: 12px;
+        }
+
+        .vector-value {
+            font-size: 14px;
+        }
+
+        .axis-info {
+            margin-top: 10px;
+            font-size: 12px;
+            opacity: 0.7;
+            text-align: center;
+        }
+
+        .shape-selector {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 3;
+            display: flex;
+            gap: 10px;
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(10px);
+            padding: 15px;
+            border-radius: 20px;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .shape-btn {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: white;
+            padding: 10px 15px;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+        }
+
+        .shape-btn:hover {
+            background: rgba(255,255,255,0.2);
+            transform: translateY(-2px);
+        }
+
+        .shape-btn.active {
+            background: rgba(79, 195, 247, 0.3);
+            border-color: #4FC3F7;
+            box-shadow: 0 0 10px rgba(79, 195, 247, 0.5);
+        }
+
+        .animation-controls {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            z-index: 3;
+            display: flex;
+            gap: 10px;
+        }
+
+        .anim-btn {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: white;
+            padding: 10px 15px;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+        }
+
+        .anim-btn:hover {
+            background: rgba(255,255,255,0.2);
+        }
+
+        .anim-btn.active {
+            background: rgba(79, 195, 247, 0.3);
+            border-color: #4FC3F7;
+        }
+
+        .control-panel {
+            width: 350px;
+            background: rgba(0,0,0,0.8);
+            backdrop-filter: blur(15px);
+            border-left: 1px solid rgba(255,255,255,0.1);
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .nav-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .back-btn {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            text-decoration: none;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .back-btn:hover {
+            background: rgba(255,255,255,0.2);
+            transform: translateY(-1px);
+        }
+
+        .experiment-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        .experiment-desc {
+            font-size: 0.9rem;
+            opacity: 0.8;
+            text-align: center;
+            margin-bottom: 20px;
+            line-height: 1.4;
+        }
+
+        .control-group {
+            margin-bottom: 25px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 10px;
+            padding: 15px;
+            border: 1px solid rgba(255,255,255,0.1);
+            transition: all 0.3s ease;
+        }
+
+        .control-group:hover {
+            background: rgba(255,255,255,0.08);
+        }
+
+        .control-group h3 {
+            margin-bottom: 15px;
+            color: #4FC3F7;
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .control-item {
+            margin-bottom: 15px;
+        }
+
+        .control-item label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        input[type="range"] {
+            flex: 1;
+            height: 6px;
+            border-radius: 3px;
+            background: rgba(255,255,255,0.2);
+            outline: none;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #4FC3F7;
+            cursor: pointer;
+            border: 2px solid white;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+            transition: all 0.2s ease;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.1);
+            box-shadow: 0 4px 12px rgba(79, 195, 247, 0.4);
+        }
+
+        .value-display {
+            min-width: 50px;
+            text-align: center;
+            font-family: 'Courier New', monospace;
+            color: #4FC3F7;
+            font-weight: bold;
+        }
+
+        .transform-queue {
+            background: rgba(0,0,0,0.3);
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .queue-title {
+            font-size: 14px;
+            margin-bottom: 10px;
+            color: #4FC3F7;
+        }
+
+        .transform-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            margin-bottom: 5px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 6px;
+            font-size: 13px;
+            transition: all 0.3s ease;
+        }
+
+        .transform-item:hover {
+            background: rgba(255,255,255,0.1);
+        }
+
+        .transform-type {
+            color: #4FC3F7;
+            font-weight: bold;
+        }
+
+        .remove-btn {
+            background: rgba(255, 100, 100, 0.2);
+            border: 1px solid rgba(255, 100, 100, 0.3);
+            color: #ff6464;
+            padding: 2px 6px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11px;
+            transition: all 0.2s ease;
+        }
+
+        .remove-btn:hover {
+            background: rgba(255, 100, 100, 0.4);
+            transform: scale(1.1);
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .action-btn {
+            flex: 1;
+            background: rgba(79, 195, 247, 0.2);
+            border: 1px solid #4FC3F7;
+            color: white;
+            padding: 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+        }
+
+        .action-btn:hover {
+            background: rgba(79, 195, 247, 0.4);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(79, 195, 247, 0.3);
+        }
+
+        .basis-vector-area {
+            position: absolute;
+            left: 20px;
+            top: 20px;
+            z-index: 2;
+            width: 200px;
+        }
+
+        .vector-indicator {
+            padding: 10px;
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(10px);
+            border-radius: 10px;
+            margin-bottom: 10px;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .vector-indicator h4 {
+            color: #4FC3F7;
+            font-size: 12px;
+            margin-bottom: 5px;
+        }
+
+        .vector-coords {
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+
+        .info-section {
+            margin-top: 20px;
+            background: rgba(79, 195, 247, 0.1);
+            border-radius: 10px;
+            padding: 15px;
+            border: 1px solid rgba(79, 195, 247, 0.3);
+        }
+
+        .info-section h4 {
+            color: #4FC3F7;
+            margin-bottom: 10px;
+            font-size: 1rem;
+        }
+
+        .info-section p {
+            font-size: 0.85rem;
+            line-height: 1.4;
+            opacity: 0.9;
+            margin-bottom: 8px;
+        }
+
+        .formula {
+            font-family: 'Courier New', monospace;
+            background: rgba(0,0,0,0.3);
+            padding: 8px;
+            border-radius: 4px;
+            margin: 8px 0;
+            font-size: 0.8rem;
+            color: #4FC3F7;
+        }
+
+        .animated-cell {
+            animation: pulse 1.5s infinite alternate;
+        }
+
+        @keyframes pulse {
+            from { background: rgba(79, 195, 247, 0.1); }
+            to { background: rgba(79, 195, 247, 0.4); }
+        }
+
+        .step-indicator {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 24px;
+            color: white;
+            background: rgba(0,0,0,0.7);
+            padding: 10px 20px;
+            border-radius: 20px;
+            opacity: 0;
+            transition: opacity 0.5s;
+        }
+
+        .step-indicator.visible {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 캔버스 영역 -->
+        <div class="canvas-area">
+            <canvas id="mainCanvas"></canvas>
+            
+            <!-- 행렬 시각화 -->
+            <div id="matrixVisualization">
+                <div class="matrix-title">변환 행렬</div>
+                <div class="matrix-container" id="transformMatrix">
+                    <div class="matrix-cell">1.00</div>
+                    <div class="matrix-cell">0.00</div>
+                    <div class="matrix-cell">0.00</div>
+                    <div class="matrix-cell">0.00</div>
+                    <div class="matrix-cell">1.00</div>
+                    <div class="matrix-cell">0.00</div>
+                    <div class="matrix-cell">0.00</div>
+                    <div class="matrix-cell">0.00</div>
+                    <div class="matrix-cell">1.00</div>
+                </div>
+                
+                <div class="basis-vectors">
+                    <div class="basis-vector">
+                        <div class="basis-label">i 기저벡터</div>
+                        <div class="vector-value" id="iVector">[1.00, 0.00]</div>
+                    </div>
+                    <div class="basis-vector">
+                        <div class="basis-label">j 기저벡터</div>
+                        <div class="vector-value" id="jVector">[0.00, 1.00]</div>
+                    </div>
+                </div>
+                
+                <div class="axis-info">
+                    변환 행렬은 좌표계가 어떻게 변환되는지 보여줍니다
+                </div>
+            </div>
+
+            <!-- 애니메이션 상태 표시기 -->
+            <div class="step-indicator" id="stepIndicator">1/4</div>
+            
+            <!-- 도형 선택기 -->
+            <div class="shape-selector">
+                <button class="shape-btn active" data-shape="triangle">▲ 삼각형</button>
+                <button class="shape-btn" data-shape="square">■ 사각형</button>
+                <button class="shape-btn" data-shape="pentagon">⬟ 오각형</button>
+                <button class="shape-btn" data-shape="star">★ 별</button>
+                <button class="shape-btn" data-shape="arrow">➤ 화살표</button>
+            </div>
+
+            <!-- 애니메이션 컨트롤 -->
+            <div class="animation-controls">
+                <button class="anim-btn" id="playPauseBtn">▶ 재생</button>
+                <button class="anim-btn" id="resetBtn">⟲ 리셋</button>
+                <button class="anim-btn" id="stepBtn">⏭ 단계별</button>
+            </div>
+        </div>
+
+        <!-- 컨트롤 패널 -->
+        <div class="control-panel">
+            <div class="nav-header">
+                <a href="../../index.html" class="back-btn">← 돌아가기</a>
+            </div>
+
+            <h1 class="experiment-title">기하학적 변환</h1>
+            <p class="experiment-desc">
+                행렬을 사용한 2D 기하학적 변환을 시각적으로 탐험해보세요. 
+                회전, 크기 조절, 전단, 반사 등의 변환을 조합하여 복잡한 변환을 만들어보세요.
+            </p>
+
+            <!-- 회전 제어 -->
+            <div class="control-group">
+                <h3>🔄 회전 (Rotation)</h3>
+                <div class="control-item">
+                    <label>각도 (도)</label>
+                    <div class="slider-container">
+                        <input type="range" id="rotationSlider" min="0" max="360" value="0" step="1">
+                        <div class="value-display" id="rotationValue">0°</div>
+                    </div>
+                </div>
+                <div class="action-buttons">
+                    <button class="action-btn" id="addRotationBtn">적용하기</button>
+                </div>
+            </div>
+
+            <!-- 크기 조절 제어 -->
+            <div class="control-group">
+                <h3>📏 크기 조절 (Scale)</h3>
+                <div class="control-item">
+                    <label>X축 크기</label>
+                    <div class="slider-container">
+                        <input type="range" id="scaleXSlider" min="0.1" max="3" value="1" step="0.1">
+                        <div class="value-display" id="scaleXValue">1.0</div>
+                    </div>
+                </div>
+                <div class="control-item">
+                    <label>Y축 크기</label>
+                    <div class="slider-container">
+                        <input type="range" id="scaleYSlider" min="0.1" max="3" value="1" step="0.1">
+                        <div class="value-display" id="scaleYValue">1.0</div>
+                    </div>
+                </div>
+                <div class="action-buttons">
+                    <button class="action-btn" id="addScaleBtn">적용하기</button>
+                </div>
+            </div>
+
+            <!-- 전단 변환 제어 -->
+            <div class="control-group">
+                <h3>🔀 전단 변환 (Shear)</h3>
+                <div class="control-item">
+                    <label>X축 전단</label>
+                    <div class="slider-container">
+                        <input type="range" id="shearXSlider" min="-2" max="2" value="0" step="0.1">
+                        <div class="value-display" id="shearXValue">0.0</div>
+                    </div>
+                </div>
+                <div class="control-item">
+                    <label>Y축 전단</label>
+                    <div class="slider-container">
+                        <input type="range" id="shearYSlider" min="-2" max="2" value="0" step="0.1">
+                        <div class="value-display" id="shearYValue">0.0</div>
+                    </div>
+                </div>
+                <div class="action-buttons">
+                    <button class="action-btn" id="addShearBtn">적용하기</button>
+                </div>
+            </div>
+
+            <!-- 반사 변환 제어 -->
+            <div class="control-group">
+                <h3>🪞 반사 (Reflection)</h3>
+                <div class="action-buttons">
+                    <button class="action-btn" id="reflectXBtn">X축 반사</button>
+                    <button class="action-btn" id="reflectYBtn">Y축 반사</button>
+                </div>
+            </div>
+
+            <!-- 변환 큐 -->
+            <div class="transform-queue">
+                <div class="queue-title">적용된 변환 순서</div>
+                <div id="transformList">
+                    <div style="text-align: center; opacity: 0.6; font-size: 13px;">
+                        변환이 추가되면 여기에 표시됩니다
+                    </div>
+                </div>
+                <div class="action-buttons">
+                    <button class="action-btn" id="clearBtn">모두 지우기</button>
+                </div>
+            </div>
+
+            <!-- 정보 섹션 -->
+            <div class="info-section">
+                <h4>📚 변환 행렬 이론</h4>
+                <p><strong>회전 행렬:</strong></p>
+                <div class="formula">
+                    R(θ) = [cos(θ) -sin(θ)]<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[sin(θ)  cos(θ)]
+                </div>
+                <p><strong>크기 조절 행렬:</strong></p>
+                <div class="formula">
+                    S(sx,sy) = [sx  0]<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[ 0 sy]
+                </div>
+                <p><strong>전단 변환 행렬:</strong></p>
+                <div class="formula">
+                    H(hx,hy) = [ 1 hx]<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[hy  1]
+                </div>
+                <p><strong>반사 변환 행렬:</strong></p>
+                <div class="formula">
+                    <!-- X축 반사 -->
+                    R<sub>x</sub> = [ 1  0]<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[ 0 -1]<br>
+                    <!-- Y축 반사 -->
+                    R<sub>y</sub> = [-1  0]<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[ 0  1]
+                </div>
+                <p>변환의 순서가 중요합니다! 행렬 곱셈은 교환법칙이 성립하지 않습니다.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 수학 유틸리티
+        class MathUtil {
+            // 행렬 곱셈: [3x3] * [3x3]
+            static multiplyMatrix(a, b) {
+                const result = [
+                    [0, 0, 0],
+                    [0, 0, 0],
+                    [0, 0, 0]
+                ];
+                
+                for (let i = 0; i < 3; i++) {
+                    for (let j = 0; j < 3; j++) {
+                        for (let k = 0; k < 3; k++) {
+                            result[i][j] += a[i][k] * b[k][j];
+                        }
+                    }
+                }
+                
+                return result;
+            }
+            
+            // 점 변환: [3x3] * [x, y, 1]
+            static transformPoint(matrix, point) {
+                const x = matrix[0][0] * point.x + matrix[0][1] * point.y + matrix[0][2];
+                const y = matrix[1][0] * point.x + matrix[1][1] * point.y + matrix[1][2];
+                return { x, y };
+            }
+            
+            // 단위 행렬 생성
+            static identityMatrix() {
+                return [
+                    [1, 0, 0],
+                    [0, 1, 0],
+                    [0, 0, 1]
+                ];
+            }
+            
+            // 각도를 라디안으로 변환
+            static toRadians(degrees) {
+                return degrees * Math.PI / 180;
+            }
+            
+            // 숫자를 지정된 소수점 자리까지 포맷팅
+            static formatNumber(num, digits = 2) {
+                return num.toFixed(digits);
+            }
+        }
+        
+        // 변환 클래스
+        class Transform {
+            constructor(type, params = {}) {
+                this.type = type;
+                this.params = params;
+                this.id = Date.now() + Math.random().toString(36).substr(2, 5);
+                this.matrix = this.calculateMatrix();
+            }
+            
+            // 변환 타입에 따른 행렬 계산
+            calculateMatrix() {
+                switch (this.type) {
+                    case 'rotation':
+                        return this.getRotationMatrix();
+                    case 'scale':
+                        return this.getScaleMatrix();
+                    case 'shear':
+                        return this.getShearMatrix();
+                    case 'reflectX':
+                        return this.getReflectionXMatrix();
+                    case 'reflectY':
+                        return this.getReflectionYMatrix();
+                    default:
+                        return MathUtil.identityMatrix();
+                }
+            }
+            
+            // 회전 행렬
+            getRotationMatrix() {
+                const angle = MathUtil.toRadians(this.params.angle || 0);
+                const cos = Math.cos(angle);
+                const sin = Math.sin(angle);
+                
+                return [
+                    [cos, -sin, 0],
+                    [sin, cos, 0],
+                    [0, 0, 1]
+                ];
+            }
+            
+            // 크기 조절 행렬
+            getScaleMatrix() {
+                const sx = this.params.sx !== undefined ? this.params.sx : 1;
+                const sy = this.params.sy !== undefined ? this.params.sy : 1;
+                
+                return [
+                    [sx, 0, 0],
+                    [0, sy, 0],
+                    [0, 0, 1]
+                ];
+            }
+            
+            // 전단 행렬
+            getShearMatrix() {
+                const shx = this.params.shx !== undefined ? this.params.shx : 0;
+                const shy = this.params.shy !== undefined ? this.params.shy : 0;
+                
+                return [
+                    [1, shx, 0],
+                    [shy, 1, 0],
+                    [0, 0, 1]
+                ];
+            }
+            
+            // X축 반사 행렬
+            getReflectionXMatrix() {
+                return [
+                    [1, 0, 0],
+                    [0, -1, 0],
+                    [0, 0, 1]
+                ];
+            }
+            
+            // Y축 반사 행렬
+            getReflectionYMatrix() {
+                return [
+                    [-1, 0, 0],
+                    [0, 1, 0],
+                    [0, 0, 1]
+                ];
+            }
+            
+            // 사람이 읽을 수 있는 설명 생성
+            getDescription() {
+                switch (this.type) {
+                    case 'rotation':
+                        return `회전 ${this.params.angle}°`;
+                    case 'scale':
+                        return `크기 조절 (${this.params.sx}, ${this.params.sy})`;
+                    case 'shear':
+                        return `전단 (${this.params.shx}, ${this.params.shy})`;
+                    case 'reflectX':
+                        return 'X축 반사';
+                    case 'reflectY':
+                        return 'Y축 반사';
+                    default:
+                        return '알 수 없는 변환';
+                }
+            }
+        }
+        
+        // 도형 클래스
+        class Shape {
+            constructor(type = 'triangle') {
+                this.type = type;
+                this.originalPoints = this.getOriginalPoints();
+                this.transformedPoints = [...this.originalPoints];
+                this.matrix = MathUtil.identityMatrix();
+            }
+            
+            // 도형 타입에 따른 점 정의
+            getOriginalPoints() {
+                switch (this.type) {
+                    case 'triangle':
+                        return [
+                            { x: 0, y: -50 },
+                            { x: -43, y: 25 },
+                            { x: 43, y: 25 }
+                        ];
+                    case 'square':
+                        return [
+                            { x: -40, y: -40 },
+                            { x: 40, y: -40 },
+                            { x: 40, y: 40 },
+                            { x: -40, y: 40 }
+                        ];
+                    case 'pentagon':
+                        return [
+                            { x: 0, y: -50 },
+                            { x: 48, y: -15 },
+                            { x: 29, y: 40 },
+                            { x: -29, y: 40 },
+                            { x: -48, y: -15 }
+                        ];
+                    case 'star':
+                        return [
+                            { x: 0, y: -50 },
+                            { x: 15, y: -15 },
+                            { x: 50, y: -15 },
+                            { x: 25, y: 10 },
+                            { x: 30, y: 50 },
+                            { x: 0, y: 25 },
+                            { x: -30, y: 50 },
+                            { x: -25, y: 10 },
+                            { x: -50, y: -15 },
+                            { x: -15, y: -15 }
+                        ];
+                    case 'arrow':
+                        return [
+                            { x: -30, y: -10 },
+                            { x: 20, y: -10 },
+                            { x: 20, y: -25 },
+                            { x: 50, y: 0 },
+                            { x: 20, y: 25 },
+                            { x: 20, y: 10 },
+                            { x: -30, y: 10 }
+                        ];
+                    default:
+                        return [
+                            { x: 0, y: -50 },
+                            { x: -43, y: 25 },
+                            { x: 43, y: 25 }
+                        ];
+                }
+            }
+            
+            // 도형 타입 변경
+            setType(type) {
+                this.type = type;
+                this.originalPoints = this.getOriginalPoints();
+                this.applyTransform();
+            }
+            
+            // 변환 적용
+            applyTransform() {
+                this.transformedPoints = this.originalPoints.map(point => 
+                    MathUtil.transformPoint(this.matrix, point)
+                );
+            }
+            
+            // 변환 행렬 설정
+            setTransformMatrix(matrix) {
+                this.matrix = matrix;
+                this.applyTransform();
+            }
+            
+            // 도형 그리기
+            draw(ctx, centerX, centerY) {
+                if (this.transformedPoints.length === 0) return;
+                
+                ctx.beginPath();
+                ctx.moveTo(
+                    centerX + this.transformedPoints[0].x, 
+                    centerY + this.transformedPoints[0].y
+                );
+                
+                for (let i = 1; i < this.transformedPoints.length; i++) {
+                    ctx.lineTo(
+                        centerX + this.transformedPoints[i].x,
+                        centerY + this.transformedPoints[i].y
+                    );
+                }
+                
+                ctx.closePath();
+                ctx.strokeStyle = '#4FC3F7';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                
+                ctx.fillStyle = 'rgba(79, 195, 247, 0.2)';
+                ctx.fill();
+                
+                // 원점 표시
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, 4, 0, Math.PI * 2);
+                ctx.fillStyle = '#FF5252';
+                ctx.fill();
+            }
+        }
+        
+        // 변환 큐 관리 클래스
+        class TransformQueue {
+            constructor(onUpdateCallback) {
+                this.queue = [];
+                this.listElement = document.getElementById('transformList');
+                this.onUpdateCallback = onUpdateCallback;
+            }
+            
+            // 변환 추가
+            add(transform) {
+                this.queue.push(transform);
+                this.updateUI();
+                
+                if (this.onUpdateCallback) {
+                    this.onUpdateCallback();
+                }
+            }
+            
+            // 변환 제거
+            remove(index) {
+                if (index >= 0 && index < this.queue.length) {
+                    this.queue.splice(index, 1);
+                    this.updateUI();
+                    
+                    if (this.onUpdateCallback) {
+                        this.onUpdateCallback();
+                    }
+                }
+            }
+            
+            // 변환 큐 초기화
+            clear() {
+                this.queue = [];
+                this.updateUI();
+                
+                if (this.onUpdateCallback) {
+                    this.onUpdateCallback();
+                }
+            }
+            
+            // UI 업데이트
+            updateUI() {
+                if (this.queue.length === 0) {
+                    this.listElement.innerHTML = '<div style="text-align: center; opacity: 0.6; font-size: 13px;">변환이 추가되면 여기에 표시됩니다</div>';
+                    return;
+                }
+                
+                this.listElement.innerHTML = '';
+                this.queue.forEach((transform, index) => {
+                    const item = document.createElement('div');
+                    item.className = 'transform-item';
+                    
+                    item.innerHTML = `
+                        <span class="transform-type">${index + 1}. ${transform.getDescription()}</span>
+                        <button class="remove-btn" data-index="${index}">×</button>
+                    `;
+                    
+                    this.listElement.appendChild(item);
+                });
+                
+                // 삭제 버튼에 이벤트 리스너 추가
+                const removeButtons = this.listElement.querySelectorAll('.remove-btn');
+                removeButtons.forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const index = parseInt(e.target.dataset.index, 10);
+                        this.remove(index);
+                    });
+                });
+            }
+            
+            // 복합 변환 행렬 계산
+            calculateCompositeMatrix() {
+                let matrix = MathUtil.identityMatrix();
+                
+                this.queue.forEach(transform => {
+                    matrix = MathUtil.multiplyMatrix(matrix, transform.matrix);
+                });
+                
+                return matrix;
+            }
+            
+            // 변환 큐의 길이 반환
+            get length() {
+                return this.queue.length;
+            }
+            
+            // 변환 큐에서 특정 인덱스의 항목 반환
+            getAt(index) {
+                if (index >= 0 && index < this.queue.length) {
+                    return this.queue[index];
+                }
+                return null;
+            }
+        }
+        
+        // 행렬 시각화 클래스
+        class MatrixVisualization {
+            constructor() {
+                this.matrixElement = document.getElementById('transformMatrix');
+                this.iVectorElement = document.getElementById('iVector');
+                this.jVectorElement = document.getElementById('jVector');
+                this.cells = this.matrixElement.querySelectorAll('.matrix-cell');
+            }
+            
+            // 행렬 업데이트
+            update(matrix) {
+                // 행렬 셀 업데이트
+                for (let i = 0; i < 3; i++) {
+                    for (let j = 0; j < 3; j++) {
+                        const index = i * 3 + j;
+                        if (index < this.cells.length) {
+                            this.cells[index].textContent = MathUtil.formatNumber(matrix[i][j]);
+                        }
+                    }
+                }
+                
+                // 기저벡터 업데이트 (i, j)
+                this.iVectorElement.textContent = `[${MathUtil.formatNumber(matrix[0][0])}, ${MathUtil.formatNumber(matrix[1][0])}]`;
+                this.jVectorElement.textContent = `[${MathUtil.formatNumber(matrix[0][1])}, ${MathUtil.formatNumber(matrix[1][1])}]`;
+            }
+            
+            // 행렬 셀 하이라이트
+            highlightCell(row, col) {
+                const index = row * 3 + col;
+                if (index < this.cells.length) {
+                    this.cells[index].classList.add('matrix-highlight');
+                }
+            }
+            
+            // 행렬 셀 하이라이트 제거
+            clearHighlights() {
+                this.cells.forEach(cell => {
+                    cell.classList.remove('matrix-highlight');
+                });
+            }
+            
+            // 셀 애니메이션
+            animateCell(row, col, duration = 1000) {
+                const index = row * 3 + col;
+                if (index < this.cells.length) {
+                    this.cells[index].classList.add('animated-cell');
+                    
+                    setTimeout(() => {
+                        this.cells[index].classList.remove('animated-cell');
+                    }, duration);
+                }
+            }
+        }
+        
+        // 애니메이션 컨트롤러 클래스
+        class AnimationController {
+            constructor(onStepCallback, onResetCallback) {
+                this.isPlaying = false;
+                this.currentStep = 0;
+                this.totalSteps = 0;
+                this.onStepCallback = onStepCallback;
+                this.onResetCallback = onResetCallback;
+                this.stepIndicator = document.getElementById('stepIndicator');
+                this.animationSpeed = 1500; // 밀리초 단위
+                this.animationTimer = null;
+                
+                this.setupEventListeners();
+            }
+            
+            // 이벤트 리스너 설정
+            setupEventListeners() {
+                document.getElementById('playPauseBtn').addEventListener('click', () => this.togglePlayPause());
+                document.getElementById('resetBtn').addEventListener('click', () => this.reset());
+                document.getElementById('stepBtn').addEventListener('click', () => this.nextStep());
+            }
+            
+            // 재생/일시정지 토글
+            togglePlayPause() {
+                this.isPlaying = !this.isPlaying;
+                const button = document.getElementById('playPauseBtn');
+                
+                if (this.isPlaying) {
+                    button.textContent = '⏸ 일시정지';
+                    button.classList.add('active');
+                    this.playAnimation();
+                } else {
+                    button.textContent = '▶ 재생';
+                    button.classList.remove('active');
+                    this.pauseAnimation();
+                }
+            }
+            
+            // 애니메이션 재생
+            playAnimation() {
+                if (this.totalSteps === 0) return;
+                
+                this.clearTimer();
+                this.animationTimer = setInterval(() => {
+                    this.nextStep();
+                    
+                    if (this.currentStep >= this.totalSteps) {
+                        this.pauseAnimation();
+                        this.currentStep = 0;
+                        this.updateStepIndicator();
+                    }
+                }, this.animationSpeed);
+            }
+            
+            // 애니메이션 일시정지
+            pauseAnimation() {
+                this.isPlaying = false;
+                document.getElementById('playPauseBtn').textContent = '▶ 재생';
+                document.getElementById('playPauseBtn').classList.remove('active');
+                this.clearTimer();
+            }
+            
+            // 타이머 제거
+            clearTimer() {
+                if (this.animationTimer !== null) {
+                    clearInterval(this.animationTimer);
+                    this.animationTimer = null;
+                }
+            }
+            
+            // 다음 단계로 이동
+            nextStep() {
+                if (this.currentStep < this.totalSteps) {
+                    this.currentStep++;
+                    this.updateStepIndicator();
+                    
+                    if (this.onStepCallback) {
+                        this.onStepCallback(this.currentStep);
+                    }
+                } else {
+                    // 마지막 단계에서 처음으로 돌아가기
+                    this.currentStep = 1;
+                    this.updateStepIndicator();
+                    
+                    if (this.onStepCallback) {
+                        this.onStepCallback(this.currentStep);
+                    }
+                }
+            }
+            
+            // 리셋
+            reset() {
+                this.pauseAnimation();
+                this.currentStep = 0;
+                this.updateStepIndicator();
+                
+                if (this.onResetCallback) {
+                    this.onResetCallback();
+                }
+            }
+            
+            // 단계 표시기 업데이트
+            updateStepIndicator() {
+                if (this.totalSteps > 0) {
+                    this.stepIndicator.textContent = `${this.currentStep}/${this.totalSteps}`;
+                    this.stepIndicator.classList.add('visible');
+                    
+                    // 잠시 후 표시기 숨김
+                    setTimeout(() => {
+                        this.stepIndicator.classList.remove('visible');
+                    }, 1500);
+                } else {
+                    this.stepIndicator.classList.remove('visible');
+                }
+            }
+            
+            // 전체 단계 설정
+            setTotalSteps(steps) {
+                this.totalSteps = steps;
+                this.currentStep = Math.min(this.currentStep, steps);
+                this.updateStepIndicator();
+            }
+        }
+        
+        // 메인 애플리케이션 클래스
+        class GeometricTransformApp {
+            constructor() {
+                // 캔버스 초기화
+                this.canvas = document.getElementById('mainCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.resizeCanvas();
+                
+                // 구성요소 초기화
+                this.shape = new Shape('triangle');
+                this.transformQueue = new TransformQueue(() => this.updateTransformations());
+                this.matrixVisualization = new MatrixVisualization();
+                this.animationController = new AnimationController(
+                    (step) => this.animateStep(step),
+                    () => this.resetApp()
+                );
+                
+                // 상태 변수 초기화
+                this.currentRotation = 0;
+                this.currentScaleX = 1;
+                this.currentScaleY = 1;
+                this.currentShearX = 0;
+                this.currentShearY = 0;
+                
+                // 이벤트 리스너 설정
+                this.setupEventListeners();
+                
+                // 애니메이션 루프 시작
+                this.startRenderLoop();
+            }
+            
+            // 캔버스 크기 조정
+            resizeCanvas() {
+                const parent = this.canvas.parentElement;
+                this.canvas.width = parent.clientWidth;
+                this.canvas.height = parent.clientHeight;
+            }
+            
+            // 이벤트 리스너 설정
+            setupEventListeners() {
+                // 윈도우 리사이즈
+                window.addEventListener('resize', () => this.resizeCanvas());
+                
+                // 도형 선택 버튼
+                const shapeButtons = document.querySelectorAll('.shape-btn');
+                shapeButtons.forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        shapeButtons.forEach(b => b.classList.remove('active'));
+                        e.target.classList.add('active');
+                        this.shape.setType(e.target.dataset.shape);
+                    });
+                });
+                
+                // 슬라이더 이벤트
+                document.getElementById('rotationSlider').addEventListener('input', (e) => {
+                    this.currentRotation = parseFloat(e.target.value);
+                    document.getElementById('rotationValue').textContent = `${this.currentRotation}°`;
+                });
+                
+                document.getElementById('scaleXSlider').addEventListener('input', (e) => {
+                    this.currentScaleX = parseFloat(e.target.value);
+                    document.getElementById('scaleXValue').textContent = this.currentScaleX.toFixed(1);
+                });
+                
+                document.getElementById('scaleYSlider').addEventListener('input', (e) => {
+                    this.currentScaleY = parseFloat(e.target.value);
+                    document.getElementById('scaleYValue').textContent = this.currentScaleY.toFixed(1);
+                });
+                
+                document.getElementById('shearXSlider').addEventListener('input', (e) => {
+                    this.currentShearX = parseFloat(e.target.value);
+                    document.getElementById('shearXValue').textContent = this.currentShearX.toFixed(1);
+                });
+                
+                document.getElementById('shearYSlider').addEventListener('input', (e) => {
+                    this.currentShearY = parseFloat(e.target.value);
+                    document.getElementById('shearYValue').textContent = this.currentShearY.toFixed(1);
+                });
+                
+                // 버튼 이벤트
+                document.getElementById('addRotationBtn').addEventListener('click', () => {
+                    this.addRotationTransform();
+                });
+                
+                document.getElementById('addScaleBtn').addEventListener('click', () => {
+                    this.addScaleTransform();
+                });
+                
+                document.getElementById('addShearBtn').addEventListener('click', () => {
+                    this.addShearTransform();
+                });
+                
+                document.getElementById('reflectXBtn').addEventListener('click', () => {
+                    this.addReflectXTransform();
+                });
+                
+                document.getElementById('reflectYBtn').addEventListener('click', () => {
+                    this.addReflectYTransform();
+                });
+                
+                document.getElementById('clearBtn').addEventListener('click', () => {
+                    this.clearTransforms();
+                });
+            }
+            
+            // 회전 변환 추가
+            addRotationTransform() {
+                if (this.currentRotation !== 0) {
+                    const transform = new Transform('rotation', { angle: this.currentRotation });
+                    this.transformQueue.add(transform);
+                    
+                    // 슬라이더 초기화
+                    this.currentRotation = 0;
+                    document.getElementById('rotationSlider').value = 0;
+                    document.getElementById('rotationValue').textContent = '0°';
+                    
+                    this.animationController.setTotalSteps(this.transformQueue.length);
+                }
+            }
+            
+            // 크기 조절 변환 추가
+            addScaleTransform() {
+                if (this.currentScaleX !== 1 || this.currentScaleY !== 1) {
+                    const transform = new Transform('scale', { 
+                        sx: this.currentScaleX, 
+                        sy: this.currentScaleY 
+                    });
+                    this.transformQueue.add(transform);
+                    
+                    // 슬라이더 초기화
+                    this.currentScaleX = 1;
+                    this.currentScaleY = 1;
+                    document.getElementById('scaleXSlider').value = 1;
+                    document.getElementById('scaleYSlider').value = 1;
+                    document.getElementById('scaleXValue').textContent = '1.0';
+                    document.getElementById('scaleYValue').textContent = '1.0';
+                    
+                    this.animationController.setTotalSteps(this.transformQueue.length);
+                }
+            }
+            
+            // 전단 변환 추가
+            addShearTransform() {
+                if (this.currentShearX !== 0 || this.currentShearY !== 0) {
+                    const transform = new Transform('shear', { 
+                        shx: this.currentShearX, 
+                        shy: this.currentShearY 
+                    });
+                    this.transformQueue.add(transform);
+                    
+                    // 슬라이더 초기화
+                    this.currentShearX = 0;
+                    this.currentShearY = 0;
+                    document.getElementById('shearXSlider').value = 0;
+                    document.getElementById('shearYSlider').value = 0;
+                    document.getElementById('shearXValue').textContent = '0.0';
+                    document.getElementById('shearYValue').textContent = '0.0';
+                    
+                    this.animationController.setTotalSteps(this.transformQueue.length);
+                }
+            }
+            
+            // X축 반사 변환 추가
+            addReflectXTransform() {
+                const transform = new Transform('reflectX');
+                this.transformQueue.add(transform);
+                
+                this.animationController.setTotalSteps(this.transformQueue.length);
+            }
+            
+            // Y축 반사 변환 추가
+            addReflectYTransform() {
+                const transform = new Transform('reflectY');
+                this.transformQueue.add(transform);
+                
+                this.animationController.setTotalSteps(this.transformQueue.length);
+            }
+            
+            // 변환 모두 지우기
+            clearTransforms() {
+                this.transformQueue.clear();
+                this.shape.setTransformMatrix(MathUtil.identityMatrix());
+                this.matrixVisualization.update(MathUtil.identityMatrix());
+                this.animationController.setTotalSteps(0);
+            }
+            
+            // 변환 업데이트
+            updateTransformations() {
+                const compositeMatrix = this.transformQueue.calculateCompositeMatrix();
+                this.shape.setTransformMatrix(compositeMatrix);
+                this.matrixVisualization.update(compositeMatrix);
+            }
+            
+            // 특정 단계까지 애니메이션
+            animateStep(step) {
+                if (step <= 0 || this.transformQueue.length === 0) {
+                    this.shape.setTransformMatrix(MathUtil.identityMatrix());
+                    this.matrixVisualization.update(MathUtil.identityMatrix());
+                    return;
+                }
+                
+                let compositeMatrix = MathUtil.identityMatrix();
+                
+                for (let i = 0; i < step; i++) {
+                    const transform = this.transformQueue.getAt(i);
+                    if (transform) {
+                        compositeMatrix = MathUtil.multiplyMatrix(compositeMatrix, transform.matrix);
+                    }
+                }
+                
+                // 현재 단계까지의 복합 행렬 표시
+                this.matrixVisualization.update(compositeMatrix);
+                
+                // 현재 변환의 애니메이션 효과
+                if (step > 0) {
+                    const currentTransform = this.transformQueue.getAt(step - 1);
+                    if (currentTransform) {
+                        if (currentTransform.type === 'rotation') {
+                            this.matrixVisualization.animateCell(0, 0);
+                            this.matrixVisualization.animateCell(0, 1);
+                            this.matrixVisualization.animateCell(1, 0);
+                            this.matrixVisualization.animateCell(1, 1);
+                        } else if (currentTransform.type === 'scale') {
+                            this.matrixVisualization.animateCell(0, 0);
+                            this.matrixVisualization.animateCell(1, 1);
+                        } else if (currentTransform.type === 'shear') {
+                            this.matrixVisualization.animateCell(0, 1);
+                            this.matrixVisualization.animateCell(1, 0);
+                        } else if (currentTransform.type === 'reflectX') {
+                            this.matrixVisualization.animateCell(1, 1);
+                        } else if (currentTransform.type === 'reflectY') {
+                            this.matrixVisualization.animateCell(0, 0);
+                        }
+                    }
+                }
+                
+                this.shape.setTransformMatrix(compositeMatrix);
+            }
+            
+            // 앱 리셋
+            resetApp() {
+                this.shape.setTransformMatrix(MathUtil.identityMatrix());
+                this.matrixVisualization.update(MathUtil.identityMatrix());
+            }
+            
+            // 그리기 루프 시작
+            startRenderLoop() {
+                const render = () => {
+                    this.draw();
+                    requestAnimationFrame(render);
+                };
+                
+                render();
+            }
+            
+            // 그리기
+            draw() {
+                // 캔버스 지우기
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                
+                // 그리드 그리기
+                this.drawGrid();
+                
+                // 좌표축 그리기
+                this.drawAxes();
+                
+                // 기저벡터 그리기
+                this.drawBasisVectors();
+                
+                // 도형 그리기
+                this.shape.draw(this.ctx, this.canvas.width / 2, this.canvas.height / 2);
+            }
+            
+            // 그리드 그리기
+            drawGrid() {
+                const gridSize = 50;
+                const width = this.canvas.width;
+                const height = this.canvas.height;
+                const centerX = width / 2;
+                const centerY = height / 2;
+                
+                this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+                this.ctx.lineWidth = 1;
+                
+                // 수직선
+                for (let x = centerX % gridSize; x < width; x += gridSize) {
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(x, 0);
+                    this.ctx.lineTo(x, height);
+                    this.ctx.stroke();
+                }
+                
+                // 수평선
+                for (let y = centerY % gridSize; y < height; y += gridSize) {
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(0, y);
+                    this.ctx.lineTo(width, y);
+                    this.ctx.stroke();
+                }
+            }
+            
+            // 좌표축 그리기
+            drawAxes() {
+                const width = this.canvas.width;
+                const height = this.canvas.height;
+                const centerX = width / 2;
+                const centerY = height / 2;
+                
+                this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+                this.ctx.lineWidth = 2;
+                
+                // X축
+                this.ctx.beginPath();
+                this.ctx.moveTo(0, centerY);
+                this.ctx.lineTo(width, centerY);
+                this.ctx.stroke();
+                
+                // Y축
+                this.ctx.beginPath();
+                this.ctx.moveTo(centerX, 0);
+                this.ctx.lineTo(centerX, height);
+                this.ctx.stroke();
+                
+                // X축 화살표
+                this.ctx.beginPath();
+                this.ctx.moveTo(width - 15, centerY - 8);
+                this.ctx.lineTo(width - 5, centerY);
+                this.ctx.lineTo(width - 15, centerY + 8);
+                this.ctx.stroke();
+                
+                // Y축 화살표
+                this.ctx.beginPath();
+                this.ctx.moveTo(centerX - 8, 15);
+                this.ctx.lineTo(centerX, 5);
+                this.ctx.lineTo(centerX + 8, 15);
+                this.ctx.stroke();
+                
+                // 축 레이블
+                this.ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+                this.ctx.font = '16px Arial';
+                this.ctx.textAlign = 'center';
+                this.ctx.textBaseline = 'middle';
+                this.ctx.fillText('X', width - 20, centerY - 20);
+                this.ctx.fillText('Y', centerX + 20, 20);
+            }
+            
+            // 기저벡터 그리기
+            drawBasisVectors() {
+                const width = this.canvas.width;
+                const height = this.canvas.height;
+                const centerX = width / 2;
+                const centerY = height / 2;
+                
+                // 현재 변환 행렬 가져오기
+                const matrix = this.shape.matrix;
+                
+                // i 기저벡터 (변환된 x축 단위 벡터)
+                const iVectorLength = 50;
+                const iX = centerX + matrix[0][0] * iVectorLength;
+                const iY = centerY + matrix[1][0] * iVectorLength;
+                
+                this.ctx.strokeStyle = '#FF5252';
+                this.ctx.lineWidth = 2;
+                this.ctx.beginPath();
+                this.ctx.moveTo(centerX, centerY);
+                this.ctx.lineTo(iX, iY);
+                this.ctx.stroke();
+                
+                // i 벡터 화살표
+                const iAngle = Math.atan2(iY - centerY, iX - centerX);
+                this.ctx.beginPath();
+                this.ctx.moveTo(iX - 10 * Math.cos(iAngle - Math.PI / 6), iY - 10 * Math.sin(iAngle - Math.PI / 6));
+                this.ctx.lineTo(iX, iY);
+                this.ctx.lineTo(iX - 10 * Math.cos(iAngle + Math.PI / 6), iY - 10 * Math.sin(iAngle + Math.PI / 6));
+                this.ctx.stroke();
+                
+                // j 기저벡터 (변환된 y축 단위 벡터)
+                const jVectorLength = 50;
+                const jX = centerX + matrix[0][1] * jVectorLength;
+                const jY = centerY + matrix[1][1] * jVectorLength;
+                
+                this.ctx.strokeStyle = '#4FC3F7';
+                this.ctx.beginPath();
+                this.ctx.moveTo(centerX, centerY);
+                this.ctx.lineTo(jX, jY);
+                this.ctx.stroke();
+                
+                // j 벡터 화살표
+                const jAngle = Math.atan2(jY - centerY, jX - centerX);
+                this.ctx.beginPath();
+                this.ctx.moveTo(jX - 10 * Math.cos(jAngle - Math.PI / 6), jY - 10 * Math.sin(jAngle - Math.PI / 6));
+                this.ctx.lineTo(jX, jY);
+                this.ctx.lineTo(jX - 10 * Math.cos(jAngle + Math.PI / 6), jY - 10 * Math.sin(jAngle + Math.PI / 6));
+                this.ctx.stroke();
+                
+                // 벡터 레이블
+                this.ctx.fillStyle = '#FF5252';
+                this.ctx.font = '16px Arial';
+                this.ctx.textAlign = 'center';
+                this.ctx.textBaseline = 'middle';
+                this.ctx.fillText('i', iX + 15 * Math.cos(iAngle), iY + 15 * Math.sin(iAngle));
+                
+                this.ctx.fillStyle = '#4FC3F7';
+                this.ctx.fillText('j', jX + 15 * Math.cos(jAngle), jY + 15 * Math.sin(jAngle));
+            }
+        }
+        
+        // 애플리케이션 인스턴스 생성
+        document.addEventListener('DOMContentLoaded', () => {
+            const app = new GeometricTransformApp();
+        });
+    </script>
+</body>
+</html>
