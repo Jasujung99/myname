@@ -1250,30 +1250,35 @@
                     });
                 });
                 
-                // 슬라이더 이벤트
+                // 슬라이더 이벤트 - 실시간 미리보기 적용
                 document.getElementById('rotationSlider').addEventListener('input', (e) => {
                     this.currentRotation = parseFloat(e.target.value);
                     document.getElementById('rotationValue').textContent = `${this.currentRotation}°`;
+                    this.updateLivePreview();
                 });
                 
                 document.getElementById('scaleXSlider').addEventListener('input', (e) => {
                     this.currentScaleX = parseFloat(e.target.value);
                     document.getElementById('scaleXValue').textContent = this.currentScaleX.toFixed(1);
+                    this.updateLivePreview();
                 });
                 
                 document.getElementById('scaleYSlider').addEventListener('input', (e) => {
                     this.currentScaleY = parseFloat(e.target.value);
                     document.getElementById('scaleYValue').textContent = this.currentScaleY.toFixed(1);
+                    this.updateLivePreview();
                 });
                 
                 document.getElementById('shearXSlider').addEventListener('input', (e) => {
                     this.currentShearX = parseFloat(e.target.value);
                     document.getElementById('shearXValue').textContent = this.currentShearX.toFixed(1);
+                    this.updateLivePreview();
                 });
                 
                 document.getElementById('shearYSlider').addEventListener('input', (e) => {
                     this.currentShearY = parseFloat(e.target.value);
                     document.getElementById('shearYValue').textContent = this.currentShearY.toFixed(1);
+                    this.updateLivePreview();
                 });
                 
                 // 버튼 이벤트
@@ -1386,6 +1391,45 @@
             // 변환 업데이트
             updateTransformations() {
                 const compositeMatrix = this.transformQueue.calculateCompositeMatrix();
+                this.shape.setTransformMatrix(compositeMatrix);
+                this.matrixVisualization.update(compositeMatrix);
+            }
+            
+            // 실시간 미리보기 업데이트
+            updateLivePreview() {
+                // 기존 큐의 복합 행렬 계산
+                let compositeMatrix = this.transformQueue.calculateCompositeMatrix();
+                
+                // 현재 슬라이더 값으로 임시 변환 생성
+                const previewTransforms = [];
+                
+                // 회전이 0이 아니면 추가
+                if (this.currentRotation !== 0) {
+                    previewTransforms.push(new Transform('rotation', { angle: this.currentRotation }));
+                }
+                
+                // 크기가 기본값이 아니면 추가
+                if (this.currentScaleX !== 1 || this.currentScaleY !== 1) {
+                    previewTransforms.push(new Transform('scale', { 
+                        sx: this.currentScaleX, 
+                        sy: this.currentScaleY 
+                    }));
+                }
+                
+                // 전단이 0이 아니면 추가
+                if (this.currentShearX !== 0 || this.currentShearY !== 0) {
+                    previewTransforms.push(new Transform('shear', { 
+                        shx: this.currentShearX, 
+                        shy: this.currentShearY 
+                    }));
+                }
+                
+                // 미리보기 변환들을 복합 행렬에 적용
+                previewTransforms.forEach(transform => {
+                    compositeMatrix = MathUtil.multiplyMatrix(compositeMatrix, transform.matrix);
+                });
+                
+                // 도형과 행렬 시각화 업데이트
                 this.shape.setTransformMatrix(compositeMatrix);
                 this.matrixVisualization.update(compositeMatrix);
             }
