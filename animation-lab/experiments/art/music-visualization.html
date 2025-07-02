@@ -319,7 +319,7 @@
                         <button class="waveform-btn active" data-mode="spectrum">스펙트럼</button>
                         <button class="waveform-btn" data-mode="waveform">파형</button>
                         <button class="waveform-btn" data-mode="circular">원형</button>
-                        <button class="waveform-btn" data-mode="mesh">매시</button>
+                        <button class="waveform-btn" data-mode="mesh">그물망</button>
                     </div>
                 </div>
 
@@ -347,7 +347,7 @@
                 </div>
 
                 <div class="control-group">
-                    <label>스무딩 시간</label>
+                    <label>부드럽기(Smoothing) 시간</label>
                     <div class="slider-container">
                         <input type="range" id="smoothingTime" min="0" max="0.9" step="0.1" value="0.8">
                         <div class="value-display" id="smoothingTimeValue">0.8</div>
@@ -387,7 +387,7 @@
                 </div>
 
                 <div class="control-group">
-                    <label>매시 밀도</label>
+                    <label>그물망 밀도</label>
                     <div class="slider-container">
                         <input type="range" id="meshDensity" min="5" max="30" step="5" value="15">
                         <div class="value-display" id="meshDensityValue">15</div>
@@ -418,7 +418,7 @@
                     </p>
                     <ul style="font-size: 0.85rem; color: #b0bec5; padding-left: 20px; margin: 5px 0 15px 0;">
                         <li><strong>FFT 크기</strong>: 주파수 분석의 해상도를 결정합니다. 큰 값일수록 더 세밀한 주파수 분석이 가능하지만 더 많은 처리 능력이 필요합니다.</li>
-                        <li><strong>스무딩 시간</strong>: 값이 클수록 변화가 부드럽게 나타나며, 작을수록 즉각적으로 반응합니다.</li>
+                        <li><strong>부드럽기(Smoothing) 시간</strong>: 값이 클수록 변화가 부드럽게 나타나며, 작을수록 즉각적으로 반응합니다.</li>
                         <li><strong>감도</strong>: 입력 소리의 세기에 대한 전반적인 감도를 조절합니다.</li>
                     </ul>
                 </div>
@@ -430,7 +430,7 @@
                     <ul style="font-size: 0.85rem; color: #b0bec5; padding-left: 20px; margin: 5px 0 15px 0;">
                         <li><strong>반응 강도</strong>: 소리에 대한 시각적 요소의 크기 변화 정도를 결정합니다.</li>
                         <li><strong>잔향 효과</strong>: 이전 프레임이 화면에 남아있는 정도를 조절합니다. 값이 클수록 잔상이 오래 지속됩니다.</li>
-                        <li><strong>매시 밀도</strong>: 매시 모드에서 그물망의 밀도를 조절합니다. 값이 클수록 더 세밀한 그물망이 형성됩니다.</li>
+                        <li><strong>그물망 밀도</strong>: 그물망(Mesh) 모드에서 그물망의 밀도를 조절합니다. 값이 클수록 더 세밀한 그물망이 형성됩니다.</li>
                     </ul>
                 </div>
                 
@@ -442,7 +442,17 @@
                         <li><strong>스펙트럼</strong>: 주파수 별 크기를 막대 그래프로 표현합니다.</li>
                         <li><strong>파형</strong>: 오디오 신호의 시간에 따른 파형을 보여줍니다.</li>
                         <li><strong>원형</strong>: 주파수를 원을 중심으로 방사형으로 표현합니다.</li>
-                        <li><strong>매시</strong>: 소리에 반응하는 그물망 구조로 표현합니다.</li>
+                        <li><strong>그물망(Mesh)</strong>: 소리에 반응하는 그물망 구조로 표현합니다.</li>
+                    </ul>
+                </div>
+                
+                <div style="margin: 20px 0; padding: 15px; background: rgba(0, 0, 0, 0.3); border-radius: 8px;">
+                    <p style="font-size: 0.85rem; color: #b0bec5; margin-bottom: 10px;">
+                        <strong>추가 정보</strong>
+                    </p>
+                    <ul style="font-size: 0.8rem; color: #90a4ae; padding-left: 20px; margin: 5px 0;">
+                        <li><strong>푸리에 변환(Fourier Transform)</strong>: 시간 영역에서의 신호를 주파수 영역으로 분해하는 수학적 변환입니다. 모든 복잡한 파형은 여러 주파수의 사인파(sine wave)와 코사인파(cosine wave)의 합으로 표현할 수 있다는 원리에 기반합니다. 오디오 시각화에서는 실시간으로 소리의 각 주파수 성분을 분석하는 데 사용됩니다.</li>
+                        <li><strong>부드럽기(Smoothing)</strong>: 신호 처리에서 급격한 변화를 완화하기 위해 사용하는 기법입니다. 시각화에서는 값이 갑자기 변하는 것을 방지하고 이전 값과 현재 값 사이를 부드럽게 전환하여 더 자연스러운 시각적 경험을 제공합니다.</li>
                     </ul>
                 </div>
             </div>
@@ -875,7 +885,7 @@ class MusicVisualizer {
         // 평균 볼륨 계산
         const avgVolume = this.dataArray.reduce((sum, val) => sum + val, 0) / this.dataArray.length / 255;
         
-        // 메시를 그리기 위한 설정
+        // 그물망을 그리기 위한 설정
         const cols = this.config.meshDensity;
         const rows = Math.floor(this.config.meshDensity * 0.75);
         const cellWidth = width / cols;
