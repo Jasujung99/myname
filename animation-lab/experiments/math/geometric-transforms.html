@@ -513,11 +513,11 @@
             
             <!-- 도형 선택기 -->
             <div class="shape-selector">
-                <button class="shape-btn active" data-shape="triangle">▲ 삼각형</button>
+                <button class="shape-btn" data-shape="triangle">▲ 삼각형</button>
                 <button class="shape-btn" data-shape="square">■ 사각형</button>
                 <button class="shape-btn" data-shape="pentagon">⬟ 오각형</button>
                 <button class="shape-btn" data-shape="star">★ 별</button>
-                <button class="shape-btn" data-shape="arrow">➤ 화살표</button>
+                <button class="shape-btn active" data-shape="arrow">➤ 화살표</button>
             </div>
 
             <!-- 애니메이션 컨트롤 -->
@@ -641,13 +641,14 @@
                 </div>
                 <p><strong>반사 변환 행렬:</strong></p>
                 <div class="formula">
-                    <!-- X축 반사 -->
+                    <!-- X축 반사 (상하 반전) -->
                     R<sub>x</sub> = [ 1  0]<br>
                     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[ 0 -1]<br>
-                    <!-- Y축 반사 -->
+                    <!-- Y축 반사 (좌우 반전) -->
                     R<sub>y</sub> = [-1  0]<br>
                     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[ 0  1]
                 </div>
+                <p><strong>💡 팁:</strong> 화살표 도형을 선택하면 반사 효과가 더 명확하게 보입니다!</p>
                 <p>변환의 순서가 중요합니다! 행렬 곱셈은 교환법칙이 성립하지 않습니다.</p>
             </div>
         </div>
@@ -819,7 +820,9 @@
                         return [
                             { x: 0, y: -50 },
                             { x: -43, y: 25 },
-                            { x: 43, y: 25 }
+                            { x: 43, y: 25 },
+                            // 비대칭 요소 추가로 반사 효과를 더 명확하게
+                            { x: 25, y: -10 }
                         ];
                     case 'square':
                         return [
@@ -1203,7 +1206,7 @@
                 this.resizeCanvas();
                 
                 // 구성요소 초기화
-                this.shape = new Shape('triangle');
+                this.shape = new Shape('arrow');
                 this.transformQueue = new TransformQueue(() => this.updateTransformations());
                 this.matrixVisualization = new MatrixVisualization();
                 this.animationController = new AnimationController(
